@@ -231,14 +231,41 @@
     .reserve-badge { padding: 1px 8px; border-radius: 10px; background: var(--gold-pale); color: var(--gold-ink); font-size: 12px; font-weight: 750; }
     .reserve-badge.met { background: var(--green-pale); color: var(--green); }
     .auction-panel { margin-top: 18px; padding: 16px; border: 2px solid var(--green); border-radius: 8px; background: #f8fbf9; }
-    .auction-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 18px; margin-bottom: 12px; }
-    .auction-head small { display: block; color: var(--muted); font-size: 12px; }
-    .auction-head strong { font-size: 28px; line-height: 1.1; }
     .auction-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; color: var(--ink-soft); font-size: 13px; }
+    .auction-top { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .auction-top h3 { margin: 0; font-size: 22px; }
+    .auction-clock { display: grid; justify-items: end; text-align: right; }
+    .auction-clock .countdown { font-size: 20px; }
+    .auction-clock .countdown::after { content: " ⏱"; color: #b8402f; }
+    .auction-clock small { color: var(--muted); font-size: 12px; }
+    .auction-clock.done { font-size: 16px; font-weight: 800; color: var(--muted); }
+    .current-box { display: grid; justify-items: center; gap: 2px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: white; text-align: center; }
+    .current-box small { color: var(--muted); font-size: 13px; font-weight: 650; }
+    .current-box strong { font-size: 30px; line-height: 1.15; }
+    .current-box .auction-meta { justify-content: center; margin-top: 4px; }
+    .min-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink-soft); font-size: 14px; }
+    .bid-form { margin-top: 10px; padding: 0; border: 0; background: none; }
+    .step-bids { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 8px; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; }
+    .step-bids button { min-height: 44px; padding: 0 6px; border: 0; background: white; color: var(--green); font-size: 14px; font-weight: 750; }
+    .step-bids button + button { border-left: 1px solid var(--line); }
+    .step-bids button:hover { background: var(--green-pale); }
+    .bid-form .offer-row input { min-height: 46px; font-size: 16px; }
+    .bid-form .offer-row button { min-height: 46px; padding: 0 22px; background: var(--dark); font-size: 15px; }
+    .bid-form .offer-row button:hover { background: var(--green); }
+    .bid-total { margin-top: 8px; border-radius: 6px; background: #e9eeeb; }
+    .bid-total summary { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; list-style: none; font-size: 14px; }
+    .bid-total summary::-webkit-details-marker { display: none; }
+    .bid-total summary span:first-child { font-weight: 800; }
+    .bid-total summary strong { margin-left: auto; order: 3; font-size: 15px; }
+    .bid-total .details-label { color: var(--ink-soft); font-size: 12px; }
+    .bid-total .details-label::after { content: " ↓"; }
+    .bid-total[open] .details-label::after { content: " ↑"; }
+    .bid-total p { margin: 0; padding: 0 12px 10px; color: var(--ink-soft); font-size: 13px; }
+    .bid-now { display: grid; width: 100%; min-height: 48px; align-content: center; padding: 4px 10px; border: 1px solid var(--green); border-radius: 24px; background: white; color: var(--green); font-size: 15px; font-weight: 800; line-height: 1.2; }
+    .bid-now small { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+    .bid-now:hover { background: var(--green-pale); }
     .auction-note { margin: 0; color: var(--ink-soft); font-size: 14px; }
     .bid-form { margin-top: 0; background: white; }
-    .quick-bids { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-    .quick-bids button { min-height: 36px; padding: 0 12px; border: 1px solid #b7d4c5; border-radius: 18px; background: var(--green-pale); color: #1d5e49; font-size: 13px; font-weight: 750; }
     .terms-check { display: flex; align-items: start; gap: 10px; margin-top: 12px; color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.4; }
     .terms-check input { flex: 0 0 auto; width: 22px; height: 22px; margin: 0; accent-color: var(--green); }
     .footer-inner a { color: #f1cf85; }
@@ -874,25 +901,36 @@
         const meneur = encheres?.[0]?.you;
         action = `<form class="offer-form bid-form" data-offer="${escapeHtml(lot.reference)}">
           ${meneur ? `<p class="form-success">Vous êtes le meilleur enchérisseur.</p>` : ""}
-          <label for="offer-amount">Votre enchère (TND) · minimum ${formatTnd(a.minNextBidTnd)}</label>
-          <div class="quick-bids">${[1, 2, 5].map((n) => `<button type="button" data-quick="${a.minNextBidTnd + (n - 1) * a.incrementTnd}">${formatTnd(a.minNextBidTnd + (n - 1) * a.incrementTnd)}</button>`).join("")}</div>
-          <div class="offer-row"><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${a.minNextBidTnd}" step="1" required value="${a.minNextBidTnd}"><button type="submit">Enchérir</button></div>
+          <div class="step-bids" role="group" aria-label="Augmenter mon enchère">${[1, 2, 5].map((n) => `<button type="button" data-step="${n * a.incrementTnd}">+${formatTnd(n * a.incrementTnd)}</button>`).join("")}</div>
+          <div class="offer-row"><label class="hidden" for="offer-amount">Votre enchère en TND</label><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${a.minNextBidTnd}" step="1" required value="${a.minNextBidTnd}"><button type="submit">Enchérir</button></div>
+          <details class="bid-total"><summary><span>Votre enchère</span><strong id="bid-total">${formatTnd(a.minNextBidTnd)}</strong><span class="details-label">Détails</span></summary>
+            <p>Montant payé au vendeur en cas d'adjudication. Ne sont pas inclus : droits et taxes de douane (dont l'éventuel régime FCR), transport, dédouanement et immatriculation en Tunisie. <a href="/conditions.html#prix" target="_blank" rel="noopener">En savoir plus</a></p></details>
           ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions.html" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
           <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions.html#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
           <p class="form-error" role="alert" hidden></p>
         </form>`;
       }
+      const finTunis = a.endsAt ? new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Tunis" }).format(new Date(a.endsAt)) : "";
       return `<section class="auction-panel" id="auction-panel" data-ref="${escapeHtml(lot.reference)}" aria-live="polite">
-        <div class="auction-head">
-          <div><small>${a.currentBidTnd == null ? "Mise à prix" : a.status === "ended" ? "Dernière enchère" : "Enchère actuelle"}</small>
-            <strong>${formatTnd(a.currentBidTnd ?? a.minNextBidTnd)}</strong></div>
-          <div class="auction-meta">${a.status === "live" ? `<span>Fin dans ${compteARebours(a.endsAt)}${a.extended ? " (prolongée)" : ""}</span>` : ""}
-            <span>${pluriel(a.bidCount, "enchère")}</span>${badgeReserve(a)}</div>
+        <div class="auction-top">
+          <h3>Enchérir</h3>
+          ${a.status === "live" ? `<div class="auction-clock">${compteARebours(a.endsAt)}<small>Fin le ${finTunis}${a.extended ? " · prolongée" : ""} (heure de Tunis)</small></div>`
+            : `<div class="auction-clock done">${a.status === "upcoming" ? "Bientôt" : "Terminée"}</div>`}
         </div>
+        <div class="current-box"><small>${a.currentBidTnd == null ? "Mise à prix" : a.status === "ended" ? "Dernière enchère" : "Enchère actuelle"}</small>
+          <strong>${formatTnd(a.currentBidTnd ?? a.minNextBidTnd)}</strong>
+          <span class="auction-meta"><span>${pluriel(a.bidCount, "enchère")}</span>${badgeReserve(a)}</span></div>
+        ${a.status === "live" ? `<div class="min-row"><span>Enchère minimale</span><strong>${formatTnd(a.minNextBidTnd)}</strong></div>` : ""}
         ${action}
         <h3 class="fiche-section">Historique des enchères</h3>
         ${historique}
       </section>`;
+    }
+
+    function majTotalEnchere() {
+      const champ = document.getElementById("offer-amount");
+      const total = document.getElementById("bid-total");
+      if (champ && total) total.textContent = Number(champ.value) > 0 ? formatTnd(Number(champ.value)) : "—";
     }
 
     let suiviEnchere = null;
@@ -1193,6 +1231,7 @@
         <div class="lot-side">
           <div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>
           ${prixEnchere(lot)}${boutonAchat(lot)}
+          ${lot.auction?.status === "live" && compte.disponible ? `<button class="bid-now" type="button" data-bid-open="${escapeHtml(lot.reference)}">Enchérir<small>minimum ${formatTnd(lot.auction.minNextBidTnd)}</small></button>` : ""}
           <div class="lot-actions"><button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}" aria-pressed="${isWatched}" aria-label="${isWatched ? "Retirer des favoris" : "Ajouter aux favoris"}">${icone("heart")}</button></div>
         </div>
       </article>`;
@@ -1385,6 +1424,12 @@
         demanderAchat(achat.dataset.buynow);
         return;
       }
+      const encherir = event.target.closest("[data-bid-open]");
+      if (encherir) {
+        ouvrirFiche(encherir.dataset.bidOpen);
+        document.getElementById("auction-panel")?.scrollIntoView({ block: "start" });
+        return;
+      }
       const detail = event.target.closest("[data-detail]");
       if (detail) {
         ouvrirFiche(detail.dataset.detail);
@@ -1417,9 +1462,13 @@
         demanderAchat(achat.dataset.buynow);
         return;
       }
-      const rapide = event.target.closest("[data-quick]");
-      if (rapide) {
-        document.getElementById("offer-amount").value = rapide.dataset.quick;
+      // « +1 000 TND » : ajoute le pas au montant saisi (jamais en dessous de l'enchère minimale).
+      const pas = event.target.closest("[data-step]");
+      if (pas) {
+        const champ = document.getElementById("offer-amount");
+        const base = Math.max(Number(champ.value) || 0, Number(champ.min));
+        champ.value = base + Number(pas.dataset.step);
+        majTotalEnchere();
         return;
       }
       const connexionOffre = event.target.closest("[data-offer-login]");
@@ -1464,6 +1513,9 @@
       }
     });
     lotDialog.addEventListener("close", arreterSuiviEnchere);
+    lotDialog.addEventListener("input", (event) => {
+      if (event.target.id === "offer-amount") majTotalEnchere();
+    });
 
     const authDialog = document.getElementById("auth-dialog");
     const accountDialog = document.getElementById("account-dialog");
