@@ -14,6 +14,153 @@
     "status": "open",
     "endsAt": "2026-11-01T15:00:00Z",
     "sourceUrl": "https://fr.ecarstrade.com/cars/7750872",
-    "photos": []
+    "photos": [
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_000/260x0__r.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_001/160x0__r.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_002/160x0__r.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_003/160x0__r.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_004/160x0__r.jpg",
+        "authorized": true
+      }
+    ]
+  },
+  {
+    "reference": "MY-0001",
+    "make": "Jeep",
+    "model": "Wrangler Unlimited",
+    "trim": "Rubicon 4xe",
+    "status": "upcoming",
+    "startingPriceTnd": 150000,
+    "year": 2022,
+    "mileageKm": 112000,
+    "fuel": "Essence / Hybride rechargeable",
+    "bodyType": "4x4",
+    "photos": [
+      {
+        "url": "photos/MY-0001-1.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-2.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-3.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-4.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-5.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-6.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-7.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-8.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-9.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-10.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-11.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-12.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-13.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-14.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-15.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-16.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-17.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-18.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-19.jpg",
+        "authorized": true
+      },
+      {
+        "url": "photos/MY-0001-20.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "02/2022"
+      ],
+      [
+        "Moteur",
+        "4 cylindres 2.0 L turbo"
+      ],
+      [
+        "Transmission",
+        "4x4 Rock-Trac"
+      ],
+      [
+        "Puissance fiscale",
+        "16 CV"
+      ],
+      [
+        "Puissance",
+        "380 ch DIN"
+      ],
+      [
+        "Immatriculation",
+        "Série TU 263"
+      ],
+      [
+        "Carrosserie",
+        "Rayures visibles à l'arrière (voir photos)"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:10:54.081347+00:00",
+    "reservePriceTnd": 195000
   }
 ]
