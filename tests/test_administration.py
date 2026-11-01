@@ -217,6 +217,26 @@ class AdministrationTest(unittest.TestCase):
                                     origine="https://pirate.example")
         self.assertEqual(statut, 403)
 
+    def test_script_creer_admin(self):
+        import sys
+        from unittest import mock
+        sys.path.insert(0, str(PROJET / "scripts"))
+        import creer_admin
+        arguments = ["--email", "Patron@Example.com", "--nom", "Patron", "--wrangler", WRANGLER,
+                     "--wrangler-args", f"--local --persist-to {self.persist} -c {self.config}"]
+        with mock.patch("getpass.getpass", side_effect=["admin", "admin"]), self.assertRaises(SystemExit):
+            creer_admin.main(arguments)
+        with mock.patch("getpass.getpass", side_effect=["un-vrai-mot-de-passe", "un-vrai-mot-de-passe"]):
+            self.assertEqual(creer_admin.main(arguments), 0)
+        statut, data, set_cookie = self.requete("/api/login", {"email": "patron@example.com", "password": "un-vrai-mot-de-passe"}, "POST")
+        self.assertEqual((statut, data["user"]["role"]), (200, "admin"))
+        self.assertEqual(self.requete("/api/admin/vehicles", cookie=set_cookie.split(";")[0])[0], 200)
+        # Relancer le script sur un compte existant change son mot de passe et garde le rôle admin.
+        with mock.patch("getpass.getpass", side_effect=["nouveau-mot-de-passe", "nouveau-mot-de-passe"]):
+            self.assertEqual(creer_admin.main(arguments), 0)
+        self.assertEqual(self.requete("/api/login", {"email": "patron@example.com", "password": "un-vrai-mot-de-passe"}, "POST")[0], 401)
+        self.assertEqual(self.requete("/api/login", {"email": "patron@example.com", "password": "nouveau-mot-de-passe"}, "POST")[0], 200)
+
     def test_photo_inexistante_ou_chemin_force(self):
         self.assertEqual(self._statut(self.base + "/media/vehicules/X/" + "0" * 32 + ".jpg"), 404)
         self.assertEqual(self._statut(self.base + "/media/vehicules/X/..%2F..%2Fsecret.jpg"), 404)
