@@ -122,6 +122,20 @@ class CatalogueTest(unittest.TestCase):
         self.assertEqual(sources, ["https://cdn.example/oui.jpg"])
         self.assertEqual(page.locator(".photo-missing").count(), 1)
 
+    def test_lot_manuel_avec_photo_locale_et_sans_fournisseur(self):
+        manuel = lot(reference="MY-LOCAL", photos=[{"url": "photos/MY-LOCAL-1.jpg", "authorized": True}])
+        del manuel["sourceUrl"]
+        page = self.open_site([manuel])
+        self.assertEqual(page.get_attribute(".lot-photo img", "src"), "photos/MY-LOCAL-1.jpg")
+        self.assertEqual(page.locator("a.source-link").count(), 0)
+        page.click("text=Se renseigner")
+        self.assertTrue(page.is_visible("#contact-dialog"))
+        self.assertEqual(page.input_value("#request-reference"), "MY-LOCAL")
+
+    def test_photo_hors_du_dossier_photos_est_ignoree(self):
+        page = self.open_site([lot(photos=[{"url": "../secret.jpg", "authorized": True}])])
+        self.assertEqual(page.locator(".lot-photo img").count(), 0)
+
     def test_donnees_du_catalogue_sont_echappees(self):
         page = self.open_site([lot(make='<img src=x onerror="window.pwned=1">')])
         self.assertIsNone(page.evaluate("window.pwned"))

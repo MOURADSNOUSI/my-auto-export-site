@@ -116,6 +116,7 @@
     .lot-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
     .source-link { color: var(--green); font-size: 10px; font-weight: 700; }
     .source-link:hover { text-decoration: underline; }
+    button.source-link { padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
     .lot-action { min-height: 36px; padding: 0 11px; border: 1px solid var(--green); border-radius: 4px; background: var(--green); color: white; font-size: 11px; font-weight: 750; }
     .lot-action:hover { background: #185740; }
 
@@ -435,7 +436,10 @@
 
     function renderLot(lot) {
       const isWatched = watchlist.has(lot.reference);
-      const photo = lot.photos?.find((item) => item?.authorized === true && item.url);
+      const photo = lot.photos?.find((item) => item?.authorized === true && photoAffichable(item.url));
+      const lien = lot.sourceUrl
+        ? `<a class="source-link" href="${escapeHtml(lot.sourceUrl)}" target="_blank" rel="noopener noreferrer">Fiche fournisseur ↗</a>`
+        : `<button class="source-link" type="button" data-contact="${escapeHtml(lot.reference)}">Se renseigner</button>`;
       const price = lot.indicativePriceTnd == null
         ? "Prix sur demande"
         : `${new Intl.NumberFormat("fr-TN", { maximumFractionDigits: 2 }).format(lot.indicativePriceTnd)} TND`;
@@ -446,7 +450,7 @@
           <h2 class="lot-title">${escapeHtml(`${lot.make} ${lot.model} ${lot.trim || ""}`.trim())}</h2>
           <div class="lot-specs"><span>${escapeHtml(lot.year || "Année à confirmer")}</span><span>${escapeHtml(lot.mileageKm == null ? "Kilométrage à confirmer" : `${new Intl.NumberFormat("fr-TN").format(lot.mileageKm)} km`)}</span><span>${escapeHtml(lot.fuel || "Motorisation à confirmer")}</span></div>
           <div class="lot-price"><span><small>${lot.indicativePriceTnd == null ? "Tarif" : "Prix indicatif export"}</small><strong>${escapeHtml(price)}</strong></span></div>
-          <div class="lot-actions"><a class="source-link" href="${escapeHtml(lot.sourceUrl)}" target="_blank" rel="noopener noreferrer">Fiche fournisseur ↗</a><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}">${isWatched ? "Suivie" : "Suivre"}</button></div>
+          <div class="lot-actions">${lien}<button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}">${isWatched ? "Suivie" : "Suivre"}</button></div>
         </div>
       </article>`;
     }
@@ -455,9 +459,14 @@
       if (!lot || typeof lot !== "object") return false;
       if (!lot.reference || !lot.make || !lot.model) return false;
       if (!["open", "upcoming"].includes(lot.status)) return false;
-      if (typeof lot.sourceUrl !== "string" || !lot.sourceUrl.startsWith("https://")) return false;
+      if (lot.sourceUrl != null && (typeof lot.sourceUrl !== "string" || !lot.sourceUrl.startsWith("https://"))) return false;
       if (lot.status === "open" && (!lot.endsAt || !Number.isFinite(Date.parse(lot.endsAt)))) return false;
       return Array.isArray(lot.photos);
+    }
+
+    // Photo hébergée en https ou fichier local du dossier photos/ du site.
+    function photoAffichable(url) {
+      return typeof url === "string" && (url.startsWith("https://") || /^photos\/[^/]+$/.test(url));
     }
 
     function remplirFiltre(selectId, valeurs, libelleInitial) {
@@ -513,6 +522,12 @@
       updateView();
     }));
     document.getElementById("lot-grid").addEventListener("click", (event) => {
+      const contact = event.target.closest("[data-contact]");
+      if (contact) {
+        document.getElementById("request-reference").value = contact.dataset.contact;
+        dialog.showModal();
+        return;
+      }
       const button = event.target.closest("[data-watch]");
       if (!button) return;
       const reference = button.dataset.watch;
