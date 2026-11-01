@@ -20,3 +20,13 @@ Les photos sont copiées dans `my-auto-export/photos/` et le lot est ajouté à
 `--source` (lien https vers la fiche fournisseur) est facultatif : sans lien, la carte affiche
 « Se renseigner », qui ouvre le formulaire de contact. `python3 scripts/ajouter_lot.py -h` liste
 toutes les options. Pour retirer un lot, supprime son entrée dans `lots.json` et ses photos.
+
+## Importer le catalogue Wix
+
+```
+python3 scripts/importer_wix.py --essai   # aperçu, n'écrit rien
+python3 scripts/importer_wix.py
+```
+
+Ajoute les véhicules de la page Wix en statut « En stock », prix en TND selon la formule
+(EUR + 3 000) × 3,5 + 20 000. Un lot déjà présent n'est jamais écrasé : seuls ses champs vides sont complétés.

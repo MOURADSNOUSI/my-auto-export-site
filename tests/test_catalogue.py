@@ -137,6 +137,16 @@ class CatalogueTest(unittest.TestCase):
         self.assertIn("Mise à prix", page.text_content(".lot-price"))
         self.assertIn("150", page.text_content(".lot-price strong"))
 
+    def test_statut_en_stock_sans_date_de_fin(self):
+        stock = lot(reference="MY-STOCK", status="stock")
+        del stock["endsAt"]
+        page = self.open_site([stock, lot(reference="MY-ENCHERE")])
+        self.assertEqual(page.evaluate("catalogueEtat"), "ready")
+        self.assertEqual(page.text_content("#stock-count"), "1")
+        page.click("[data-tab='stock']")
+        self.assertEqual(page.locator(".lot-card").count(), 1)
+        self.assertEqual(page.text_content(".lot-status"), "En stock")
+
     def test_enlevement_affiche_sur_chaque_annonce(self):
         page = self.open_site([
             lot(reference="MY-A", availableFrom="2026-11-15", pickupLocation="Tunis", seller="M&Y AUTO EXPORT"),

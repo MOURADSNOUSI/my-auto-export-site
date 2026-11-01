@@ -33,8 +33,8 @@ def main(argv=None):
     parser.add_argument("--marque", required=True)
     parser.add_argument("--modele", required=True)
     parser.add_argument("--finition")
-    parser.add_argument("--statut", choices=["open", "upcoming"], default="upcoming",
-                        help="open = en vente, upcoming = à venir (défaut)")
+    parser.add_argument("--statut", choices=["open", "upcoming", "stock"], default="upcoming",
+                        help="open = enchère en cours, upcoming = à venir (défaut), stock = vente directe")
     parser.add_argument("--fin", type=parse_date, help="fin de la vente, ex. 2026-11-20T18:00 (obligatoire si open)")
     parser.add_argument("--prix", type=float, help="prix indicatif en TND")
     parser.add_argument("--mise-a-prix", type=float, help="prix de départ de l'enchère en TND")

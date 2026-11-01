@@ -280,7 +280,7 @@
     <section class="stats" aria-label="État des ventes">
       <div class="stat"><span class="stat-number" id="open-count">0</span><span class="stat-label"><strong>Lots en vente</strong>disponibilité confirmée</span></div>
       <div class="stat"><span class="stat-number" id="upcoming-count">0</span><span class="stat-label"><strong>Ventes à venir</strong>lots en préparation non publiés</span></div>
-      <div class="stat"><span class="stat-number">TND</span><span class="stat-label"><strong>Devise d'affichage</strong>dinar tunisien</span></div>
+      <div class="stat"><span class="stat-number" id="stock-count">0</span><span class="stat-label"><strong>En stock</strong>vente directe, prix en TND</span></div>
     </section>
 
     <section class="market" id="ventes" aria-label="Catalogue des ventes">
@@ -305,6 +305,7 @@
               <option value="">Tous les états</option>
               <option value="open">Lots en vente</option>
               <option value="upcoming">À venir</option>
+              <option value="stock">En stock</option>
             </select>
           </div>
         </div>
@@ -317,6 +318,7 @@
             <button class="tab" type="button" data-tab="all" aria-pressed="true">Toutes</button>
             <button class="tab" type="button" data-tab="open" aria-pressed="false">En vente</button>
             <button class="tab" type="button" data-tab="upcoming" aria-pressed="false">À venir</button>
+            <button class="tab" type="button" data-tab="stock" aria-pressed="false">En stock</button>
             <button class="tab" type="button" data-tab="watchlist" aria-pressed="false">Ma sélection <span id="watch-count">0</span></button>
           </div>
           <label class="hidden" for="sort">Trier les lots</label>
@@ -436,6 +438,7 @@
 
       document.getElementById("open-count").textContent = lots.filter((lot) => lot.status === "open").length;
       document.getElementById("upcoming-count").textContent = lots.filter((lot) => lot.status === "upcoming").length;
+      document.getElementById("stock-count").textContent = lots.filter((lot) => lot.status === "stock").length;
       document.getElementById("watch-count").textContent = watchlist.size;
       document.getElementById("result-count").innerHTML = `<strong>${visibleLots.length} lot${visibleLots.length === 1 ? "" : "s"}</strong>`;
 
@@ -463,6 +466,13 @@
         title.textContent = "Aucun lot validé pour le moment";
         copy.textContent = "Les véhicules en préparation ne sont pas affichés comme disponibles. Les lots seront présentés ici après contrôle des données, des photos autorisées et des conditions.";
       }
+    }
+
+    // open = enchère en cours (date de fin obligatoire), upcoming = enchère à venir, stock = vente directe.
+    const STATUTS = { open: "En vente", upcoming: "À venir", stock: "En stock" };
+
+    function statutLot(lot) {
+      return STATUTS[lot.status];
     }
 
     // Mise à prix d'enchère en priorité, sinon prix indicatif.
@@ -541,7 +551,7 @@
       return `<article class="lot-card">
         <div class="lot-photo">${photos.length ? `<button class="photo-open" type="button" data-detail="${escapeHtml(lot.reference)}" aria-label="Voir les photos"><img src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(lot.make)} ${escapeHtml(lot.model)}" loading="lazy">${photos.length > 1 ? `<span class="photo-count">${photos.length} photos</span>` : ""}</button>` : `<div class="photo-missing"><strong>Photo à confirmer</strong><span>Visuel autorisé non fourni</span></div>`}</div>
         <div class="lot-body">
-          <div class="lot-meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="lot-status">${lot.status === "open" ? "En vente" : "À venir"}</span></div>
+          <div class="lot-meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="lot-status">${statutLot(lot)}</span></div>
           <h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2>
           <div class="lot-specs"><span>${escapeHtml(lot.year || "Année à confirmer")}</span><span>${escapeHtml(lot.mileageKm == null ? "Kilométrage à confirmer" : `${new Intl.NumberFormat("fr-TN").format(lot.mileageKm)} km`)}</span><span>${escapeHtml(lot.fuel || "Motorisation à confirmer")}</span></div>
           ${enlevementLot(lot)}
@@ -565,7 +575,7 @@
         ...(Array.isArray(lot.specs) ? lot.specs : [])
       ].filter((spec) => Array.isArray(spec) && spec[0] && spec[1] != null && spec[1] !== "");
       document.getElementById("lot-dialog-body").innerHTML = `
-        <div class="dialog-head"><div><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${lot.status === "open" ? "En vente" : "À venir"}</span><h2 id="lot-dialog-title">${escapeHtml(titreLot(lot))}</h2></div><button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
+        <div class="dialog-head"><div><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${statutLot(lot)}</span><h2 id="lot-dialog-title">${escapeHtml(titreLot(lot))}</h2></div><button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
         ${photos.length ? `<div class="gallery-main"><img id="gallery-image" src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(titreLot(lot))}, photo 1"></div>
         ${photos.length > 1 ? `<div class="gallery-thumbs">${photos.map((photo, index) => `<button type="button" data-thumb="${index}" aria-label="Photo ${index + 1}" aria-pressed="${index === 0}"><img src="${escapeHtml(photo.url)}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}` : ""}
         <dl class="spec-list">${specs.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>
@@ -581,7 +591,7 @@
     function lotValide(lot) {
       if (!lot || typeof lot !== "object") return false;
       if (!lot.reference || !lot.make || !lot.model) return false;
-      if (!["open", "upcoming"].includes(lot.status)) return false;
+      if (!Object.hasOwn(STATUTS, lot.status)) return false;
       if (lot.sourceUrl != null && (typeof lot.sourceUrl !== "string" || !lot.sourceUrl.startsWith("https://"))) return false;
       if (lot.status === "open" && (!lot.endsAt || !Number.isFinite(Date.parse(lot.endsAt)))) return false;
       return Array.isArray(lot.photos);

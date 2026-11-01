@@ -35,6 +35,12 @@
         "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_004/160x0__r.jpg",
         "authorized": true
       }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "08/2024"
+      ]
     ]
   },
   {
@@ -162,5 +168,1005 @@
     ],
     "createdAt": "2026-11-01T04:10:54.081347+00:00",
     "reservePriceTnd": 195000
+  },
+  {
+    "reference": "7754225",
+    "make": "Mercedes-Benz",
+    "model": "GLC",
+    "trim": "Coupé 63 S E Performance",
+    "status": "stock",
+    "year": 2025,
+    "mileageKm": 6463,
+    "fuel": "Essence",
+    "sourceUrl": "https://ecarstrade.com/cars/7754225",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7754225/photo_000.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7754225/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7754225/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7754225/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7754225/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7754225/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7754225/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7754225/photo_007.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "07/2025"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7753628",
+    "make": "Citroën",
+    "model": "C5",
+    "trim": "Aircross Hybrid 225",
+    "status": "stock",
+    "year": 2022,
+    "mileageKm": 85659,
+    "fuel": "Hybride",
+    "indicativePriceTnd": 71100.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7753628",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753628/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753628/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753628/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753628/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753628/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753628/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753628/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753628/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "01/2022"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7753633",
+    "make": "Volkswagen",
+    "model": "Tiguan",
+    "trim": "1.4 eHybrid",
+    "status": "stock",
+    "year": 2022,
+    "mileageKm": 199357,
+    "fuel": "Hybride",
+    "indicativePriceTnd": 79850.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7753633",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753633/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753633/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753633/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753633/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753633/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753633/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753633/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753633/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "09/2022"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7753667",
+    "make": "Mercedes-Benz",
+    "model": "Classe",
+    "trim": "A 180 d",
+    "status": "stock",
+    "year": 2022,
+    "mileageKm": 120202,
+    "fuel": "Diesel",
+    "indicativePriceTnd": 72850.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7753667",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753667/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753667/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753667/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753667/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753667/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753667/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753667/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7753667/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "10/2022"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7757322",
+    "make": "Renault",
+    "model": "Captur",
+    "trim": "TCe 90",
+    "status": "stock",
+    "year": 2022,
+    "mileageKm": 53337,
+    "fuel": "Essence",
+    "indicativePriceTnd": 67600.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7757322",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7757322/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7757322/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7757322/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7757322/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7757322/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7757322/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7757322/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7750001-7760000/7757322/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "05/2022"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7761053",
+    "make": "Mercedes-Benz",
+    "model": "GLC",
+    "trim": "Coupé 200 4MATIC",
+    "status": "stock",
+    "year": 2023,
+    "mileageKm": 52526,
+    "fuel": "Essence",
+    "indicativePriceTnd": 149850.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7761053",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761053/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761053/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761053/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761053/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761053/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761053/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761053/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761053/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "08/2023"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7761055",
+    "make": "Mercedes-Benz",
+    "model": "Classe",
+    "trim": "C 300e AMG Line",
+    "status": "stock",
+    "year": 2023,
+    "mileageKm": 80951,
+    "fuel": "Hybride",
+    "indicativePriceTnd": 132700.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7761055",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761055/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761055/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761055/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761055/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761055/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761055/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761055/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7761055/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "07/2023"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7766481",
+    "make": "Porsche",
+    "model": "Cayenne",
+    "trim": "Coupé E-Hybrid Platinum",
+    "status": "stock",
+    "year": 2023,
+    "mileageKm": 38889,
+    "fuel": "Hybride",
+    "indicativePriceTnd": 296850.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7766481",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7766481/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7766481/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7766481/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7766481/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7766481/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7766481/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7766481/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7766481/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "06/2023"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7128112",
+    "make": "Mercedes-Benz",
+    "model": "GLC",
+    "trim": "400 AMG-Line 4MATIC",
+    "status": "stock",
+    "year": 2023,
+    "mileageKm": 40710,
+    "fuel": "Essence",
+    "indicativePriceTnd": 183100.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7128112",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7120001-7130000/7128112/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7120001-7130000/7128112/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7120001-7130000/7128112/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7120001-7130000/7128112/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7120001-7130000/7128112/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7120001-7130000/7128112/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7120001-7130000/7128112/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7120001-7130000/7128112/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "03/2023"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7566043",
+    "make": "Mercedes-Benz",
+    "model": "Classe",
+    "trim": "E 400 AMG-Line",
+    "status": "stock",
+    "year": 2024,
+    "mileageKm": 81912,
+    "fuel": "Hybride",
+    "indicativePriceTnd": 191150.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7566043",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7560001-7570000/7566043/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7560001-7570000/7566043/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7560001-7570000/7566043/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7560001-7570000/7566043/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7560001-7570000/7566043/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7560001-7570000/7566043/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7560001-7570000/7566043/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7560001-7570000/7566043/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "09/2024"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7765773",
+    "make": "Volkswagen",
+    "model": "Golf",
+    "trim": "1.4 eHybrid Style",
+    "status": "stock",
+    "year": 2023,
+    "mileageKm": 43126,
+    "fuel": "Hybride",
+    "indicativePriceTnd": 91750.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7765773",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7765773/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7765773/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7765773/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7765773/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7765773/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7765773/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7765773/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7765773/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "10/2023"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7768128",
+    "make": "Land Rover",
+    "model": "Range Rover",
+    "trim": "Sport P440e HSE Dynamic",
+    "status": "stock",
+    "year": 2023,
+    "mileageKm": 127307,
+    "fuel": "Essence",
+    "sourceUrl": "https://ecarstrade.com/cars/7768128",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7768128/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7768128/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7768128/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7768128/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7768128/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7768128/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7768128/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7768128/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "06/2023"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7778590",
+    "make": "Land Rover",
+    "model": "Range Rover",
+    "trim": "Velar PHEV R-Dynamic S",
+    "status": "stock",
+    "year": 2022,
+    "mileageKm": 85433,
+    "fuel": "Hybride",
+    "sourceUrl": "https://ecarstrade.com/cars/7778590",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7778590/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7778590/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7778590/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7778590/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7778590/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7778590/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7778590/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7778590/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "09/2022"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7770365",
+    "make": "Mercedes-Benz",
+    "model": "GLA",
+    "trim": "250e Business Solution",
+    "status": "stock",
+    "year": 2022,
+    "mileageKm": 206966,
+    "fuel": "Hybride",
+    "indicativePriceTnd": 81600.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7770365",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7770365/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7770365/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7770365/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7770365/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7770365/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7770365/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7770365/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7770365/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "03/2022"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7763229",
+    "make": "Audi",
+    "model": "A3",
+    "trim": "Sportback 45 TFSI e S line",
+    "status": "stock",
+    "year": 2022,
+    "mileageKm": 37375,
+    "fuel": "Hybride",
+    "sourceUrl": "https://ecarstrade.com/cars/7763229",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763229/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763229/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763229/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763229/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763229/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763229/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763229/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763229/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "10/2022"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7763287",
+    "make": "Volkswagen",
+    "model": "Golf",
+    "trim": "VIII GTI 2.0 TSI",
+    "status": "stock",
+    "year": 2023,
+    "mileageKm": 47959,
+    "fuel": "Essence",
+    "sourceUrl": "https://ecarstrade.com/cars/7763287",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763287/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763287/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763287/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763287/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763287/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763287/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763287/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763287/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "09/2023"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7763572",
+    "make": "BMW",
+    "model": "X5",
+    "trim": "xDrive50e M Sport",
+    "status": "stock",
+    "year": 2024,
+    "mileageKm": 34019,
+    "fuel": "Hybride",
+    "sourceUrl": "https://ecarstrade.com/cars/7763572",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763572/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763572/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763572/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763572/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763572/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763572/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763572/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7760001-7770000/7763572/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "08/2024"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7523309",
+    "make": "Toyota",
+    "model": "Hilux",
+    "trim": "2.8 Diesel Invincible",
+    "status": "stock",
+    "year": 2026,
+    "mileageKm": 18,
+    "fuel": "Diesel",
+    "indicativePriceTnd": 204100.0,
+    "sourceUrl": "https://ecarstrade.com/cars/7523309",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7520001-7530000/7523309/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7520001-7530000/7523309/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7520001-7530000/7523309/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7520001-7530000/7523309/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7520001-7530000/7523309/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7520001-7530000/7523309/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7520001-7530000/7523309/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7520001-7530000/7523309/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "07/2026"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
+  },
+  {
+    "reference": "7771112",
+    "make": "Mercedes-Benz",
+    "model": "GLC",
+    "trim": "Coupé 300e AMG Line",
+    "status": "stock",
+    "year": 2023,
+    "mileageKm": 59505,
+    "fuel": "Hybride",
+    "sourceUrl": "https://ecarstrade.com/cars/7771112",
+    "photos": [
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7771112/photo_001.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7771112/photo_002.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7771112/photo_003.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7771112/photo_004.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7771112/photo_005.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7771112/photo_006.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7771112/photo_007.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://ecarstrade.com/carsphotos/7770001-7780000/7771112/photo_008.jpg",
+        "authorized": true
+      }
+    ],
+    "specs": [
+      [
+        "Mise en circulation",
+        "09/2023"
+      ]
+    ],
+    "createdAt": "2026-11-01T04:28:52.342950+00:00"
   }
 ]
