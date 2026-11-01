@@ -1,0 +1,7 @@
+# /admin.html reste explorable : sa balise noindex doit être lue pour qu'elle ne soit pas indexée.
+User-agent: *
+Disallow: /api/
+Disallow: /oauth/
+Disallow: /mcp
+
+Sitemap: https://www.myautoexport.com/sitemap.xml
