@@ -99,6 +99,19 @@
     .hero h1 { max-width: 620px; margin: 0; font-size: 50px; line-height: 1.08; font-weight: 800; letter-spacing: -.5px; }
     .hero-lead { max-width: 500px; margin: 18px 0 0; color: var(--ink-soft); font-size: 21px; line-height: 1.45; }
     .hero-lead strong { color: var(--ink); }
+    .hero-route { margin: 14px 0 0; color: var(--green-dark); font-size: 17px; font-weight: 800; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+    .hero-cta { display: inline-flex; min-height: 48px; align-items: center; padding: 0 26px; border: 2px solid var(--green); border-radius: 30px; background: var(--green); color: white; font-size: 15px; font-weight: 750; }
+    .hero-cta:hover { background: var(--green-dark); border-color: var(--green-dark); }
+    .hero-cta-secondary { background: var(--surface); color: var(--green); }
+    .hero-cta-secondary:hover { background: var(--green-pale); color: var(--green-dark); }
+    .why { border-bottom: 1px solid var(--line); background: var(--surface); }
+    .why-inner { max-width: 860px; padding: 40px 0 44px; }
+    .why h2 { margin: 0 0 12px; font-size: 26px; }
+    .why h3 { margin: 26px 0 10px; font-size: 19px; }
+    .why p { margin: 0 0 12px; color: var(--ink-soft); font-size: 16px; line-height: 1.55; }
+    .why-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: 16px; line-height: 1.5; }
+    .why-signature { margin-top: 24px; color: var(--ink); }
     .hero-search { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: center; max-width: 880px; margin-top: 36px; padding: 10px 10px 10px 8px; border-radius: 48px; background: var(--surface); box-shadow: 0 10px 40px #10151324, 0 0 0 1px #10151310; }
     .hero-search label { display: grid; padding: 4px 18px; border-right: 1px solid var(--line); }
     .hero-search label span { color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -492,8 +505,13 @@
   <section class="hero" id="accueil" aria-labelledby="page-title">
     <img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" onerror="this.remove()">
     <div class="shell hero-inner">
-      <h1 id="page-title">Votre véhicule européen ou américain, livré en Tunisie</h1>
-      <p class="hero-lead"><strong id="hero-total">Des véhicules</strong> sélectionnés en Europe, en vente directe ou aux enchères, avec des prix affichés en dinars tunisiens.</p>
+      <h1 id="page-title">Votre prochaine voiture, au meilleur prix, livrée en Tunisie ! 🇹🇳</h1>
+      <p class="hero-route"><span aria-hidden="true">🇪🇺</span> Europe | <span aria-hidden="true">🇺🇸</span> États-Unis → <span aria-hidden="true">🇹🇳</span> Tunisie</p>
+      <p class="hero-lead">Avec <strong>M&amp;Y AUTO EXPORT</strong>, découvrez une sélection de véhicules européens et américains à prix compétitifs, disponibles en <strong>achat direct ou aux enchères</strong>.</p>
+      <div class="hero-actions">
+        <a class="hero-cta" href="#ventes">Voir les véhicules</a>
+        <a class="hero-cta hero-cta-secondary" href="#contact">Nous contacter</a>
+      </div>
       <form class="hero-search" id="hero-search" role="search" aria-label="Recherche rapide">
         <label><span>Marque</span><select id="hero-make"><option value="">Toutes</option></select></label>
         <label><span>Modèle</span><select id="hero-model"><option value="">Tous</option></select></label>
@@ -501,6 +519,29 @@
         <button class="hero-submit" type="submit" id="hero-submit">Rechercher</button>
       </form>
       <a class="advanced-link" href="#ventes" id="advanced-link"><svg class="icon"><use href="#i-sliders"/></svg>Filtres avancés</a>
+    </div>
+  </section>
+
+  <section class="why" id="pourquoi" aria-labelledby="why-title">
+    <div class="shell why-inner">
+      <h2 id="why-title">Achetez malin, roulez avec plaisir !</h2>
+      <p>Que vous recherchiez une berline élégante, un SUV familial, une voiture hybride ou un véhicule haut de gamme, nous vous aidons à trouver le modèle adapté à vos envies et à votre budget.</p>
+      <h3>💎 Pourquoi choisir M&amp;Y AUTO EXPORT ?</h3>
+      <ul class="why-list">
+        <li>✅ <strong>Prix affichés en dinars tunisiens (TND)</strong> — Consultez facilement les prix de nos véhicules.</li>
+        <li>✅ <strong>Des opportunités à saisir</strong> — Profitez des offres du marché européen et des ventes aux enchères.</li>
+        <li>✅ <strong>Un large choix de véhicules</strong> — Essence, diesel, hybride, électrique, SUV et berlines.</li>
+        <li>✅ <strong>Un accompagnement de A à Z</strong> — De la recherche du véhicule aux démarches d'achat et d'importation en Tunisie.</li>
+        <li>✅ <strong>Des annonces régulièrement actualisées</strong> — Découvrez de nouvelles opportunités automobiles.</li>
+      </ul>
+      <h3>🎯 Vous choisissez, nous vous accompagnons !</h3>
+      <p><strong>Votre prochaine voiture est peut-être déjà dans notre catalogue.</strong></p>
+      <p>🚀 <strong>Découvrez nos véhicules et trouvez la meilleure opportunité !</strong></p>
+      <div class="hero-actions">
+        <a class="hero-cta" href="#ventes">Voir les véhicules</a>
+        <a class="hero-cta hero-cta-secondary" href="#contact">Nous contacter</a>
+      </div>
+      <p class="why-signature"><strong>M&amp;Y AUTO EXPORT — Votre voiture sans frontières.</strong></p>
     </div>
   </section>
 
@@ -728,7 +769,6 @@
       const rubrique = watchOnly ? "Mes favoris" : { all: "Résultats", stock: "Notre stock", auction: "Enchères", fixed: "Prix fixes", exclusive: "Exclusivités" }[activeTab] || "Résultats";
       document.getElementById("result-count").textContent = `${rubrique} (${pluriel(visibleLots.length, "véhicule")})`;
       document.getElementById("filter-submit").textContent = `Afficher ${pluriel(visibleLots.length, "véhicule")}`;
-      document.getElementById("hero-total").textContent = pluriel(lots.length, "véhicule");
       majRechercheRapide();
 
       const grid = document.getElementById("lot-grid");
