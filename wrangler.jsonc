@@ -1,7 +1,7 @@
 {
 	"name": "my-auto-export-site",
 	"compatibility_date": "2026-10-01",
-	"main": "worker/index.js",
+	"main": "worker/main.js",
 	"assets": {
 		"directory": "./my-auto-export",
 		"binding": "ASSETS"

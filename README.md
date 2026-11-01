@@ -38,7 +38,7 @@ https ne prouve aucun droit de publication. Une fois le droit confirmé par écr
 
 ## Espace acheteur (comptes, favoris, offres)
 
-Le site est servi par un Worker Cloudflare (`worker/index.js`) avec une base D1 (`migrations/`).
+Le site est servi par un Worker Cloudflare (`worker/index.js`, point d'entrée `worker/main.js`) avec une base D1 (`migrations/`).
 Mise en service, une seule fois, depuis une machine avec Node.js 20 ou plus :
 
 ```
@@ -136,3 +136,29 @@ Le téléchargement des factures est **désactivé** : `wrangler.jsonc` ne décl
 acheteur affiche « PDF non disponible » et `/api/invoices/<id>/document` répond 503. Pour l'activer, il faudra créer un
 bucket R2 privé (`npx wrangler r2 bucket create my-auto-export-documents`), le déclarer avec le binding `DOCUMENTS`
 et prévoir l'envoi des PDF depuis l'administration (pas encore développé).
+
+## Connecter Claude au site (serveur MCP)
+
+Le Worker expose un serveur MCP sur `/mcp` : Claude peut alors gérer le site avec les droits d'un administrateur
+(`worker/mcp.js`). Outils : rechercher les véhicules, voir une fiche, ventes à traiter, lister les offres, ajouter
+ou modifier un véhicule, le retirer du site, accepter ou refuser une offre. Ils appliquent les mêmes règles que
+`/admin.html` (seule la meilleure enchère peut être acceptée, après la fin de la vente, etc.).
+
+Mise en service, une seule fois : `npx wrangler d1 migrations apply DB --remote` (0007), puis `git push origin main`.
+
+- **claude.ai / Claude Desktop** : Paramètres → Connecteurs → Ajouter un connecteur personnalisé, adresse
+  `https://www.myautoexport.com/mcp`.
+- **Claude Code** : `claude mcp add --transport http my-auto-export https://www.myautoexport.com/mcp`, puis `/mcp` pour se connecter.
+
+Claude ouvre la page `/oauth/authorize` du site : se connecter avec un compte **administrateur** et cliquer « Autoriser ».
+Le mot de passe est demandé à chaque autorisation, même si l'on est déjà connecté au site. Les codes ne peuvent être
+renvoyés qu'à Claude (claude.ai, claude.com) ou à une adresse locale (`localhost`).
+
+- L'accès (jeton de 1 heure, renouvelé automatiquement) dure tant que Claude s'en sert au moins une fois tous les 30 jours.
+- Il s'arrête dès que le compte perd le rôle `admin`.
+- Couper tous les accès donnés à Claude :
+  `npx wrangler d1 execute DB --remote --command "DELETE FROM oauth_tokens"`
+
+Claude est invité à demander confirmation avant toute modification, mais c'est le réglage d'autorisation des outils
+dans Claude (« Toujours demander ») qui l'impose : à garder pour `accepter_offre`, `refuser_offre`, `retirer_vehicule`
+et `enregistrer_vehicule`.

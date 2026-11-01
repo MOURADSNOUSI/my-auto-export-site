@@ -1,8 +1,10 @@
-// Worker M&Y AUTO EXPORT : sert le site statique et l'API de l'espace acheteur (/api/*).
+// Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*) et le serveur MCP (worker/mcp.js).
+import { estRouteMcp, routeMcp } from "./mcp.js";
+
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100000; // maximum accepté par Cloudflare Workers
-const MAX_LOGIN_FAILURES = 5; // par adresse e-mail sur 15 minutes
+export const MAX_LOGIN_FAILURES = 5; // par adresse e-mail sur 15 minutes
 const MAX_OFFER_TND = 10_000_000;
 // Version des conditions générales (conditions.html). La changer redemande l'acceptation à tous les acheteurs.
 const CGV_VERSION = "2026-11-01";
@@ -14,6 +16,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) return servirPhoto(env, url);
+    if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
       return await routeApi(request, env, url);
@@ -25,7 +28,7 @@ export default {
   }
 };
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(status, message) {
     super(message);
     this.status = status;
@@ -62,7 +65,7 @@ function verifierOrigine(request, url) {
   if (origin !== url.origin) throw new ApiError(403, "Origine non autorisée.");
 }
 
-function json(data, status = 200, headers = {}) {
+export function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers }
@@ -80,17 +83,17 @@ async function lireJson(request) {
   throw new ApiError(400, "Requête illisible.");
 }
 
-function texte(value, max) {
+export function texte(value, max) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
 // --- Mots de passe et sessions ---
 
-function hex(buffer) {
+export function hex(buffer) {
   return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function octetsAleatoires(taille) {
+export function octetsAleatoires(taille) {
   return crypto.getRandomValues(new Uint8Array(taille));
 }
 
@@ -108,7 +111,7 @@ function egaliteConstante(a, b) {
   return difference === 0;
 }
 
-async function sha256(value) {
+export async function sha256(value) {
   return hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
 }
 
@@ -260,18 +263,7 @@ async function register(request, env) {
 async function login(request, env) {
   const body = await lireJson(request);
   const email = texte(body.email, 254).toLowerCase();
-  const password = typeof body.password === "string" ? body.password.slice(0, 200) : "";
-  const depuis = new Date(Date.now() - 15 * 60_000).toISOString();
-  const echecs = await env.DB.prepare("SELECT COUNT(*) AS n FROM login_failures WHERE email = ? AND at > ?").bind(email, depuis).first();
-  if (echecs.n >= MAX_LOGIN_FAILURES) throw new ApiError(429, "Trop de tentatives. Réessaie dans 15 minutes.");
-
-  const user = await env.DB.prepare("SELECT id, password_hash, password_salt FROM users WHERE email = ?").bind(email).first();
-  // Même calcul que l'adresse existe ou non, pour ne pas révéler les comptes par le temps de réponse.
-  const hash = await hacherMotDePasse(password, user ? user.password_salt : "00".repeat(16));
-  if (!user || !egaliteConstante(hash, user.password_hash)) {
-    await env.DB.prepare("INSERT INTO login_failures (email, at) VALUES (?, ?)").bind(email, new Date().toISOString()).run();
-    throw new ApiError(401, "E-mail ou mot de passe incorrect.");
-  }
+  const user = await verifierMotDePasse(env, email, body.password);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM login_failures WHERE email = ?").bind(email),
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?").bind(user.id, new Date().toISOString())
@@ -279,6 +271,23 @@ async function login(request, env) {
   const cookie = await ouvrirSession(env, user.id);
   const reponse = await me(new Request(request.url, { headers: { Cookie: cookie.split(";")[0] } }), env);
   return new Response(reponse.body, { status: 200, headers: { ...Object.fromEntries(reponse.headers), "Set-Cookie": cookie } });
+}
+
+// Vérifie e-mail et mot de passe (connexion au site, autorisation d'une application MCP), avec limite d'essais.
+export async function verifierMotDePasse(env, email, motDePasse) {
+  const password = typeof motDePasse === "string" ? motDePasse.slice(0, 200) : "";
+  const depuis = new Date(Date.now() - 15 * 60_000).toISOString();
+  const echecs = await env.DB.prepare("SELECT COUNT(*) AS n FROM login_failures WHERE email = ? AND at > ?").bind(email, depuis).first();
+  if (echecs.n >= MAX_LOGIN_FAILURES) throw new ApiError(429, "Trop de tentatives. Réessaie dans 15 minutes.");
+
+  const user = await env.DB.prepare("SELECT id, role, password_hash, password_salt FROM users WHERE email = ?").bind(email).first();
+  // Même calcul que l'adresse existe ou non, pour ne pas révéler les comptes par le temps de réponse.
+  const hash = await hacherMotDePasse(password, user ? user.password_salt : "00".repeat(16));
+  if (!user || !egaliteConstante(hash, user.password_hash)) {
+    await env.DB.prepare("INSERT INTO login_failures (email, at) VALUES (?, ?)").bind(email, new Date().toISOString()).run();
+    throw new ApiError(401, "E-mail ou mot de passe incorrect.");
+  }
+  return { id: user.id, role: user.role };
 }
 
 async function logout(request, env) {
@@ -297,7 +306,7 @@ async function lotsFichier(request, env) {
 }
 
 // Tous les véhicules, retirés compris, avec leur origine : « fichier » (lots.json) ou « base » (administration).
-async function catalogueComplet(request, env) {
+export async function catalogueComplet(request, env) {
   const [fichier, base] = await Promise.all([
     lotsFichier(request, env),
     env.DB.prepare("SELECT reference, data, removed, updated_at FROM vehicles").all()
@@ -337,7 +346,7 @@ function pasEnchere(lot, montant) {
   return 2_000;
 }
 
-async function resumesEncheres(env) {
+export async function resumesEncheres(env) {
   const { results } = await env.DB.prepare(
     "SELECT reference, COUNT(*) AS n, MAX(amount_tnd) AS top, MAX(created_at) AS last FROM offers WHERE kind = 'bid' GROUP BY reference"
   ).all();
@@ -346,7 +355,7 @@ async function resumesEncheres(env) {
 
 // Fin effective : la date prévue, repoussée à 2 minutes après la dernière enchère si celle-ci est arrivée tard.
 // Chaque enchère acceptée l'a été avant la fin effective du moment, d'où ce calcul à partir de la seule dernière.
-function etatEnchere(lot, resume, maintenant) {
+export function etatEnchere(lot, resume, maintenant) {
   if (lot.status !== "open" && lot.status !== "upcoming") return null;
   const depart = Number.isFinite(lot.startingPriceTnd) ? lot.startingPriceTnd : 0;
   const top = resume?.top ?? null;
@@ -442,11 +451,14 @@ async function routeAdmin(request, env, path, method) {
     });
   }
   const vehicule = path.match(/^\/api\/admin\/vehicles\/([^/]{1,64})$/);
-  if (vehicule && method === "PUT") return enregistrerVehicule(request, env, user, decodeURIComponent(vehicule[1]));
-  if (vehicule && method === "DELETE") return retirerVehicule(request, env, user, decodeURIComponent(vehicule[1]));
-  if (path === "/api/admin/offers" && method === "GET") return listerOffres(request, env, new URL(request.url).searchParams.get("reference"));
+  if (vehicule && method === "PUT") return json(await enregistrerVehicule(env, user, decodeURIComponent(vehicule[1]), await lireJson(request)));
+  if (vehicule && method === "DELETE") return json(await retirerVehicule(request, env, user, decodeURIComponent(vehicule[1])));
+  if (path === "/api/admin/offers" && method === "GET") return json(await listerOffres(request, env, new URL(request.url).searchParams.get("reference")));
   const decision = path.match(/^\/api\/admin\/offers\/(\d+)\/(accept|refuse)$/);
-  if (decision && method === "POST") return deciderOffre(request, env, Number(decision[1]), decision[2] === "accept");
+  if (decision && method === "POST") {
+    const body = await lireJson(request).catch(() => ({}));
+    return json(await deciderOffre(request, env, user, Number(decision[1]), decision[2] === "accept", body.removeFromSite !== false));
+  }
   if (path === "/api/admin/photos" && method === "POST") return envoyerPhoto(request, env);
   const photo = path.match(/^\/api\/admin\/photos\/(vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp))$/);
   if (photo && method === "DELETE") {
@@ -458,7 +470,7 @@ async function routeAdmin(request, env, path, method) {
 }
 
 // Toutes les enchères et demandes d'achat immédiat (ou celles d'un véhicule), avec l'acheteur et l'état de la vente.
-async function listerOffres(request, env, reference) {
+export async function listerOffres(request, env, reference) {
   const [items, resumes, etiquettes, { results }] = await Promise.all([
     catalogueComplet(request, env),
     resumesEncheres(env),
@@ -483,21 +495,19 @@ async function listerOffres(request, env, reference) {
   for (const row of results) {
     if (row.kind === "bid" && !meilleures.has(row.reference)) meilleures.set(row.reference, row.id);
   }
-  return json({
+  return {
     lots,
     offers: results.map((row) => ({
       id: row.id, reference: row.reference, kind: row.kind, amountTnd: row.amount_tnd, status: row.status, createdAt: row.created_at,
       best: meilleures.get(row.reference) === row.id, bidder: etiquettes?.get(row.user_id) || null,
       name: row.name, email: row.email, phone: row.phone || ""
     }))
-  });
+  };
 }
 
 // Accepter une offre : les autres offres en attente du véhicule sont refusées, le véhicule rejoint « Mes véhicules »
 // de l'acheteur et, si demandé, il est retiré du site. Refuser : l'offre seule passe en « refusée ».
-async function deciderOffre(request, env, offreId, accepter) {
-  const user = await exigerAdmin(request, env);
-  const body = await lireJson(request).catch(() => ({}));
+export async function deciderOffre(request, env, user, offreId, accepter, retirerDuSite = true) {
   const offre = await env.DB.prepare("SELECT id, user_id, reference, kind, amount_tnd, status FROM offers WHERE id = ?").bind(offreId).first();
   if (!offre) throw new ApiError(404, "Offre introuvable.");
   if (offre.status !== "pending") throw new ApiError(409, "Cette offre a déjà été traitée.");
@@ -506,7 +516,7 @@ async function deciderOffre(request, env, offreId, accepter) {
     const { meta } = await env.DB.prepare("UPDATE offers SET status = 'refused', decided_at = ?, decided_by = ? WHERE id = ? AND status = 'pending'")
       .bind(maintenant, user.id, offreId).run();
     if (meta.changes !== 1) throw new ApiError(409, "Cette offre a déjà été traitée.");
-    return json({ id: offreId, status: "refused" });
+    return { id: offreId, status: "refused" };
   }
 
   const item = (await catalogueComplet(request, env)).find((entry) => entry.lot.reference === offre.reference);
@@ -540,7 +550,7 @@ async function deciderOffre(request, env, offreId, accepter) {
        ON CONFLICT(user_id, reference) DO NOTHING`
     ).bind(offre.user_id, offre.reference, item.lot.make, item.lot.model, item.lot.trim || null, maintenant, ...decision)
   ];
-  if (body.removeFromSite !== false) {
+  if (retirerDuSite) {
     requetes.push(env.DB.prepare(
       `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) SELECT ?, ?, 1, ?, ? WHERE ${decisionPrise}
        ON CONFLICT(reference) DO UPDATE SET removed = 1, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
@@ -556,7 +566,7 @@ async function deciderOffre(request, env, offreId, accepter) {
   if (resultats[0].meta.changes !== 1) {
     throw new ApiError(409, "Cette offre ne peut plus être acceptée : une autre décision vient d'être enregistrée pour ce véhicule.");
   }
-  return json({ id: offreId, status: "accepted", removedFromSite: body.removeFromSite !== false });
+  return { id: offreId, status: "accepted", removedFromSite: retirerDuSite };
 }
 
 // Meilleure enchère d'un véhicule : la plus haute, la plus ancienne à montant égal (même ordre que listerOffres).
@@ -621,24 +631,24 @@ function validerVehicule(body, reference) {
   return lot;
 }
 
-async function enregistrerVehicule(request, env, user, reference) {
+export async function enregistrerVehicule(env, user, reference, body) {
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Référence invalide (lettres, chiffres, . _ - ; 40 caractères maximum).");
-  const lot = validerVehicule(await lireJson(request), reference);
+  const lot = validerVehicule(body, reference);
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 0, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET data = excluded.data, removed = 0, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
   ).bind(reference, JSON.stringify(lot), new Date().toISOString(), user.id).run();
-  return json({ vehicle: lot });
+  return { vehicle: lot };
 }
 
-async function retirerVehicule(request, env, user, reference) {
+export async function retirerVehicule(request, env, user, reference) {
   const existant = (await catalogueComplet(request, env)).find((item) => item.lot.reference === reference);
   if (!existant) throw new ApiError(404, "Véhicule introuvable.");
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 1, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET removed = 1, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
   ).bind(reference, JSON.stringify(existant.lot), new Date().toISOString(), user.id).run();
-  return json({ reference, removed: true });
+  return { reference, removed: true };
 }
 
 async function envoyerPhoto(request, env) {
