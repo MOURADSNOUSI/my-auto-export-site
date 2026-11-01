@@ -1,7 +1,19 @@
 {
   "name": "my-auto-export-site",
   "compatibility_date": "2026-10-01",
+  "main": "worker/index.js",
   "assets": {
-    "directory": "./my-auto-export"
-  }
+    "directory": "./my-auto-export",
+    "binding": "ASSETS"
+  },
+  // Base de l'espace acheteur : créer avec `npx wrangler d1 create my-auto-export`
+  // puis remplacer database_id par l'identifiant affiché (voir README).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-auto-export",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

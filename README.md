@@ -30,3 +30,27 @@ python3 scripts/importer_wix.py
 
 Ajoute les véhicules de la page Wix en statut « En stock », prix en TND selon la formule
 (EUR + 3 000) × 3,5 + 20 000. Un lot déjà présent n'est jamais écrasé : seuls ses champs vides sont complétés.
+
+## Espace acheteur (comptes, favoris, offres)
+
+Le site est servi par un Worker Cloudflare (`worker/index.js`) avec une base D1 (`migrations/`).
+Mise en service, une seule fois, depuis une machine avec Node.js 20 ou plus :
+
+```
+npx wrangler login
+npx wrangler d1 create my-auto-export          # copier le database_id affiché dans wrangler.jsonc
+npx wrangler d1 migrations apply DB --remote   # crée les tables
+npx wrangler deploy
+```
+
+Tant que `database_id` vaut `00000000-…` dans `wrangler.jsonc`, le déploiement échoue :
+ne pousse pas `main` avant d'avoir fait ces étapes.
+
+Consulter les offres reçues et y répondre :
+
+```
+npx wrangler d1 execute DB --remote --command "SELECT o.id, o.reference, o.amount_tnd, o.kind, o.status, o.created_at, u.name, u.email, u.phone FROM offers o JOIN users u ON u.id = o.user_id ORDER BY o.id DESC"
+npx wrangler d1 execute DB --remote --command "UPDATE offers SET status = 'accepted' WHERE id = 1"   # ou 'refused'
+```
+
+Tests du Worker (ignorés sans wrangler) : `WRANGLER=$(npx which wrangler) python3 -m unittest discover tests`

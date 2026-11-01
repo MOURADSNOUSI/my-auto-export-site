@@ -57,8 +57,30 @@
     .main-nav a:hover { color: #e2bd73; }
     .header-tools { display: flex; align-items: center; gap: 12px; }
     .currency { padding: 7px 10px; border-left: 1px solid var(--dark-line); color: #d8c99e; font-size: 12px; font-weight: 750; }
-    .contact-link { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid #c99d4d; border-radius: 5px; color: #f5d992; font-size: 12px; font-weight: 750; }
+    .contact-link { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid #c99d4d; border-radius: 5px; background: transparent; color: #f5d992; font-size: 12px; font-weight: 750; }
     .contact-link:hover { background: #c99d4d; color: #171a17; }
+
+    .market-bar { border-bottom: 1px solid var(--line); background: var(--surface); }
+    .market-bar-inner { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 20px; }
+    .market-links { display: flex; align-items: center; gap: 22px; min-width: 0; overflow-x: auto; padding-top: 10px; scrollbar-width: none; }
+    .market-links a, .nav-account { position: relative; flex: 0 0 auto; padding: 8px 0; border: 0; background: none; color: var(--ink-soft); font-size: 15px; white-space: nowrap; }
+    .market-links a:hover, .nav-account:hover { color: var(--green); }
+    .market-links a[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -2px var(--green); }
+    .nav-count { position: absolute; top: -9px; right: -12px; min-width: 22px; padding: 1px 6px; border-radius: 10px; background: #e6eae7; color: var(--ink-soft); font-size: 10px; font-weight: 700; line-height: 1.5; text-align: center; }
+    .nav-count.hot { background: #f0a020; color: var(--dark); }
+    .nav-gap { margin-left: 26px; }
+    .account-dot { display: inline-block; width: 13px; height: 13px; margin-left: 4px; border-radius: 50%; background: #d64045; vertical-align: -1px; }
+    .account-dot.on { background: var(--green); }
+    .market-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+    .icon-button { position: relative; display: grid; width: 40px; height: 40px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink); }
+    .icon-button:hover { background: var(--green-pale); }
+    .icon-button svg, .account-chip svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-button svg .filled, .account-chip svg .filled { fill: currentColor; stroke: none; }
+    .tool-count { position: absolute; top: 0; right: -2px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: #e6eae7; color: var(--ink-soft); font-size: 9px; font-weight: 750; line-height: 1.7; }
+    .account-chip { display: flex; align-items: center; gap: 9px; margin-left: 8px; padding: 4px 4px 4px 14px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--ink); text-align: left; }
+    .account-chip svg { width: 34px; height: 34px; color: var(--ink-soft); }
+    .account-chip strong { display: block; font-size: 14px; font-weight: 600; }
+    .account-chip small { display: block; color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: .4px; text-transform: uppercase; }
 
     .status-strip { border-bottom: 1px solid var(--line); background: #e7ece8; }
     .status-inner { display: flex; min-height: 38px; align-items: center; justify-content: space-between; gap: 18px; color: var(--ink-soft); font-size: 11px; }
@@ -128,6 +150,26 @@
     .pickup-lines { padding: 9px 10px; border-radius: 4px; background: #f5f8f5; }
     .pickup-lines dd.to-confirm { color: var(--muted); font-weight: 600; font-style: italic; }
     .fiche-section { margin: 18px 0 0; font-size: 13px; }
+    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 16px 0; }
+    .auth-tabs button { min-height: 38px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .auth-tabs button[aria-pressed="true"] { border-color: #b7d4c5; background: var(--green-pale); color: #1d5e49; }
+    .form-error { margin: 12px 0 0; padding: 8px 10px; border-radius: 4px; background: #fbeaea; color: #8f2a2a; font-size: 12px; }
+    .form-success { margin: 12px 0 0; padding: 8px 10px; border-radius: 4px; background: var(--green-pale); color: #1d5e49; font-size: 12px; }
+    .auth-form .form-submit { margin-top: 14px; }
+    .offer-form { margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; }
+    .offer-form label { display: block; margin-bottom: 6px; color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+    .offer-row { display: flex; gap: 8px; }
+    .offer-row input { flex: 1; min-width: 0; min-height: 40px; padding: 9px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; }
+    .offer-row button { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 0; border-radius: 4px; background: var(--green); color: white; font-size: 12px; font-weight: 750; }
+    .account-meta { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .account-list { display: grid; gap: 0; margin: 8px 0 0; padding: 0; list-style: none; }
+    .account-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+    .account-list button { padding: 0; border: 0; background: none; color: var(--green); font-weight: 700; text-align: left; }
+    .account-list .muted, .account-empty { color: var(--muted); font-size: 12px; }
+    .offer-status { padding: 2px 7px; border-radius: 3px; background: var(--gold-pale); color: #725b2d; font-size: 10px; font-weight: 750; }
+    .offer-status.accepted { background: var(--green-pale); color: var(--green); }
+    .offer-status.refused { background: #fbeaea; color: #8f2a2a; }
+    .logout-button { margin-top: 18px; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 12px; font-weight: 700; }
     .buy-now { width: 100%; min-height: 38px; margin-top: 12px; padding: 0 11px; border: 1px solid var(--gold); border-radius: 4px; background: var(--gold-pale); color: #5c4720; font-size: 11px; font-weight: 750; cursor: pointer; }
     .buy-now:hover { background: var(--gold); color: var(--dark); }
 
@@ -202,6 +244,12 @@
       .brand { min-width: 0; }
       .brand img { width: 42px; height: 42px; }
       .main-nav { display: none; }
+      .market-bar-inner { flex-direction: column; align-items: stretch; gap: 0; padding-bottom: 6px; }
+      .market-links { gap: 26px; padding: 12px 14px 0 0; }
+      .market-links a, .nav-account { font-size: 13px; }
+      .nav-gap { margin-left: 0; }
+      .market-tools { justify-content: space-between; }
+      .account-chip { margin-left: auto; }
       .currency { padding-inline: 8px; }
       .contact-link { min-height: 36px; padding-inline: 10px; font-size: 10px; }
       .status-inner { align-items: start; flex-direction: column; justify-content: center; gap: 2px; padding-block: 7px; }
@@ -255,10 +303,41 @@
       </nav>
       <div class="header-tools">
         <span class="currency" aria-label="Devise tunisienne">TND</span>
-        <a class="contact-link" href="#contact">Espace acheteur</a>
+        <button class="contact-link" type="button" id="account-button">Espace acheteur</button>
       </div>
     </div>
   </header>
+
+  <nav class="market-bar" aria-label="Catalogue et espace acheteur">
+    <div class="shell market-bar-inner">
+      <div class="market-links">
+        <a href="#ventes" data-nav="all" aria-current="true">Tous les véhicules <span class="nav-count" id="nav-count-all">0</span></a>
+        <a href="#ventes" data-nav="stock">Notre stock <span class="nav-count" id="nav-count-stock">0</span></a>
+        <a href="#ventes" data-nav="auction">Enchères <span class="nav-count" id="nav-count-auction">0</span></a>
+        <a href="#ventes" data-nav="fixed">Prix fixes <span class="nav-count" id="nav-count-fixed">0</span></a>
+        <a href="#ventes" data-nav="exclusive">Exclusivités <span class="nav-count hot" id="nav-count-exclusive">0</span></a>
+        <a class="nav-gap" href="#contact">Contact</a>
+        <button type="button" class="nav-account" data-open-account>Page personnelle <span class="account-dot" id="account-dot" aria-hidden="true"></span></button>
+      </div>
+      <div class="market-tools">
+        <button class="icon-button" type="button" id="nav-search" aria-label="Rechercher un véhicule">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
+        </button>
+        <button class="icon-button" type="button" id="nav-favorites" aria-label="Mes favoris">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path class="filled" d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2Z"/></svg>
+          <span class="tool-count" id="nav-favorites-count">0</span>
+        </button>
+        <button class="icon-button" type="button" id="nav-offers" aria-label="Mes offres">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13.5 4.5 6 6M11 7l6 6M15 5.5 9 11.5M18.5 9l-6 6M10.5 12.5 3.5 19.5"/><path d="M4 21h8"/></svg>
+          <span class="tool-count" id="nav-offers-count">0</span>
+        </button>
+        <button class="account-chip" type="button" data-open-account>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="filled" cx="12" cy="8" r="4"/><path class="filled" d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7Z"/></svg>
+          <span id="account-label"><strong>Se connecter</strong><small>Créer un compte</small></span>
+        </button>
+      </div>
+    </div>
+  </nav>
 
   <div class="status-strip">
     <div class="shell status-inner">
@@ -375,6 +454,39 @@
     <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Tunisie</span><span>Prix et disponibilités à confirmer · Aucune enchère n'est transmise depuis cette version</span></div>
   </footer>
 
+  <dialog id="auth-dialog" aria-labelledby="auth-title">
+    <div class="dialog-inner">
+      <div class="dialog-head"><h2 id="auth-title">Espace acheteur</h2><button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
+      <div class="auth-tabs" role="group" aria-label="Connexion ou inscription">
+        <button type="button" data-auth="login" aria-pressed="true">Se connecter</button>
+        <button type="button" data-auth="register" aria-pressed="false">Créer un compte</button>
+      </div>
+      <form id="login-form" class="auth-form">
+        <div class="form-grid">
+          <div class="form-field full"><label for="login-email">E-mail</label><input id="login-email" name="email" type="email" autocomplete="email" required></div>
+          <div class="form-field full"><label for="login-password">Mot de passe</label><input id="login-password" name="password" type="password" autocomplete="current-password" required></div>
+        </div>
+        <p class="form-error" role="alert" hidden></p>
+        <button class="form-submit" type="submit">Se connecter</button>
+      </form>
+      <form id="register-form" class="auth-form" hidden>
+        <div class="form-grid">
+          <div class="form-field full"><label for="register-name">Nom et prénom</label><input id="register-name" name="name" autocomplete="name" minlength="2" maxlength="80" required></div>
+          <div class="form-field"><label for="register-email">E-mail</label><input id="register-email" name="email" type="email" autocomplete="email" required></div>
+          <div class="form-field"><label for="register-phone">Téléphone (facultatif)</label><input id="register-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30"></div>
+          <div class="form-field full"><label for="register-password">Mot de passe (10 caractères minimum)</label><input id="register-password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="200" required></div>
+        </div>
+        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter.</p>
+        <p class="form-error" role="alert" hidden></p>
+        <button class="form-submit" type="submit">Créer mon compte</button>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog class="lot-dialog" id="account-dialog" aria-labelledby="account-title">
+    <div class="dialog-inner" id="account-body"></div>
+  </dialog>
+
   <dialog class="lot-dialog" id="lot-dialog" aria-labelledby="lot-dialog-title">
     <div class="dialog-inner" id="lot-dialog-body"></div>
   </dialog>
@@ -426,7 +538,7 @@
           && (!make || lot.make === make)
           && (!bodyType || lot.bodyType === bodyType)
           && (!saleStatus || lot.status === saleStatus)
-          && (activeTab === "all" || watchOnly || lot.status === activeTab)
+          && (watchOnly || CATEGORIES[activeTab](lot))
           && (!watchOnly || watchlist.has(lot.reference));
       });
 
@@ -439,6 +551,10 @@
       document.getElementById("open-count").textContent = lots.filter((lot) => lot.status === "open").length;
       document.getElementById("upcoming-count").textContent = lots.filter((lot) => lot.status === "upcoming").length;
       document.getElementById("stock-count").textContent = lots.filter((lot) => lot.status === "stock").length;
+      ["all", "stock", "auction", "fixed", "exclusive"].forEach((categorie) => {
+        document.getElementById(`nav-count-${categorie}`).textContent = lots.filter(CATEGORIES[categorie]).length;
+      });
+      document.getElementById("nav-favorites-count").textContent = watchlist.size;
       document.getElementById("watch-count").textContent = watchlist.size;
       document.getElementById("result-count").innerHTML = `<strong>${visibleLots.length} lot${visibleLots.length === 1 ? "" : "s"}</strong>`;
 
@@ -473,6 +589,24 @@
 
     function statutLot(lot) {
       return STATUTS[lot.status];
+    }
+
+    // Onglets de la liste et de la barre de navigation. Exclusivités = lots M&Y sans fiche fournisseur.
+    const CATEGORIES = {
+      all: () => true,
+      open: (lot) => lot.status === "open",
+      upcoming: (lot) => lot.status === "upcoming",
+      stock: (lot) => lot.status === "stock",
+      auction: (lot) => lot.status === "open" || lot.status === "upcoming",
+      fixed: (lot) => lot.status === "stock" && (prixLot(lot) != null || Number.isFinite(lot.buyNowPriceTnd)),
+      exclusive: (lot) => !lot.sourceUrl
+    };
+
+    function choisirOnglet(onglet) {
+      activeTab = onglet;
+      tabButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.tab === onglet)));
+      document.querySelectorAll("[data-nav]").forEach((link) => link.setAttribute("aria-current", String(link.dataset.nav === onglet)));
+      updateView();
     }
 
     // Mise à prix d'enchère en priorité, sinon prix indicatif.
@@ -524,10 +658,170 @@
       dialog.showModal();
     }
 
-    function demanderAchat(reference) {
+    // Sans serveur (aperçu statique), l'achat immédiat passe par le formulaire de contact.
+    async function demanderAchat(reference) {
       const lot = lots.find((item) => item.reference === reference);
       if (!lot) return;
-      ouvrirContact(reference, `Je souhaite acheter le véhicule ${titreLot(lot)} (réf. ${reference}) au prix d'achat immédiat de ${formatTnd(lot.buyNowPriceTnd)}.`);
+      if (!compte.disponible) {
+        ouvrirContact(reference, `Je souhaite acheter le véhicule ${titreLot(lot)} (réf. ${reference}) au prix d'achat immédiat de ${formatTnd(lot.buyNowPriceTnd)}.`);
+        return;
+      }
+      if (!compte.user) {
+        ouvrirConnexion("login", () => demanderAchat(reference));
+        return;
+      }
+      if (!window.confirm(`Confirmer la demande d'achat immédiat de ${titreLot(lot)} à ${formatTnd(lot.buyNowPriceTnd)} ? L'équipe M&Y AUTO EXPORT te recontactera pour finaliser.`)) return;
+      try {
+        const { offer } = await api("/api/offers", { method: "POST", body: { reference, kind: "buy_now" } });
+        compte.offers.unshift(offer);
+        afficherCompte();
+        ouvrirEspace();
+      } catch (error) {
+        window.alert(error.message);
+      }
+    }
+
+    // --- Espace acheteur ---
+
+    const compte = { disponible: false, user: null, offers: [] };
+    let actionApresConnexion = null;
+
+    async function api(chemin, { method = "GET", body } = {}) {
+      const response = await fetch(chemin, {
+        method,
+        credentials: "same-origin",
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined
+      });
+      if (!(response.headers.get("Content-Type") || "").includes("application/json")) {
+        throw new Error("Espace acheteur indisponible pour le moment.");
+      }
+      const data = await response.json();
+      if (!response.ok) throw Object.assign(new Error(data.error || "Erreur inattendue."), { status: response.status });
+      return data;
+    }
+
+    function sauverWatchlist() {
+      try {
+        localStorage.setItem("my-auto-watchlist", JSON.stringify([...watchlist]));
+      } catch {}
+    }
+
+    async function chargerCompte() {
+      try {
+        const response = await fetch("/api/me", { credentials: "same-origin" });
+        if ((response.headers.get("Content-Type") || "").includes("application/json")) {
+          compte.disponible = true;
+          appliquerCompte(await response.json());
+        }
+      } catch {}
+      afficherCompte();
+    }
+
+    // Au moment de la connexion, les favoris gardés dans le navigateur rejoignent ceux du compte.
+    function appliquerCompte(data) {
+      compte.user = data.user || null;
+      compte.offers = data.offers || [];
+      if (compte.user) {
+        const favoris = data.favorites || [];
+        const locaux = [...watchlist].filter((reference) => !favoris.includes(reference));
+        watchlist = new Set([...favoris, ...locaux]);
+        locaux.forEach((reference) => api(`/api/favorites/${encodeURIComponent(reference)}`, { method: "PUT" }).catch(() => {}));
+        sauverWatchlist();
+      }
+      updateView();
+      afficherCompte();
+    }
+
+    function numeroMembre(user) {
+      return `#${String(user.id).padStart(5, "0")}`;
+    }
+
+    function afficherCompte() {
+      const user = compte.user;
+      document.getElementById("account-label").innerHTML = user
+        ? `<strong>${escapeHtml(user.name.split(" ")[0])} ${numeroMembre(user)}</strong><small>Acheteur</small>`
+        : `<strong>Se connecter</strong><small>Créer un compte</small>`;
+      document.getElementById("account-button").textContent = user ? "Mon espace" : "Espace acheteur";
+      document.getElementById("account-dot").classList.toggle("on", Boolean(user));
+      document.getElementById("nav-offers-count").textContent = compte.offers.length;
+      document.getElementById("nav-favorites-count").textContent = watchlist.size;
+    }
+
+    async function basculerFavori(reference) {
+      const ajouter = !watchlist.has(reference);
+      if (ajouter) watchlist.add(reference);
+      else watchlist.delete(reference);
+      sauverWatchlist();
+      updateView();
+      if (!compte.user) return;
+      try {
+        await api(`/api/favorites/${encodeURIComponent(reference)}`, { method: ajouter ? "PUT" : "DELETE" });
+      } catch (error) {
+        if (ajouter) watchlist.delete(reference);
+        else watchlist.add(reference);
+        sauverWatchlist();
+        updateView();
+        window.alert(error.message);
+      }
+    }
+
+    function ouvrirConnexion(mode, apres = null) {
+      if (!compte.disponible) {
+        ouvrirContact("", "");
+        return;
+      }
+      actionApresConnexion = apres;
+      choisirFormulaire(mode);
+      authDialog.querySelectorAll(".form-error").forEach((item) => { item.hidden = true; });
+      authDialog.showModal();
+    }
+
+    function choisirFormulaire(mode) {
+      authDialog.querySelectorAll("[data-auth]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.auth === mode)));
+      document.getElementById("login-form").hidden = mode !== "login";
+      document.getElementById("register-form").hidden = mode !== "register";
+    }
+
+    function ouvrirEspace() {
+      if (!compte.user) {
+        ouvrirConnexion("login", ouvrirEspace);
+        return;
+      }
+      const user = compte.user;
+      const favoris = [...watchlist].map((reference) => lots.find((lot) => lot.reference === reference)).filter(Boolean);
+      const statuts = { pending: "En attente de confirmation", accepted: "Acceptée", refused: "Refusée" };
+      const date = (iso) => new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
+      document.getElementById("account-body").innerHTML = `
+        <div class="dialog-head"><div><span class="lot-meta">Page personnelle · Acheteur</span><h2 id="account-title">${escapeHtml(user.name)} ${numeroMembre(user)}</h2>
+          <p class="account-meta">${escapeHtml(user.email)}${user.phone ? ` · ${escapeHtml(user.phone)}` : ""} · membre depuis le ${date(user.createdAt)}</p></div>
+          <button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
+        <h3 class="fiche-section">Mes favoris (${favoris.length})</h3>
+        ${favoris.length ? `<ul class="account-list">${favoris.map((lot) => `<li><button type="button" data-detail="${escapeHtml(lot.reference)}">${escapeHtml(titreLot(lot))}</button><span class="muted">Réf. ${escapeHtml(lot.reference)} · ${statutLot(lot)} · ${escapeHtml(libellePrix(lot).value)}</span></li>`).join("")}</ul>` : `<p class="account-empty">Aucun favori. Clique sur « Suivre » sur une annonce pour la retrouver ici.</p>`}
+        <h3 class="fiche-section">Mes offres (${compte.offers.length})</h3>
+        ${compte.offers.length ? `<ul class="account-list">${compte.offers.map((offer) => {
+          const lot = lots.find((item) => item.reference === offer.reference);
+          return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
+            <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Offre"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
+            <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span></li>`;
+        }).join("")}</ul>` : `<p class="account-empty">Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères.</p>`}
+        <button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
+      if (!accountDialog.open) accountDialog.showModal();
+    }
+
+    function formulaireOffre(lot) {
+      if (!compte.disponible || !CATEGORIES.auction(lot)) return "";
+      if (!compte.user) {
+        return `<div class="offer-form"><label>Faire une offre sur ce véhicule</label>
+          <button class="form-submit" type="button" data-offer-login="${escapeHtml(lot.reference)}">Se connecter pour enchérir</button></div>`;
+      }
+      const minimum = Number.isFinite(lot.startingPriceTnd) ? lot.startingPriceTnd : 1;
+      return `<form class="offer-form" data-offer="${escapeHtml(lot.reference)}">
+        <label for="offer-amount">Ton offre (TND)${Number.isFinite(lot.startingPriceTnd) ? ` · minimum ${formatTnd(lot.startingPriceTnd)}` : ""}</label>
+        <div class="offer-row"><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${minimum}" step="1" required placeholder="${minimum}"><button type="submit">Enregistrer mon offre</button></div>
+        <p class="form-footnote">Ton offre est transmise à l'équipe M&Y AUTO EXPORT, qui te recontacte pour la confirmer.</p>
+        <p class="form-error" role="alert" hidden></p>
+      </form>`;
     }
 
     function photosLot(lot) {
@@ -583,6 +877,7 @@
         ${enlevementLot(lot)}
         <div class="lot-price"><span><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></span></div>
         ${prixEnchere(lot)}${boutonAchat(lot)}
+        ${formulaireOffre(lot)}
         <div class="lot-actions">${lienLot(lot)}</div>`;
       document.getElementById("lot-dialog-body").dataset.photos = JSON.stringify(photos.map((photo) => photo.url));
       lotDialog.showModal();
@@ -645,15 +940,21 @@
       document.getElementById("body-type").value = "";
       document.getElementById("sale-status").value = "";
       document.getElementById("sort").value = "ending";
-      activeTab = "all";
-      tabButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.tab === "all")));
-      updateView();
+      choisirOnglet("all");
     });
-    tabButtons.forEach((button) => button.addEventListener("click", () => {
-      activeTab = button.dataset.tab;
-      tabButtons.forEach((tab) => tab.setAttribute("aria-pressed", String(tab === button)));
-      updateView();
-    }));
+    tabButtons.forEach((button) => button.addEventListener("click", () => choisirOnglet(button.dataset.tab)));
+    document.querySelectorAll("[data-nav]").forEach((link) => link.addEventListener("click", () => choisirOnglet(link.dataset.nav)));
+    document.getElementById("nav-search").addEventListener("click", () => {
+      document.getElementById("ventes").scrollIntoView();
+      document.getElementById("search").focus();
+    });
+    document.getElementById("nav-favorites").addEventListener("click", () => {
+      choisirOnglet("watchlist");
+      document.getElementById("ventes").scrollIntoView();
+    });
+    document.getElementById("nav-offers").addEventListener("click", () => ouvrirEspace());
+    document.querySelectorAll("[data-open-account]").forEach((button) => button.addEventListener("click", () => ouvrirEspace()));
+    document.getElementById("account-button").addEventListener("click", () => ouvrirEspace());
     document.getElementById("lot-grid").addEventListener("click", (event) => {
       const contact = event.target.closest("[data-contact]");
       if (contact) {
@@ -671,12 +972,7 @@
         return;
       }
       const button = event.target.closest("[data-watch]");
-      if (!button) return;
-      const reference = button.dataset.watch;
-      if (watchlist.has(reference)) watchlist.delete(reference);
-      else watchlist.add(reference);
-      localStorage.setItem("my-auto-watchlist", JSON.stringify([...watchlist]));
-      updateView();
+      if (button) basculerFavori(button.dataset.watch);
     });
 
     const lotDialog = document.getElementById("lot-dialog");
@@ -702,7 +998,80 @@
         demanderAchat(achat.dataset.buynow);
         return;
       }
+      const connexionOffre = event.target.closest("[data-offer-login]");
+      if (connexionOffre) {
+        lotDialog.close();
+        ouvrirConnexion("login", () => ouvrirFiche(connexionOffre.dataset.offerLogin));
+        return;
+      }
       if (event.target === lotDialog || event.target.closest("[data-close]")) lotDialog.close();
+    });
+    lotDialog.addEventListener("submit", async (event) => {
+      const form = event.target.closest("[data-offer]");
+      if (!form) return;
+      event.preventDefault();
+      const reference = form.dataset.offer;
+      const erreur = form.querySelector(".form-error");
+      erreur.hidden = true;
+      try {
+        const { offer } = await api("/api/offers", { method: "POST", body: { reference, amount: Number(form.elements.amount.value) } });
+        compte.offers.unshift(offer);
+        afficherCompte();
+        form.innerHTML = `<p class="form-success">Offre de ${formatTnd(offer.amountTnd)} enregistrée. L'équipe M&Y AUTO EXPORT te recontacte pour la confirmer. Retrouve-la dans ta page personnelle.</p>`;
+      } catch (error) {
+        erreur.textContent = error.message;
+        erreur.hidden = false;
+      }
+    });
+
+    const authDialog = document.getElementById("auth-dialog");
+    const accountDialog = document.getElementById("account-dialog");
+    authDialog.addEventListener("click", (event) => {
+      const onglet = event.target.closest("[data-auth]");
+      if (onglet) choisirFormulaire(onglet.dataset.auth);
+      if (event.target === authDialog || event.target.closest("[data-close]")) authDialog.close();
+    });
+    [["login-form", "/api/login"], ["register-form", "/api/register"]].forEach(([id, chemin]) => {
+      document.getElementById(id).addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const erreur = form.querySelector(".form-error");
+        erreur.hidden = true;
+        form.querySelector("[type=submit]").disabled = true;
+        try {
+          appliquerCompte(await api(chemin, { method: "POST", body: Object.fromEntries(new FormData(form)) }));
+          form.reset();
+          authDialog.close();
+          const apres = actionApresConnexion;
+          actionApresConnexion = null;
+          if (apres) apres();
+        } catch (error) {
+          erreur.textContent = error.message;
+          erreur.hidden = false;
+        } finally {
+          form.querySelector("[type=submit]").disabled = false;
+        }
+      });
+    });
+    accountDialog.addEventListener("click", async (event) => {
+      const detail = event.target.closest("[data-detail]");
+      if (detail) {
+        accountDialog.close();
+        ouvrirFiche(detail.dataset.detail);
+        return;
+      }
+      if (event.target.closest("[data-logout]")) {
+        try {
+          await api("/api/logout", { method: "POST" });
+        } catch {}
+        compte.user = null;
+        compte.offers = [];
+        accountDialog.close();
+        updateView();
+        afficherCompte();
+        return;
+      }
+      if (event.target === accountDialog || event.target.closest("[data-close]")) accountDialog.close();
     });
 
     const dialog = document.getElementById("contact-dialog");
@@ -728,7 +1097,7 @@
     });
 
     updateView();
-    chargerCatalogue();
+    chargerCatalogue().then(chargerCompte);
   </script>
 </body>
 </html>
