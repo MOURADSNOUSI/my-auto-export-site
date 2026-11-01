@@ -54,3 +54,25 @@ npx wrangler d1 execute DB --remote --command "UPDATE offers SET status = 'accep
 ```
 
 Tests du Worker (ignorés sans wrangler) : `WRANGLER=$(npx which wrangler) python3 -m unittest discover tests`
+
+## Administration du catalogue (/admin.html)
+
+Ajouter, modifier, retirer un véhicule et envoyer ses photos, depuis un téléphone ou un ordinateur.
+Les véhicules sont enregistrés dans D1 (table `vehicles`) et les photos dans R2 (`my-auto-export-photos`).
+Le site public affiche `lots.json` + les véhicules de l'administration : modifier un véhicule de `lots.json`
+dans l'administration le remplace, le retirer le masque (sans toucher au fichier).
+
+Mise en service, une seule fois :
+
+```
+npx wrangler r2 bucket create my-auto-export-photos
+npx wrangler d1 migrations apply DB --remote
+```
+
+Puis crée ton compte sur le site (« Se connecter » → « Créer un compte ») et donne-lui l'accès :
+
+```
+npx wrangler d1 execute DB --remote --command "UPDATE users SET role = 'admin' WHERE email = 'ton@email.com'"
+```
+
+Retirer l'accès : même commande avec `role = 'buyer'`.

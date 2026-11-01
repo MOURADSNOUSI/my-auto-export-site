@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#ffffff">
+  <title>Administration — M&Y AUTO EXPORT</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17201d;
+      --ink-soft: #44514c;
+      --paper: #f3f5f3;
+      --surface: #ffffff;
+      --line: #d7ddd8;
+      --gold: #c99d4d;
+      --gold-pale: #f4ead5;
+      --green: #23755b;
+      --green-dark: #185740;
+      --green-pale: #e4f0e9;
+      --red: #a33a2c;
+      --red-pale: #fbeaea;
+      --muted: #5f6b65;
+      --radius: 8px;
+      font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.5; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid #2a8b69; outline-offset: 2px; }
+    .hidden { display: none !important; }
+    .shell { width: min(1100px, calc(100% - 28px)); margin-inline: auto; }
+
+    header { position: sticky; top: 0; z-index: 5; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .header-inner { display: flex; min-height: 62px; align-items: center; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .brand img { width: 40px; height: 40px; border: 1px solid #ad8b4e; border-radius: 50%; object-fit: cover; }
+    .brand strong { display: block; font-size: 14px; }
+    .brand small { display: block; color: var(--green); font-size: 12px; font-weight: 750; text-transform: uppercase; }
+    .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .who { color: var(--muted); font-size: 13px; }
+
+    .button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; background: white; color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; }
+    .button:hover { border-color: var(--green); color: var(--green); }
+    .button.primary { border-color: var(--green); background: var(--green); color: white; }
+    .button.primary:hover { background: var(--green-dark); color: white; }
+    .button.danger { border-color: #e2b9b2; color: var(--red); }
+    .button.small { min-height: 38px; padding: 0 12px; font-size: 13px; }
+    .button:disabled { opacity: .55; cursor: wait; }
+
+    main { padding: 22px 0 110px; }
+    .card { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .narrow { max-width: 420px; margin: 40px auto; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .lead { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
+    .message { margin: 12px 0 0; padding: 10px 12px; border-radius: 6px; font-size: 14px; }
+    .message.error { background: var(--red-pale); color: #8f2a2a; }
+    .message.info { background: var(--gold-pale); color: #5c4720; }
+    .message.ok { background: var(--green-pale); color: #1d5e49; }
+
+    .field { display: grid; gap: 5px; }
+    .field label { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+    .field small { color: var(--muted); font-size: 12px; }
+    .field input, .field select, .field textarea { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; color: var(--ink); font-size: 16px; }
+    .field textarea { min-height: 110px; resize: vertical; }
+    .stack { display: grid; gap: 14px; }
+
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .toolbar .field { flex: 1 1 220px; }
+    .counts { color: var(--muted); font-size: 13px; }
+    .add-floating { position: fixed; right: 16px; bottom: 16px; z-index: 6; box-shadow: 0 8px 24px #10151333; }
+
+    .vehicle-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .vehicle { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .vehicle.removed { opacity: .6; }
+    .thumb { width: 96px; height: 72px; overflow: hidden; border-radius: 6px; background: #e6eae7; }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .vehicle h2 { margin: 0; font-size: 16px; line-height: 1.3; }
+    .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .badge { padding: 1px 8px; border-radius: 10px; background: #e6eae7; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
+    .badge.stock { background: var(--green-pale); color: var(--green); }
+    .badge.upcoming { background: var(--gold-pale); color: #725b2d; }
+    .badge.open { background: var(--red-pale); color: var(--red); }
+    .badge.removed { background: #333; color: white; }
+    .vehicle-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
+
+    dialog.editor { width: min(860px, 100%); max-height: calc(100% - 24px); padding: 0; border: 0; border-radius: 10px; color: var(--ink); box-shadow: 0 24px 80px #10151340; }
+    dialog.editor::backdrop { background: #101513a8; }
+    .editor form { display: flex; max-height: calc(100vh - 24px); flex-direction: column; }
+    .editor-head, .editor-foot { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--surface); }
+    .editor-head { border-bottom: 1px solid var(--line); }
+    .editor-head h2 { margin: 0; font-size: 18px; }
+    .editor-foot { justify-content: end; border-top: 1px solid var(--line); }
+    .editor-body { overflow-y: auto; padding: 18px; }
+    fieldset { margin: 0 0 18px; padding: 0; border: 0; }
+    legend { margin-bottom: 10px; padding: 0; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .grid .wide { grid-column: span 2; }
+    .grid .full { grid-column: 1 / -1; }
+
+    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin: 0 0 12px; padding: 0; list-style: none; }
+    .photo { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #e6eae7; }
+    .photo img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+    .photo .first { position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: 3px; background: var(--green); color: white; font-size: 11px; font-weight: 750; }
+    .photo-tools { display: flex; justify-content: space-between; padding: 4px; background: white; }
+    .photo-tools button { width: 38px; height: 34px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 16px; }
+    .photo-tools button:disabled { opacity: .35; cursor: default; }
+    .photo.pending img { opacity: .4; }
+    .photo.pending::after { content: "Envoi…"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; font-weight: 750; }
+    .upload { display: grid; place-items: center; min-height: 110px; padding: 14px; border: 2px dashed #b7d4c5; border-radius: 8px; background: #f6faf8; color: var(--green); font-size: 15px; font-weight: 750; text-align: center; cursor: pointer; }
+    .upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .upload small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+
+    @media (max-width: 680px) {
+      .who { display: none; }
+      .brand small { font-size: 11px; }
+      .vehicle { grid-template-columns: 80px minmax(0, 1fr); }
+      .thumb { width: 80px; height: 64px; }
+      .vehicle-actions { grid-column: 1 / -1; justify-content: stretch; }
+      .vehicle-actions .button { flex: 1; }
+      dialog.editor { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; }
+      .editor form { height: 100%; max-height: none; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      .grid .wide { grid-column: 1 / -1; }
+      .editor-foot .button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell header-inner">
+      <a class="brand" href="/"><img src="logo.png" alt=""><span><strong>M&Y AUTO EXPORT</strong><small>Administration</small></span></a>
+      <div class="header-actions">
+        <span class="who" id="who"></span>
+        <a class="button small" href="/">Voir le site</a>
+        <button class="button small hidden" type="button" id="logout">Déconnexion</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <p class="message info" id="loading">Chargement…</p>
+
+    <section class="card narrow hidden" id="login-view" aria-labelledby="login-title">
+      <h1 id="login-title">Connexion</h1>
+      <p class="lead">Connecte-toi avec ton compte administrateur.</p>
+      <form class="stack" id="login-form">
+        <div class="field"><label for="login-email">E-mail</label><input id="login-email" name="email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="login-password">Mot de passe</label><input id="login-password" name="password" type="password" autocomplete="current-password" required></div>
+        <button class="button primary" type="submit">Se connecter</button>
+        <p class="message error hidden" id="login-error" role="alert"></p>
+      </form>
+    </section>
+
+    <section class="card narrow hidden" id="denied-view">
+      <h1>Accès réservé</h1>
+      <p class="lead">Ce compte n'a pas accès à l'administration. Connecte-toi avec le compte administrateur.</p>
+      <button class="button" type="button" id="switch-account">Changer de compte</button>
+    </section>
+
+    <section class="hidden" id="list-view" aria-labelledby="list-title">
+      <h1 id="list-title">Catalogue</h1>
+      <p class="lead" id="counts"></p>
+      <p class="message info hidden" id="photos-off">Le stockage des photos n'est pas encore configuré : tu peux enregistrer des véhicules, mais pas envoyer de photos (voir le README).</p>
+      <div class="toolbar">
+        <div class="field"><label for="search">Rechercher</label><input id="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off"></div>
+        <div class="field" style="flex: 0 1 200px"><label for="show">Afficher</label>
+          <select id="show"><option value="online">En ligne</option><option value="removed">Retirés</option><option value="all">Tous</option></select></div>
+      </div>
+      <p class="message ok hidden" id="flash" role="status"></p>
+      <ul class="vehicle-list" id="vehicle-list"></ul>
+      <button class="button primary add-floating" type="button" id="add-vehicle">+ Ajouter un véhicule</button>
+    </section>
+  </main>
+
+  <dialog class="editor" id="editor" aria-labelledby="editor-title">
+    <form id="vehicle-form" novalidate>
+      <div class="editor-head">
+        <h2 id="editor-title">Nouveau véhicule</h2>
+        <button class="button small" type="button" data-cancel style="margin-left:auto" aria-label="Fermer">✕</button>
+      </div>
+      <div class="editor-body">
+        <fieldset>
+          <legend>Véhicule</legend>
+          <div class="grid">
+            <div class="field"><label for="f-reference">Référence *</label><input id="f-reference" name="reference" required pattern="[A-Za-z0-9._\-]{1,40}" maxlength="40" placeholder="MY-0002" autocapitalize="characters"><small>Lettres, chiffres, . _ -</small></div>
+            <div class="field"><label for="f-make">Marque *</label><input id="f-make" name="make" required maxlength="120" list="makes"></div>
+            <div class="field"><label for="f-model">Modèle *</label><input id="f-model" name="model" required maxlength="120"></div>
+            <div class="field wide"><label for="f-trim">Finition / version</label><input id="f-trim" name="trim" maxlength="120"></div>
+            <div class="field"><label for="f-year">Année</label><input id="f-year" name="year" type="number" inputmode="numeric" min="1950" max="2100"></div>
+            <div class="field"><label for="f-mileageKm">Kilométrage</label><input id="f-mileageKm" name="mileageKm" type="number" inputmode="numeric" min="0"></div>
+            <div class="field"><label for="f-fuel">Énergie</label><input id="f-fuel" name="fuel" maxlength="120" list="fuels"></div>
+            <div class="field"><label for="f-bodyType">Catégorie</label><input id="f-bodyType" name="bodyType" maxlength="120" list="bodies"></div>
+            <div class="field"><label for="f-country">Pays d'origine</label><input id="f-country" name="country" maxlength="120"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Vente et prix (TND)</legend>
+          <div class="grid">
+            <div class="field"><label for="f-status">Statut *</label>
+              <select id="f-status" name="status"><option value="stock">En stock (vente directe)</option><option value="upcoming">Enchère à venir</option><option value="open">Enchère en cours</option></select></div>
+            <div class="field wide" id="ends-field"><label for="f-endsAt">Fin de l'enchère *</label><input id="f-endsAt" name="endsAt" type="datetime-local"></div>
+            <div class="field"><label for="f-indicativePriceTnd">Prix de vente</label><input id="f-indicativePriceTnd" name="indicativePriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
+            <div class="field"><label for="f-startingPriceTnd">Mise à prix</label><input id="f-startingPriceTnd" name="startingPriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
+            <div class="field"><label for="f-reservePriceTnd">Prix de réserve</label><input id="f-reservePriceTnd" name="reservePriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
+            <div class="field"><label for="f-buyNowPriceTnd">Achat immédiat</label><input id="f-buyNowPriceTnd" name="buyNowPriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
+            <div class="field wide"><label for="f-sourceUrl">Lien fournisseur (facultatif)</label><input id="f-sourceUrl" name="sourceUrl" type="url" inputmode="url" placeholder="https://…"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Enlèvement</legend>
+          <div class="grid">
+            <div class="field"><label for="f-availableFrom">Disponible à l'enlèvement</label><input id="f-availableFrom" name="availableFrom" maxlength="120" placeholder="2026-11-15 ou Immédiatement"></div>
+            <div class="field"><label for="f-pickupLocation">Lieu d'enlèvement</label><input id="f-pickupLocation" name="pickupLocation" maxlength="120"></div>
+            <div class="field"><label for="f-seller">Vendeur</label><input id="f-seller" name="seller" maxlength="120"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Caractéristiques</legend>
+          <div class="field"><label for="f-specs">Une par ligne : « Libellé : valeur »</label>
+            <textarea id="f-specs" name="specs" placeholder="Transmission : Automatique&#10;Puissance : 380 ch DIN&#10;Mise en circulation : 02/2022"></textarea></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Photos</legend>
+          <ul class="photo-grid" id="photo-grid"></ul>
+          <label class="upload" id="upload-zone">
+            <span>📷 Ajouter des photos<small>Appareil photo ou galerie · la première photo sert de couverture</small></span>
+            <input id="photo-input" type="file" accept="image/*" multiple>
+          </label>
+        </fieldset>
+        <p class="message error hidden" id="editor-error" role="alert"></p>
+      </div>
+      <div class="editor-foot">
+        <button class="button" type="button" data-cancel>Annuler</button>
+        <button class="button primary" type="submit" id="save">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <datalist id="makes"></datalist>
+  <datalist id="fuels"><option value="Essence"><option value="Diesel"><option value="Hybride"><option value="Hybride rechargeable"><option value="Électrique"></datalist>
+  <datalist id="bodies"><option value="SUV"><option value="4x4"><option value="Berline"><option value="Break"><option value="Citadine"><option value="Coupé"><option value="Pick-up"><option value="Utilitaire"></datalist>
+
+  <script>
+    const STATUTS = { stock: "En stock", upcoming: "Enchère à venir", open: "Enchère en cours" };
+    const CHAMPS_TEXTE = ["make", "model", "trim", "fuel", "bodyType", "country", "availableFrom", "pickupLocation", "seller", "sourceUrl"];
+    const CHAMPS_NOMBRE = ["year", "mileageKm", "indicativePriceTnd", "startingPriceTnd", "reservePriceTnd", "buyNowPriceTnd"];
+    const TAILLE_MAX = 1600; // côté le plus long des photos envoyées, en pixels
+
+    const etat = { user: null, vehicles: [], photosEnabled: false, edition: null, photos: [], envois: 0, aSupprimer: new Set() };
+    const $ = (id) => document.getElementById(id);
+    const editor = $("editor");
+    const form = $("vehicle-form");
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c]);
+    }
+
+    async function api(chemin, { method = "GET", body, formData } = {}) {
+      const response = await fetch(chemin, {
+        method,
+        credentials: "same-origin",
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: formData || (body ? JSON.stringify(body) : undefined)
+      });
+      if (!(response.headers.get("Content-Type") || "").includes("application/json")) {
+        throw Object.assign(new Error("Serveur indisponible. Réessaie dans un instant."), { status: response.status });
+      }
+      const data = await response.json();
+      if (!response.ok) throw Object.assign(new Error(data.error || "Erreur inattendue."), { status: response.status });
+      return data;
+    }
+
+    function afficher(vue) {
+      ["loading", "login-view", "denied-view", "list-view"].forEach((id) => $(id).classList.toggle("hidden", id !== vue));
+      $("logout").classList.toggle("hidden", !etat.user);
+      $("who").textContent = etat.user ? etat.user.name : "";
+    }
+
+    async function demarrer() {
+      try {
+        const response = await fetch("/api/me", { credentials: "same-origin" });
+        const data = await response.json();
+        etat.user = data.user || null;
+      } catch {
+        $("loading").textContent = "Serveur indisponible : l'administration ne fonctionne que sur le site publié.";
+        return;
+      }
+      if (!etat.user) return afficher("login-view");
+      if (etat.user.role !== "admin") return afficher("denied-view");
+      await charger();
+    }
+
+    async function charger() {
+      const data = await api("/api/admin/vehicles");
+      etat.vehicles = data.vehicles;
+      etat.photosEnabled = data.photosEnabled;
+      $("photos-off").classList.toggle("hidden", etat.photosEnabled);
+      $("makes").innerHTML = [...new Set(etat.vehicles.map((item) => item.lot.make))].sort().map((m) => `<option value="${escapeHtml(m)}">`).join("");
+      afficher("list-view");
+      renderListe();
+    }
+
+    function titre(lot) {
+      return `${lot.make} ${lot.model} ${lot.trim || ""}`.trim();
+    }
+
+    function prix(lot) {
+      const valeur = lot.startingPriceTnd ?? lot.indicativePriceTnd;
+      return valeur == null ? "Prix sur demande" : `${new Intl.NumberFormat("fr-TN").format(valeur)} TND`;
+    }
+
+    function renderListe() {
+      const query = $("search").value.trim().toLocaleLowerCase("fr");
+      const show = $("show").value;
+      const enLigne = etat.vehicles.filter((item) => !item.removed).length;
+      $("counts").textContent = `${enLigne} véhicule${enLigne > 1 ? "s" : ""} en ligne · ${etat.vehicles.length - enLigne} retiré${etat.vehicles.length - enLigne > 1 ? "s" : ""}`;
+      const items = etat.vehicles
+        .filter((item) => show === "all" || (show === "removed") === item.removed)
+        .filter((item) => !query || `${item.lot.reference} ${titre(item.lot)}`.toLocaleLowerCase("fr").includes(query))
+        .sort((a, b) => (b.updatedAt || b.lot.createdAt || "").localeCompare(a.updatedAt || a.lot.createdAt || ""));
+      $("vehicle-list").innerHTML = items.length ? items.map((item) => {
+        const lot = item.lot;
+        const photo = (lot.photos || []).find((p) => p && p.url)?.url;
+        return `<li class="vehicle${item.removed ? " removed" : ""}">
+          <div class="thumb">${photo ? `<img src="${escapeHtml(photo)}" alt="" loading="lazy">` : ""}</div>
+          <div><h2>${escapeHtml(titre(lot))}</h2>
+            <div class="meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="badge ${escapeHtml(lot.status)}">${STATUTS[lot.status] || escapeHtml(lot.status)}</span>
+              ${item.removed ? `<span class="badge removed">Retiré</span>` : ""}<span>${escapeHtml(prix(lot))}</span><span>${(lot.photos || []).length} photo(s)</span></div></div>
+          <div class="vehicle-actions">
+            <button class="button small" type="button" data-edit="${escapeHtml(lot.reference)}">Modifier</button>
+            ${item.removed
+              ? `<button class="button small" type="button" data-restore="${escapeHtml(lot.reference)}">Remettre en ligne</button>`
+              : `<button class="button small danger" type="button" data-remove="${escapeHtml(lot.reference)}">Retirer</button>`}
+          </div></li>`;
+      }).join("") : `<li class="card">Aucun véhicule ${show === "removed" ? "retiré" : "à afficher"}.</li>`;
+    }
+
+    function flash(texte) {
+      $("flash").textContent = texte;
+      $("flash").classList.remove("hidden");
+      clearTimeout(flash.timer);
+      flash.timer = setTimeout(() => $("flash").classList.add("hidden"), 5000);
+    }
+
+    // --- Formulaire ---
+
+    function versDateLocale(iso) {
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return "";
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function ouvrirEditeur(lot) {
+      form.reset();
+      etat.edition = lot ? lot.reference : null;
+      etat.photos = (lot?.photos || []).map((p) => p.url).filter(Boolean);
+      etat.aSupprimer = new Set();
+      $("editor-title").textContent = lot ? `Modifier ${titre(lot)}` : "Nouveau véhicule";
+      $("f-reference").value = lot?.reference || "";
+      $("f-reference").readOnly = Boolean(lot);
+      CHAMPS_TEXTE.concat(CHAMPS_NOMBRE).forEach((cle) => { $(`f-${cle}`).value = lot?.[cle] ?? ""; });
+      $("f-status").value = lot?.status || "stock";
+      $("f-endsAt").value = lot?.endsAt ? versDateLocale(lot.endsAt) : "";
+      $("f-specs").value = (lot?.specs || []).map(([libelle, valeur]) => `${libelle} : ${valeur}`).join("\n");
+      $("editor-error").classList.add("hidden");
+      form.dataset.createdAt = lot?.createdAt || "";
+      majStatut();
+      renderPhotos();
+      editor.showModal();
+      if (!lot) $("f-reference").focus();
+    }
+
+    function majStatut() {
+      $("ends-field").classList.toggle("hidden", $("f-status").value !== "open");
+    }
+
+    function renderPhotos() {
+      $("upload-zone").classList.toggle("hidden", !etat.photosEnabled);
+      $("photo-grid").innerHTML = etat.photos.map((url, index) => `
+        <li class="photo${url.startsWith("blob:") ? " pending" : ""}">
+          ${index === 0 ? `<span class="first">Couverture</span>` : ""}
+          <img src="${escapeHtml(url)}" alt="Photo ${index + 1}">
+          <div class="photo-tools">
+            <button type="button" data-move="-1" data-index="${index}" aria-label="Déplacer vers la gauche" ${index === 0 ? "disabled" : ""}>←</button>
+            <button type="button" data-delete="${index}" aria-label="Supprimer la photo ${index + 1}">✕</button>
+            <button type="button" data-move="1" data-index="${index}" aria-label="Déplacer vers la droite" ${index === etat.photos.length - 1 ? "disabled" : ""}>→</button>
+          </div></li>`).join("");
+    }
+
+    // Réduit la photo dans le navigateur avant l'envoi (photos de téléphone de plusieurs Mo).
+    async function reduire(fichier) {
+      try {
+        const image = await createImageBitmap(fichier, { imageOrientation: "from-image" });
+        const echelle = Math.min(1, TAILLE_MAX / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(image.width * echelle);
+        canvas.height = Math.round(image.height * echelle);
+        canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+        image.close?.();
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+        if (blob) return blob;
+      } catch {}
+      if (["image/jpeg", "image/png", "image/webp"].includes(fichier.type)) return fichier;
+      throw new Error(`${fichier.name} : format non pris en charge (JPEG, PNG ou WebP).`);
+    }
+
+    async function envoyerPhotos(fichiers) {
+      const reference = $("f-reference").value.trim();
+      if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) {
+        erreurEditeur("Indique d'abord une référence valide : elle sert à ranger les photos.");
+        return;
+      }
+      $("editor-error").classList.add("hidden");
+      for (const fichier of fichiers) {
+        const apercu = URL.createObjectURL(fichier);
+        etat.photos.push(apercu);
+        etat.envois++;
+        renderPhotos();
+        majBoutonEnregistrer();
+        try {
+          const blob = await reduire(fichier);
+          const formData = new FormData();
+          formData.append("reference", reference);
+          formData.append("photo", blob, "photo.jpg");
+          const { url } = await api("/api/admin/photos", { method: "POST", formData });
+          etat.photos[etat.photos.indexOf(apercu)] = url;
+        } catch (error) {
+          etat.photos.splice(etat.photos.indexOf(apercu), 1);
+          erreurEditeur(error.message);
+        } finally {
+          URL.revokeObjectURL(apercu);
+          etat.envois--;
+          renderPhotos();
+          majBoutonEnregistrer();
+        }
+      }
+    }
+
+    function majBoutonEnregistrer() {
+      $("save").disabled = etat.envois > 0;
+      $("save").textContent = etat.envois > 0 ? `Envoi des photos (${etat.envois})…` : "Enregistrer";
+    }
+
+    function erreurEditeur(texte) {
+      $("editor-error").textContent = texte;
+      $("editor-error").classList.remove("hidden");
+      $("editor-error").scrollIntoView({ block: "nearest" });
+    }
+
+    function lireFormulaire() {
+      const corps = { status: $("f-status").value, photos: etat.photos.filter((url) => !url.startsWith("blob:")), createdAt: form.dataset.createdAt || undefined };
+      CHAMPS_TEXTE.forEach((cle) => { corps[cle] = $(`f-${cle}`).value.trim(); });
+      CHAMPS_NOMBRE.forEach((cle) => { corps[cle] = $(`f-${cle}`).value === "" ? null : Number($(`f-${cle}`).value); });
+      if (corps.status === "open" && $("f-endsAt").value) corps.endsAt = new Date($("f-endsAt").value).toISOString();
+      corps.specs = $("f-specs").value.split("\n").map((ligne) => {
+        const position = ligne.indexOf(":");
+        return position > 0 ? [ligne.slice(0, position).trim(), ligne.slice(position + 1).trim()] : null;
+      }).filter((spec) => spec && spec[0] && spec[1]);
+      return corps;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const reference = $("f-reference").value.trim();
+      if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) return erreurEditeur("Référence invalide : lettres, chiffres, . _ - (40 caractères maximum).");
+      if (!etat.edition && etat.vehicles.some((item) => item.lot.reference === reference)) {
+        return erreurEditeur(`La référence ${reference} existe déjà. Utilise « Modifier » sur ce véhicule.`);
+      }
+      if (!$("f-make").value.trim() || !$("f-model").value.trim()) return erreurEditeur("Marque et modèle sont obligatoires.");
+      if ($("f-status").value === "open" && !$("f-endsAt").value) return erreurEditeur("Indique la date de fin de l'enchère.");
+      $("save").disabled = true;
+      try {
+        await api(`/api/admin/vehicles/${encodeURIComponent(reference)}`, { method: "PUT", body: lireFormulaire() });
+        // Les photos retirées du véhicule ne sont effacées du stockage qu'une fois l'enregistrement réussi.
+        await Promise.all([...etat.aSupprimer].map((url) => api(`/api/admin/photos/${url.slice("/media/".length)}`, { method: "DELETE" }).catch(() => {})));
+        editor.close();
+        await charger();
+        flash(`${reference} enregistré. Il est visible sur le site.`);
+      } catch (error) {
+        erreurEditeur(error.message);
+      } finally {
+        majBoutonEnregistrer();
+      }
+    });
+
+    $("photo-input").addEventListener("change", (event) => {
+      const fichiers = [...event.target.files];
+      event.target.value = "";
+      envoyerPhotos(fichiers);
+    });
+    $("photo-grid").addEventListener("click", (event) => {
+      const bouton = event.target.closest("button");
+      if (!bouton) return;
+      if (bouton.dataset.delete !== undefined) {
+        const [url] = etat.photos.splice(Number(bouton.dataset.delete), 1);
+        if (url.startsWith("/media/")) etat.aSupprimer.add(url);
+      } else if (bouton.dataset.move) {
+        const index = Number(bouton.dataset.index);
+        const cible = index + Number(bouton.dataset.move);
+        [etat.photos[index], etat.photos[cible]] = [etat.photos[cible], etat.photos[index]];
+      }
+      renderPhotos();
+    });
+    $("f-status").addEventListener("change", majStatut);
+    editor.addEventListener("click", (event) => {
+      if (event.target.closest("[data-cancel]")) editor.close();
+    });
+    editor.addEventListener("cancel", (event) => {
+      if (etat.envois > 0) event.preventDefault();
+    });
+
+    // --- Liste ---
+
+    $("vehicle-list").addEventListener("click", async (event) => {
+      const modifier = event.target.closest("[data-edit]");
+      const retirer = event.target.closest("[data-remove]");
+      const remettre = event.target.closest("[data-restore]");
+      const reference = (modifier || retirer || remettre)?.dataset.edit || retirer?.dataset.remove || remettre?.dataset.restore;
+      const item = etat.vehicles.find((v) => v.lot.reference === reference);
+      if (!item) return;
+      if (modifier) return ouvrirEditeur(item.lot);
+      try {
+        if (retirer) {
+          if (!confirm(`Retirer ${titre(item.lot)} (réf. ${reference}) du site ? Tu pourras le remettre en ligne.`)) return;
+          await api(`/api/admin/vehicles/${encodeURIComponent(reference)}`, { method: "DELETE" });
+          flash(`${reference} retiré du site.`);
+        } else {
+          await api(`/api/admin/vehicles/${encodeURIComponent(reference)}`, { method: "PUT", body: item.lot });
+          flash(`${reference} remis en ligne.`);
+        }
+        await charger();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+    $("search").addEventListener("input", renderListe);
+    $("show").addEventListener("change", renderListe);
+    $("add-vehicle").addEventListener("click", () => ouvrirEditeur(null));
+
+    $("login-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      $("login-error").classList.add("hidden");
+      try {
+        const data = await api("/api/login", { method: "POST", body: { email: $("login-email").value, password: $("login-password").value } });
+        etat.user = data.user;
+        if (etat.user.role !== "admin") return afficher("denied-view");
+        await charger();
+      } catch (error) {
+        $("login-error").textContent = error.message;
+        $("login-error").classList.remove("hidden");
+      }
+    });
+    async function deconnecter() {
+      await api("/api/logout", { method: "POST" }).catch(() => {});
+      etat.user = null;
+      afficher("login-view");
+    }
+    $("logout").addEventListener("click", deconnecter);
+    $("switch-account").addEventListener("click", deconnecter);
+
+    demarrer();
+  </script>
+</body>
+</html>

@@ -248,6 +248,7 @@
     .offer-status { padding: 2px 7px; border-radius: 3px; background: var(--gold-pale); color: #725b2d; font-size: 10px; font-weight: 750; }
     .offer-status.accepted { background: var(--green-pale); color: var(--green); }
     .offer-status.refused { background: #fbeaea; color: #8f2a2a; }
+    .admin-link { display: inline-flex; align-items: center; margin-right: 8px; border-color: var(--green); color: var(--green); }
     .logout-button { margin-top: 18px; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 12px; font-weight: 700; }
     .lot-dialog { width: min(880px, calc(100% - 28px)); }
     .lot-dialog .dialog-head { margin-bottom: 14px; }
@@ -989,6 +990,7 @@
           ${compte.invoices.length ? `<ul class="account-list">${compte.invoices.map((invoice) => `<li class="invoice-item"><span class="invoice-details"><strong>${escapeHtml(invoice.invoiceNumber)}</strong><small>${escapeHtml(date(invoice.issuedAt))} · ${formatTnd(invoice.totalTnd)} · ${statutsFacture[invoice.status] || "Statut à confirmer"}</small></span>${invoice.documentAvailable ? `<a class="invoice-download" href="/api/invoices/${encodeURIComponent(invoice.id)}/document">Télécharger PDF</a>` : `<span class="muted">PDF non disponible</span>`}</li>`).join("")}</ul>` : `<p class="account-empty">Aucune facture associée à ce compte.</p>`}
           <p class="form-footnote">Les factures sont privées et accessibles uniquement après connexion au compte concerné.</p>
         </section>
+        ${user.role === "admin" ? `<a class="logout-button admin-link" href="/admin.html">Administration du catalogue</a>` : ""}
         <button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
       document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -1100,7 +1102,7 @@
 
     // Photo hébergée en https ou fichier local du dossier photos/ du site.
     function photoAffichable(url) {
-      return typeof url === "string" && (url.startsWith("https://") || /^photos\/[^/]+$/.test(url));
+      return typeof url === "string" && (url.startsWith("https://") || /^photos\/[^/]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url));
     }
 
     function remplirFiltre(selectId, valeurs, libelleInitial) {
@@ -1113,7 +1115,11 @@
 
     async function chargerCatalogue() {
       try {
-        const response = await fetch("./lots.json", { cache: "no-store" });
+        // Avec le serveur : lots.json + véhicules de l'administration. Sans serveur (aperçu statique) : lots.json seul.
+        let response = await fetch("/api/catalogue", { cache: "no-store" }).catch(() => null);
+        if (!response?.ok || !(response.headers.get("Content-Type") || "").includes("application/json")) {
+          response = await fetch("./lots.json", { cache: "no-store" });
+        }
         if (!response.ok) throw new Error("Catalogue inaccessible.");
         const catalogue = await response.json();
         if (!Array.isArray(catalogue) || catalogue.some((lot) => !lotValide(lot))) {

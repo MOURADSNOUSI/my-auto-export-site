@@ -4,10 +4,13 @@ const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100000; // maximum accepté par Cloudflare Workers
 const MAX_LOGIN_FAILURES = 5; // par adresse e-mail sur 15 minutes
 const MAX_OFFER_TND = 10_000_000;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) return servirPhoto(env, url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
     try {
       return await routeApi(request, env, url);
@@ -32,6 +35,8 @@ async function routeApi(request, env, url) {
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
   if (path === "/api/me" && method === "GET") return me(request, env);
+  if (path === "/api/catalogue" && method === "GET") return json(await catalogue(request, env));
+  if (path.startsWith("/api/admin/")) return routeAdmin(request, env, path, method);
   const invoiceDocument = path.match(/^\/api\/invoices\/(\d+)\/document$/);
   if (invoiceDocument && method === "GET") return telechargerFacture(request, env, Number(invoiceDocument[1]));
   if (path === "/api/register" && method === "POST") return register(request, env);
@@ -125,7 +130,7 @@ async function utilisateurConnecte(request, env) {
   const token = lireCookie(request, SESSION_COOKIE);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   return env.DB.prepare(
-    `SELECT users.id, users.email, users.name, users.phone, users.created_at FROM sessions
+    `SELECT users.id, users.email, users.name, users.phone, users.role, users.created_at FROM sessions
      JOIN users ON users.id = sessions.user_id
      WHERE sessions.token_hash = ? AND sessions.expires_at > ?`
   ).bind(await sha256(token), new Date().toISOString()).first();
@@ -138,7 +143,7 @@ async function exigerUtilisateur(request, env) {
 }
 
 function profil(user) {
-  return { id: user.id, email: user.email, name: user.name, phone: user.phone || "", createdAt: user.created_at };
+  return { id: user.id, email: user.email, name: user.name, phone: user.phone || "", role: user.role || "buyer", createdAt: user.created_at };
 }
 
 // --- Routes ---
@@ -207,7 +212,7 @@ async function register(request, env) {
   let created;
   try {
     created = await env.DB.prepare(
-      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, created_at"
+      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, created_at"
     ).bind(email, name, phone || null, hash, salt).first();
   } catch (error) {
     if (String(error).includes("UNIQUE")) throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail.");
@@ -246,11 +251,179 @@ async function logout(request, env) {
   return json({ user: null }, 200, { "Set-Cookie": cookieSession("", 0) });
 }
 
-async function chargerLot(request, env, reference) {
+// --- Catalogue : lots.json + véhicules de l'administration ---
+
+async function lotsFichier(request, env) {
   const response = await env.ASSETS.fetch(new Request(new URL("/lots.json", request.url)));
   if (!response.ok) throw new ApiError(503, "Catalogue indisponible.");
   const lots = await response.json();
-  return Array.isArray(lots) ? lots.find((lot) => lot && lot.reference === reference) : null;
+  return Array.isArray(lots) ? lots.filter((lot) => lot && typeof lot.reference === "string") : [];
+}
+
+// Tous les véhicules, retirés compris, avec leur origine : « fichier » (lots.json) ou « base » (administration).
+async function catalogueComplet(request, env) {
+  const [fichier, base] = await Promise.all([
+    lotsFichier(request, env),
+    env.DB.prepare("SELECT reference, data, removed, updated_at FROM vehicles").all()
+  ]);
+  const lignes = new Map(base.results.map((row) => [row.reference, row]));
+  const resultat = fichier.map((lot) => {
+    const row = lignes.get(lot.reference);
+    lignes.delete(lot.reference);
+    return row ? { lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at } : { lot, source: "fichier", removed: false };
+  });
+  for (const row of lignes.values()) {
+    resultat.push({ lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at });
+  }
+  return resultat;
+}
+
+async function catalogue(request, env) {
+  return (await catalogueComplet(request, env)).filter((item) => !item.removed).map((item) => item.lot);
+}
+
+async function chargerLot(request, env, reference) {
+  return (await catalogue(request, env)).find((lot) => lot.reference === reference) || null;
+}
+
+// --- Administration ---
+
+async function exigerAdmin(request, env) {
+  const user = await exigerUtilisateur(request, env);
+  if (user.role !== "admin") throw new ApiError(403, "Ce compte n'a pas accès à l'administration.");
+  return user;
+}
+
+async function routeAdmin(request, env, path, method) {
+  const user = await exigerAdmin(request, env);
+  if (path === "/api/admin/vehicles" && method === "GET") {
+    return json({ vehicles: await catalogueComplet(request, env), photosEnabled: Boolean(env.PHOTOS) });
+  }
+  const vehicule = path.match(/^\/api\/admin\/vehicles\/([^/]{1,64})$/);
+  if (vehicule && method === "PUT") return enregistrerVehicule(request, env, user, decodeURIComponent(vehicule[1]));
+  if (vehicule && method === "DELETE") return retirerVehicule(request, env, user, decodeURIComponent(vehicule[1]));
+  if (path === "/api/admin/photos" && method === "POST") return envoyerPhoto(request, env);
+  const photo = path.match(/^\/api\/admin\/photos\/(vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp))$/);
+  if (photo && method === "DELETE") {
+    if (!env.PHOTOS) throw new ApiError(503, "Le stockage des photos n'est pas configuré.");
+    await env.PHOTOS.delete(photo[1]);
+    return json({ deleted: photo[1] });
+  }
+  throw new ApiError(404, "Route inconnue.");
+}
+
+const STATUTS = ["open", "upcoming", "stock"];
+
+function nombre(value, nom) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > 100_000_000) throw new ApiError(400, `${nom} : nombre invalide.`);
+  return n;
+}
+
+function photoValide(url) {
+  return typeof url === "string" && url.length <= 500
+    && (/^https:\/\/[^\s"'<>]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url) || /^photos\/[^/]+$/.test(url));
+}
+
+// Ne garde que les champs connus, vérifiés comme le fait la page publique (lotValide).
+function validerVehicule(body, reference) {
+  const lot = { reference };
+  const champs = { make: "Marque", model: "Modèle", trim: null, fuel: null, bodyType: null, country: null, pickupLocation: null, seller: null, availableFrom: null };
+  for (const [cle, obligatoire] of Object.entries(champs)) {
+    const valeur = texte(body[cle], 120);
+    if (obligatoire && !valeur) throw new ApiError(400, `${obligatoire} obligatoire.`);
+    if (valeur) lot[cle] = valeur;
+  }
+  if (!STATUTS.includes(body.status)) throw new ApiError(400, "Statut invalide.");
+  lot.status = body.status;
+  if (lot.status === "open") {
+    const fin = Date.parse(body.endsAt);
+    if (!Number.isFinite(fin)) throw new ApiError(400, "Date de fin de vente obligatoire pour un lot en vente.");
+    lot.endsAt = new Date(fin).toISOString();
+  }
+  const annee = nombre(body.year, "Année");
+  if (annee !== null) {
+    if (!Number.isInteger(annee) || annee < 1950 || annee > 2100) throw new ApiError(400, "Année invalide.");
+    lot.year = annee;
+  }
+  for (const [cle, nom] of [["mileageKm", "Kilométrage"], ["indicativePriceTnd", "Prix"], ["startingPriceTnd", "Mise à prix"], ["reservePriceTnd", "Prix de réserve"], ["buyNowPriceTnd", "Achat immédiat"]]) {
+    const valeur = nombre(body[cle], nom);
+    if (valeur !== null) lot[cle] = valeur;
+  }
+  const sourceUrl = texte(body.sourceUrl, 500);
+  if (sourceUrl) {
+    if (!/^https:\/\/[^\s"'<>]+$/.test(sourceUrl)) throw new ApiError(400, "Le lien fournisseur doit commencer par https://");
+    lot.sourceUrl = sourceUrl;
+  }
+  const photos = Array.isArray(body.photos) ? body.photos : [];
+  if (photos.length > 40) throw new ApiError(400, "40 photos maximum.");
+  lot.photos = photos.map((photo) => {
+    const url = typeof photo === "string" ? photo : photo?.url;
+    if (!photoValide(url)) throw new ApiError(400, "Adresse de photo invalide.");
+    return { url, authorized: true };
+  });
+  const specs = Array.isArray(body.specs) ? body.specs : [];
+  if (specs.length > 30) throw new ApiError(400, "30 caractéristiques maximum.");
+  const lignes = specs.map((spec) => [texte(spec?.[0], 60), texte(spec?.[1], 160)]).filter(([libelle, valeur]) => libelle && valeur);
+  if (lignes.length) lot.specs = lignes;
+  lot.createdAt = texte(body.createdAt, 40) || new Date().toISOString();
+  return lot;
+}
+
+async function enregistrerVehicule(request, env, user, reference) {
+  if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Référence invalide (lettres, chiffres, . _ - ; 40 caractères maximum).");
+  const lot = validerVehicule(await lireJson(request), reference);
+  await env.DB.prepare(
+    `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 0, ?, ?)
+     ON CONFLICT(reference) DO UPDATE SET data = excluded.data, removed = 0, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
+  ).bind(reference, JSON.stringify(lot), new Date().toISOString(), user.id).run();
+  return json({ vehicle: lot });
+}
+
+async function retirerVehicule(request, env, user, reference) {
+  const existant = (await catalogueComplet(request, env)).find((item) => item.lot.reference === reference);
+  if (!existant) throw new ApiError(404, "Véhicule introuvable.");
+  await env.DB.prepare(
+    `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 1, ?, ?)
+     ON CONFLICT(reference) DO UPDATE SET removed = 1, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
+  ).bind(reference, JSON.stringify(existant.lot), new Date().toISOString(), user.id).run();
+  return json({ reference, removed: true });
+}
+
+async function envoyerPhoto(request, env) {
+  if (!env.PHOTOS) throw new ApiError(503, "Le stockage des photos n'est pas configuré.");
+  let form;
+  try {
+    form = await request.formData();
+  } catch {
+    throw new ApiError(400, "Envoi de photo illisible.");
+  }
+  const fichier = form.get("photo");
+  const reference = texte(form.get("reference"), 40);
+  if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Indique d'abord la référence du véhicule.");
+  if (!fichier || typeof fichier === "string") throw new ApiError(400, "Aucune photo reçue.");
+  const extension = PHOTO_TYPES[fichier.type];
+  if (!extension) throw new ApiError(415, "Format accepté : JPEG, PNG ou WebP.");
+  if (fichier.size > MAX_PHOTO_BYTES) throw new ApiError(413, "Photo trop lourde (10 Mo maximum).");
+  const key = `vehicules/${reference}/${hex(octetsAleatoires(16))}.${extension}`;
+  await env.PHOTOS.put(key, fichier.stream(), { httpMetadata: { contentType: fichier.type } });
+  return json({ url: `/media/${key}`, key }, 201);
+}
+
+async function servirPhoto(env, url) {
+  const key = decodeURIComponent(url.pathname.slice("/media/".length));
+  if (!env.PHOTOS || !/^vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(key)) return new Response("Introuvable", { status: 404 });
+  const object = await env.PHOTOS.get(key);
+  if (!object) return new Response("Introuvable", { status: 404 });
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": object.httpMetadata?.contentType || "application/octet-stream",
+      // Clé aléatoire par photo : le contenu ne change jamais pour une même adresse.
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff"
+    }
+  });
 }
 
 async function toggleFavorite(request, env, reference, ajouter) {
