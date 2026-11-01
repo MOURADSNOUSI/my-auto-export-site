@@ -29,7 +29,12 @@ python3 scripts/importer_wix.py
 ```
 
 Ajoute les véhicules de la page Wix en statut « En stock », prix en TND selon la formule
-(EUR + 3 000) × 3,5 + 20 000. Un lot déjà présent n'est jamais écrasé : seuls ses champs vides sont complétés.
+(prix HT EUR + 3 000) × 3,5 + 30 000. Un lot déjà présent n'est jamais écrasé : seuls ses champs vides sont complétés
+(un prix déjà importé n'est donc pas recalculé).
+
+Les photos importées sont enregistrées avec `authorized: false` et ne s'affichent pas sur le site : une adresse
+https ne prouve aucun droit de publication. Une fois le droit confirmé par écrit par le fournisseur, relancer avec
+`--photos-autorisees`.
 
 ## Espace acheteur (comptes, favoris, offres)
 
@@ -43,8 +48,8 @@ npx wrangler d1 migrations apply DB --remote   # crée les tables
 npx wrangler deploy
 ```
 
-Tant que `database_id` vaut `00000000-…` dans `wrangler.jsonc`, le déploiement échoue :
-ne pousse pas `main` avant d'avoir fait ces étapes.
+`wrangler.jsonc` contient déjà le `database_id` de la base de production : ces étapes ne sont à refaire que pour
+une nouvelle base (remplacer alors l'identifiant par celui qu'affiche `d1 create`).
 
 Consulter les offres reçues et y répondre :
 
@@ -116,3 +121,18 @@ d'achat immédiat. « Décider » ouvre les offres du véhicule (acheteur, e-mai
 - **Refuser** : l'offre seule passe en « Refusée ».
 
 L'acheteur voit « Acceptée · l'équipe vous contacte » ou « Refusée » dans sa page personnelle.
+
+Pour une enchère, seule la **meilleure** peut être acceptée (les autres peuvent seulement être refusées). L'acceptation
+est atomique : si deux administrateurs acceptent en même temps deux offres du même véhicule, une seule passe, l'autre
+reçoit une erreur sans rien modifier. La base l'impose aussi (index `offers_une_acceptee`, migration 0006).
+
+⚠️ Avant de pousser ce code : `npx wrangler d1 migrations apply DB --remote` (0006). La migration échoue si un véhicule
+a déjà deux offres acceptées ; vérifier avant :
+`npx wrangler d1 execute DB --remote --command "SELECT reference, COUNT(*) FROM offers WHERE status = 'accepted' GROUP BY reference HAVING COUNT(*) > 1"`
+
+## Factures PDF
+
+Le téléchargement des factures est **désactivé** : `wrangler.jsonc` ne déclare pas de stockage `DOCUMENTS`. L'espace
+acheteur affiche « PDF non disponible » et `/api/invoices/<id>/document` répond 503. Pour l'activer, il faudra créer un
+bucket R2 privé (`npx wrangler r2 bucket create my-auto-export-documents`), le déclarer avec le binding `DOCUMENTS`
+et prévoir l'envoi des PDF depuis l'administration (pas encore développé).

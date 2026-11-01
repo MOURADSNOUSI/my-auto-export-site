@@ -237,6 +237,18 @@ class AdministrationTest(unittest.TestCase):
         self.assertEqual(self.requete("/api/login", {"email": "patron@example.com", "password": "un-vrai-mot-de-passe"}, "POST")[0], 401)
         self.assertEqual(self.requete("/api/login", {"email": "patron@example.com", "password": "nouveau-mot-de-passe"}, "POST")[0], 200)
 
+    def test_facture_pdf_desactivee_sans_stockage_documents(self):
+        # wrangler.jsonc ne déclare pas de binding DOCUMENTS : le PDF est annoncé indisponible, jamais servi.
+        self.sql("INSERT INTO invoices (user_id, invoice_number, issued_at, total_tnd, document_key) "
+                 "SELECT id, 'F-2026-001', '2026-11-01', 95000, 'factures/F-2026-001.pdf' FROM users WHERE email = 'acheteur@example.com'")
+        cookie = self.cookie("acheteur@example.com")
+        facture = self.requete("/api/me", cookie=cookie)[1]["invoices"][0]
+        self.assertEqual((facture["invoiceNumber"], facture["documentAvailable"]), ("F-2026-001", False))
+        statut, data, _ = self.requete(f"/api/invoices/{facture['id']}/document", cookie=cookie)
+        self.assertEqual((statut, data["error"]), (503, "Le stockage sécurisé des factures n'est pas configuré."))
+        self.assertEqual(self.requete(f"/api/invoices/{facture['id']}/document", cookie=self.cookie("admin@example.com"))[0], 404,
+                         "facture d'un autre compte")
+
     def test_photo_inexistante_ou_chemin_force(self):
         self.assertEqual(self._statut(self.base + "/media/vehicules/X/" + "0" * 32 + ".jpg"), 404)
         self.assertEqual(self._statut(self.base + "/media/vehicules/X/..%2F..%2Fsecret.jpg"), 404)

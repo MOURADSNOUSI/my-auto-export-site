@@ -432,13 +432,15 @@
       $("decision-error").classList.add("hidden");
       $("bids-body").innerHTML = offers.length ? `<ol class="bids">${offers.map((offre) => {
         const decidable = offre.status === "pending" && !vendu && !(offre.kind === "bid" && auction?.status === "live");
+        // Une enchère perdante peut être refusée, pas acceptée : seule la meilleure enchère l'est (règle aussi appliquée par le Worker).
+        const acceptable = decidable && (offre.kind !== "bid" || offre.best);
         return `<li${offre.best ? ` class="best"` : ""}>
           <div class="bid-line"><strong>${tnd(offre.amountTnd)}</strong>
             <span class="badge ${offre.kind === "bid" ? "upcoming" : "stock"}">${offre.kind === "bid" ? "Enchère" : "Achat immédiat"}</span>
             <span class="badge offer-${escapeHtml(offre.status)}">${STATUTS_OFFRE[offre.status] || escapeHtml(offre.status)}</span>
             ${offre.best ? `<span class="badge open">Meilleure enchère</span>` : ""}</div>
           <span>${offre.bidder ? `${escapeHtml(offre.bidder)} · ` : ""}${escapeHtml(offre.name)} · <a href="mailto:${escapeHtml(offre.email)}">${escapeHtml(offre.email)}</a>${offre.phone ? ` · <a href="tel:${escapeHtml(offre.phone)}">${escapeHtml(offre.phone)}</a>` : ""} · ${dateHeure(offre.createdAt)}</span>
-          ${decidable ? `<div class="decision"><button class="button small primary" type="button" data-accept="${offre.id}">Accepter</button><button class="button small danger" type="button" data-refuse="${offre.id}">Refuser</button></div>` : ""}
+          ${decidable ? `<div class="decision">${acceptable ? `<button class="button small primary" type="button" data-accept="${offre.id}">Accepter</button>` : ""}<button class="button small danger" type="button" data-refuse="${offre.id}">Refuser</button></div>` : ""}
           ${offre.status === "accepted" ? `<div class="decision"><a class="button small primary" href="${lienConfirmation(offre, lot?.title || reference)}">Envoyer la confirmation écrite</a></div>` : ""}
         </li>`;
       }).join("")}</ol>` : "<p>Aucune offre.</p>";

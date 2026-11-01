@@ -43,7 +43,8 @@ class ImporterWixTest(unittest.TestCase):
         return json.loads((self.site / "lots.json").read_text()), sortie.getvalue()
 
     def test_prix_selon_la_formule(self):
-        self.assertEqual(importer_wix.prix_tnd(11600), 71100)
+        # (11 600 + 3 000) × 3,5 + 30 000
+        self.assertEqual(importer_wix.prix_tnd(11600), 81100)
         self.assertIsNone(importer_wix.prix_tnd(None))
 
     def test_decoupage_des_marques(self):
@@ -57,10 +58,10 @@ class ImporterWixTest(unittest.TestCase):
         catalogue, _ = self.importer()
         citroen = next(lot for lot in catalogue if lot["reference"] == "7753628")
         self.assertEqual(citroen["status"], "stock")
-        self.assertEqual(citroen["indicativePriceTnd"], 71100)
+        self.assertEqual(citroen["indicativePriceTnd"], 81100)
         self.assertEqual(citroen["year"], 2022)
         self.assertEqual(len(citroen["photos"]), 2)
-        self.assertTrue(all(photo["authorized"] for photo in citroen["photos"]))
+        self.assertTrue(all(photo["authorized"] is False for photo in citroen["photos"]), "pas d'autorisation présumée")
         mercedes = next(lot for lot in catalogue if lot["reference"] == "7754225")
         self.assertNotIn("indicativePriceTnd", mercedes)
 
@@ -70,8 +71,13 @@ class ImporterWixTest(unittest.TestCase):
         self.assertEqual(len(porsche), 1)
         self.assertEqual(porsche[0]["status"], "open")
         self.assertEqual(porsche[0]["endsAt"], "2026-11-01T15:00:00Z")
-        self.assertEqual(porsche[0]["photos"], [{"url": "https://ecarstrade.com/p/porsche.jpg", "authorized": True}])
+        self.assertEqual(porsche[0]["photos"], [{"url": "https://ecarstrade.com/p/porsche.jpg", "authorized": False}])
         self.assertIn("7750872 complété", sortie)
+
+    def test_photos_autorisees_sur_confirmation_explicite(self):
+        catalogue, _ = self.importer("--photos-autorisees")
+        citroen = next(lot for lot in catalogue if lot["reference"] == "7753628")
+        self.assertEqual([photo["authorized"] for photo in citroen["photos"]], [True, True])
 
     def test_essai_n_ecrit_rien(self):
         catalogue, sortie = self.importer("--essai")

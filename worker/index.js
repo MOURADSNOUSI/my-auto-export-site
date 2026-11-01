@@ -501,8 +501,11 @@ async function deciderOffre(request, env, offreId, accepter) {
   const offre = await env.DB.prepare("SELECT id, user_id, reference, kind, amount_tnd, status FROM offers WHERE id = ?").bind(offreId).first();
   if (!offre) throw new ApiError(404, "Offre introuvable.");
   if (offre.status !== "pending") throw new ApiError(409, "Cette offre a déjà été traitée.");
+  const maintenant = new Date().toISOString();
   if (!accepter) {
-    await env.DB.prepare("UPDATE offers SET status = 'refused' WHERE id = ? AND status = 'pending'").bind(offreId).run();
+    const { meta } = await env.DB.prepare("UPDATE offers SET status = 'refused', decided_at = ?, decided_by = ? WHERE id = ? AND status = 'pending'")
+      .bind(maintenant, user.id, offreId).run();
+    if (meta.changes !== 1) throw new ApiError(409, "Cette offre a déjà été traitée.");
     return json({ id: offreId, status: "refused" });
   }
 
@@ -513,26 +516,51 @@ async function deciderOffre(request, env, offreId, accepter) {
   if (offre.kind === "bid") {
     const auction = etatEnchere(item.lot, (await resumesEncheres(env)).get(offre.reference), Date.now());
     if (auction?.status === "live") throw new ApiError(409, "La vente est encore en cours : attends sa fin pour accepter une enchère.");
+    const meilleure = await env.DB.prepare(MEILLEURE_ENCHERE).bind(offre.reference).first();
+    if (meilleure?.id !== offre.id) throw new ApiError(409, "Seule la meilleure enchère peut être acceptée.");
   }
 
-  const maintenant = new Date().toISOString();
+  // Les vérifications ci-dessus donnent un message clair ; c'est la batch qui décide. Elle s'exécute en une transaction :
+  // la première requête n'accepte l'offre que si elle est toujours en attente, la meilleure enchère et seule acceptée
+  // du véhicule (index offers_une_acceptee en plus) ; les suivantes n'agissent que si c'est cette décision-ci qui l'a acceptée.
+  const decisionPrise = "EXISTS (SELECT 1 FROM offers WHERE id = ? AND status = 'accepted' AND decided_at = ? AND decided_by = ?)";
+  const decision = [offreId, maintenant, user.id];
   const requetes = [
-    env.DB.prepare("UPDATE offers SET status = 'accepted' WHERE id = ? AND status = 'pending'").bind(offreId),
-    env.DB.prepare("UPDATE offers SET status = 'refused' WHERE reference = ? AND id <> ? AND status = 'pending'").bind(offre.reference, offreId),
     env.DB.prepare(
-      `INSERT INTO customer_vehicles (user_id, reference, make, model, trim, status, purchased_at) VALUES (?, ?, ?, ?, ?, 'purchased', ?)
+      `UPDATE offers SET status = 'accepted', decided_at = ?, decided_by = ? WHERE id = ? AND status = 'pending'
+       AND NOT EXISTS (SELECT 1 FROM offers WHERE reference = ? AND status = 'accepted')
+       AND (kind <> 'bid' OR id = (${MEILLEURE_ENCHERE}))`
+    ).bind(maintenant, user.id, offreId, offre.reference, offre.reference),
+    env.DB.prepare(
+      `UPDATE offers SET status = 'refused', decided_at = ?, decided_by = ? WHERE reference = ? AND id <> ? AND status = 'pending' AND ${decisionPrise}`
+    ).bind(maintenant, user.id, offre.reference, offreId, ...decision),
+    env.DB.prepare(
+      `INSERT INTO customer_vehicles (user_id, reference, make, model, trim, status, purchased_at)
+       SELECT ?, ?, ?, ?, ?, 'purchased', ? WHERE ${decisionPrise}
        ON CONFLICT(user_id, reference) DO NOTHING`
-    ).bind(offre.user_id, offre.reference, item.lot.make, item.lot.model, item.lot.trim || null, maintenant)
+    ).bind(offre.user_id, offre.reference, item.lot.make, item.lot.model, item.lot.trim || null, maintenant, ...decision)
   ];
   if (body.removeFromSite !== false) {
     requetes.push(env.DB.prepare(
-      `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 1, ?, ?)
+      `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) SELECT ?, ?, 1, ?, ? WHERE ${decisionPrise}
        ON CONFLICT(reference) DO UPDATE SET removed = 1, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
-    ).bind(offre.reference, JSON.stringify(item.lot), maintenant, user.id));
+    ).bind(offre.reference, JSON.stringify(item.lot), maintenant, user.id, ...decision));
   }
-  await env.DB.batch(requetes);
+  let resultats;
+  try {
+    resultats = await env.DB.batch(requetes);
+  } catch (error) {
+    if (String(error).includes("UNIQUE")) throw new ApiError(409, "Une offre a déjà été acceptée pour ce véhicule.");
+    throw error;
+  }
+  if (resultats[0].meta.changes !== 1) {
+    throw new ApiError(409, "Cette offre ne peut plus être acceptée : une autre décision vient d'être enregistrée pour ce véhicule.");
+  }
   return json({ id: offreId, status: "accepted", removedFromSite: body.removeFromSite !== false });
 }
+
+// Meilleure enchère d'un véhicule : la plus haute, la plus ancienne à montant égal (même ordre que listerOffres).
+const MEILLEURE_ENCHERE = "SELECT id FROM offers WHERE reference = ? AND kind = 'bid' ORDER BY amount_tnd DESC, created_at ASC, id ASC LIMIT 1";
 
 const STATUTS = ["open", "upcoming", "stock"];
 

@@ -219,11 +219,16 @@ class EncheresTest(unittest.TestCase):
             self.assertIn(texte, page)
 
     def terminer(self, reference):
-        """Ramène la dernière enchère dans le passé puis attend la fin prévue (endsAt dans 3 s)."""
+        """Ramène la dernière enchère dans le passé puis attend que la vente soit terminée (endsAt dans quelques secondes)."""
         subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", self.persist, "-c", self.config, "--command",
                         f"UPDATE offers SET created_at = '2000-01-01T00:00:00.000Z' WHERE reference = '{reference}' AND kind = 'bid'"],
                        cwd=PROJET, check=True, capture_output=True)
-        time.sleep(3)
+        # Attente sur l'état réel plutôt qu'une durée fixe : sous charge, une pause fixe peut finir avant endsAt.
+        for _ in range(30):
+            if self.offres(reference)[1]["lots"][reference]["auction"]["status"] == "ended":
+                return
+            time.sleep(0.5)
+        self.fail(f"la vente {reference} ne s'est pas terminée")
 
     def offres(self, reference, email="admin@ex.com"):
         return self.requete(f"/api/admin/offers?reference={reference}", cookie=self.cookies[email])
@@ -255,6 +260,69 @@ class EncheresTest(unittest.TestCase):
         self.assertNotIn("ACC-1", [v["reference"] for v in alice["vehicles"]])
         self.assertNotIn("ACC-1", [lot["reference"] for lot in self.requete("/api/catalogue")[1]], "retiré du site")
         self.assertEqual(self.decider(meilleure["id"], "accept")[0], 409, "déjà traitée")
+
+    def test_enchere_perdante_ne_peut_pas_etre_acceptee(self):
+        self.creer_lot("ACC-5", make="Skoda", model="Kodiaq", endsAt=dans(seconds=4))
+        self.encherir("alice", "ACC-5", 100000)
+        self.encherir("bob", "ACC-5", 101000)
+        self.terminer("ACC-5")
+        offres = {o["email"]: o for o in self.offres("ACC-5")[1]["offers"]}
+        self.assertFalse(offres["alice@ex.com"]["best"])
+        statut, data, _ = self.decider(offres["alice@ex.com"]["id"], "accept")
+        self.assertEqual((statut, data["error"]), (409, "Seule la meilleure enchère peut être acceptée."))
+        statuts = {o["email"]: o["status"] for o in self.offres("ACC-5")[1]["offers"]}
+        self.assertEqual(statuts, {"alice@ex.com": "pending", "bob@ex.com": "pending"}, "rien n'a changé")
+        alice = self.requete("/api/me", cookie=self.cookies["alice@ex.com"])[1]
+        self.assertNotIn("ACC-5", [v["reference"] for v in alice["vehicles"]])
+        self.assertIn("ACC-5", [lot["reference"] for lot in self.requete("/api/catalogue")[1]], "toujours en ligne")
+
+        # Dans la page : l'enchère perdante peut être refusée, pas acceptée.
+        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.addCleanup(context.close)
+        page = context.new_page()
+        page.goto(self.base + "/admin.html")
+        page.fill("#login-email", "admin@ex.com")
+        page.fill("#login-password", MOT_DE_PASSE)
+        page.click("#login-form [type=submit]")
+        page.wait_for_selector("#todo:not(.hidden)")
+        page.locator("#todo-list li", has_text="ACC-5").get_by_text("Décider").click()
+        page.wait_for_selector("#bids-dialog[open] [data-accept]")
+        self.assertEqual(page.locator("#bids-body [data-accept]").count(), 1)
+        self.assertEqual(page.locator("#bids-body li.best [data-accept]").count(), 1)
+        perdante = page.locator("#bids-body li:not(.best)")
+        self.assertEqual((perdante.locator("[data-accept]").count(), perdante.locator("[data-refuse]").count()), (0, 1))
+
+    def test_deux_acceptations_simultanees_une_seule_vente(self):
+        self.creer_lot("ACC-6", status="stock", endsAt=None, buyNowPriceTnd=95000)
+        for email in ("alice", "bob"):
+            self.assertEqual(self.requete("/api/offers", {"reference": "ACC-6", "kind": "buy_now"}, "POST", self.cookies[f"{email}@ex.com"])[0], 201)
+        offres = {o["email"]: o["id"] for o in self.offres("ACC-6")[1]["offers"]}
+        depart = threading.Barrier(2)
+        resultats = {}
+
+        def accepter(email):
+            depart.wait()
+            resultats[email] = self.decider(offres[email], "accept")[0]
+
+        fils = [threading.Thread(target=accepter, args=(email,)) for email in offres]
+        for fil in fils:
+            fil.start()
+        for fil in fils:
+            fil.join()
+        self.assertEqual(sorted(resultats.values()), [200, 409], resultats)
+        gagnant = next(email for email, statut in resultats.items() if statut == 200)
+        perdant = next(email for email in resultats if email != gagnant)
+        statuts = {o["email"]: o["status"] for o in self.offres("ACC-6")[1]["offers"]}
+        self.assertEqual(statuts, {gagnant: "accepted", perdant: "refused"})
+        for email, attendu in ((gagnant, True), (perdant, False)):
+            moi = self.requete("/api/me", cookie=self.cookies[email])[1]
+            self.assertEqual("ACC-6" in [v["reference"] for v in moi["vehicles"]], attendu, email)
+        # Même la même offre envoyée deux fois de suite (double clic) n'est acceptée qu'une fois.
+        self.assertEqual(self.decider(offres[gagnant], "accept")[0], 409)
+        # La base refuse elle-même une seconde offre acceptée pour la même référence.
+        with self.assertRaises(subprocess.CalledProcessError):
+            subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", self.persist, "-c", self.config, "--command",
+                            f"UPDATE offers SET status = 'accepted' WHERE id = {offres[perdant]}"], cwd=PROJET, check=True, capture_output=True)
 
     def test_achat_immediat_refuse_puis_accepte_sans_retirer(self):
         self.creer_lot("ACC-2", status="stock", endsAt=None, indicativePriceTnd=90000, buyNowPriceTnd=95000)
