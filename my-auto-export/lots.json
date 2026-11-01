@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "reference": "7750872",
+    "make": "Porsche",
+    "model": "Cayenne",
+    "trim": "3.0 E-hybrid 5d 346kW",
+    "bodyType": null,
+    "year": 2024,
+    "mileageKm": 21632,
+    "fuel": "Hybride (essence / électrique)",
+    "country": "Belgique",
+    "indicativePriceTnd": null,
+    "priceLabel": "Prix sur demande",
+    "status": "open",
+    "endsAt": "2026-11-01T15:00:00Z",
+    "sourceUrl": "https://fr.ecarstrade.com/cars/7750872",
+    "photos": []
+  }
+]
