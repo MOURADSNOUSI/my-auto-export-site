@@ -1,28 +1,45 @@
+
 {
-	"name": "my-auto-export-site",
-	"compatibility_date": "2026-10-01",
-	"main": "worker/main.js",
-	"assets": {
-		"directory": "./my-auto-export",
-		"binding": "ASSETS"
-	},
-	// Base de l'espace acheteur (production). Pour une nouvelle base : `npx wrangler d1 create my-auto-export`,
-	// puis remplacer database_id par l'identifiant affiché (voir README).
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "my-auto-export",
-			"database_id": "9481f2d4-698c-4f6f-90e2-9532f9e44bcf",
-			"migrations_dir": "migrations"
-		}
-	],
-	// Photos envoyées depuis /admin.html (créé avec `npx wrangler r2 bucket create my-auto-export-photos`).
-	// Le Worker lit env.PHOTOS ; en local, `wrangler dev` utilise un stockage local, pas celui de production.
-	// Pas de binding DOCUMENTS : le téléchargement des factures PDF reste désactivé (voir README, « Factures PDF »).
-	"r2_buckets": [
-		{
-			"binding": "PHOTOS",
-			"bucket_name": "my-auto-export-photos"
-		}
-	]
+  "name": "my-auto-export-site",
+  "compatibility_date": "2026-10-01",
+  "main": "worker/main.js",
+
+  "assets": {
+    "directory": "./my-auto-export",
+    "binding": "ASSETS"
+  },
+
+  // PRODUCTION
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-auto-export",
+      "database_id": "9481f2d4-698c-4f6f-90e2-9532f9e44bcf",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "my-auto-export-photos"
+    }
+  ],
+
+  // PREVISUALISATION - ressources séparées
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "my-auto-export-preview",
+        "database_id": "a658cc29-3472-4c95-b877-080b77335edf"
+      }
+    ],
+    "r2_buckets": [
+      {
+        "binding": "PHOTOS",
+        "bucket_name": "my-auto-export-photos-preview"
+      }
+    ]
+  }
 }
