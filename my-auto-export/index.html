@@ -4,151 +4,217 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101513">
-  <meta name="description" content="M&Y AUTO EXPORT — ventes et enchères automobiles pour la Tunisie. Consultez les lots après vérification de leur disponibilité et de leurs conditions.">
-  <title>Ventes automobiles — M&Y AUTO EXPORT</title>
+  <meta name="description" content="M&Y AUTO EXPORT — véhicules européens livrés en Tunisie : stock, enchères et prix fixes, prix affichés en dinars tunisiens.">
+  <title>M&Y AUTO EXPORT — Véhicules européens livrés en Tunisie</title>
   <style>
     :root {
       color-scheme: light;
       --ink: #17201d;
       --ink-soft: #44514c;
-      --paper: #f0f2ef;
+      --paper: #f3f5f3;
       --surface: #ffffff;
       --line: #d7ddd8;
       --gold: #c99d4d;
       --gold-pale: #f4ead5;
+      --gold-ink: #725b2d;
       --green: #23755b;
+      --green-dark: #185740;
       --green-pale: #e4f0e9;
-      --muted: #6a756f;
+      --muted: #5f6b65;
       --dark: #101513;
-      --dark-line: #303a35;
       --radius: 8px;
       font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background-color: var(--paper);
-      background-image: repeating-linear-gradient(0deg, transparent 0, transparent 39px, #dce2dd 40px);
-      color: var(--ink);
-      font-size: 15px;
-      line-height: 1.5;
-    }
+    html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.5; }
     button, input, select, textarea { font: inherit; }
     button, a, select { -webkit-tap-highlight-color: transparent; }
     a { color: inherit; text-decoration: none; }
     button { cursor: pointer; }
     :focus-visible { outline: 3px solid #2a8b69; outline-offset: 3px; }
+    svg.icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
     .shell { width: min(1280px, calc(100% - 48px)); margin-inline: auto; }
-    .topbar {
-      min-height: 76px;
-      background: var(--dark);
-      color: #f5f4ed;
-      border-bottom: 1px solid #29312d;
-    }
-    .topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 76px; }
-    .brand { display: inline-flex; align-items: center; gap: 12px; min-width: 220px; }
-    .brand img { display: block; width: 48px; height: 48px; border: 1px solid #ad8b4e; border-radius: 50%; object-fit: cover; }
-    .brand-name { display: grid; gap: 1px; font-size: 13px; font-weight: 800; letter-spacing: 0; }
-    .brand-name small { color: #c9b991; font-size: 10px; font-weight: 600; }
-    .main-nav { display: flex; align-items: center; gap: 28px; color: #d6ddd8; font-size: 13px; }
-    .main-nav a:hover { color: #e2bd73; }
-    .header-tools { display: flex; align-items: center; gap: 12px; }
-    .currency { padding: 7px 10px; border-left: 1px solid var(--dark-line); color: #d8c99e; font-size: 12px; font-weight: 750; }
-    .contact-link { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid #c99d4d; border-radius: 5px; background: transparent; color: #f5d992; font-size: 12px; font-weight: 750; }
-    .contact-link:hover { background: #c99d4d; color: #171a17; }
 
-    .market-bar { border-bottom: 1px solid var(--line); background: var(--surface); }
-    .market-bar-inner { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 20px; }
-    .market-links { display: flex; align-items: center; gap: 22px; min-width: 0; overflow-x: auto; padding-top: 10px; scrollbar-width: none; }
-    .market-links a, .nav-account { position: relative; flex: 0 0 auto; padding: 8px 0; border: 0; background: none; color: var(--ink-soft); font-size: 15px; white-space: nowrap; }
-    .market-links a:hover, .nav-account:hover { color: var(--green); }
-    .market-links a[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -2px var(--green); }
-    .nav-count { position: absolute; top: -9px; right: -12px; min-width: 22px; padding: 1px 6px; border-radius: 10px; background: #e6eae7; color: var(--ink-soft); font-size: 10px; font-weight: 700; line-height: 1.5; text-align: center; }
-    .nav-count.hot { background: #f0a020; color: var(--dark); }
-    .nav-gap { margin-left: 26px; }
-    .account-dot { display: inline-block; width: 13px; height: 13px; margin-left: 4px; border-radius: 50%; background: #d64045; vertical-align: -1px; }
-    .account-dot.on { background: var(--green); }
-    .market-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
-    .icon-button { position: relative; display: grid; width: 40px; height: 40px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink); }
+    /* --- En-tête : une seule barre, rubriques avec compteurs --- */
+    .site-header { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .header-inner { display: flex; min-height: 68px; align-items: center; gap: 28px; }
+    .brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 10px; }
+    .brand img { display: block; width: 44px; height: 44px; border: 1px solid #ad8b4e; border-radius: 50%; object-fit: cover; }
+    .brand-name { display: grid; color: var(--dark); font-size: 14px; font-weight: 800; line-height: 1.2; }
+    .brand-name small { color: var(--gold-ink); font-size: 11px; font-weight: 650; }
+    .main-nav { display: flex; flex: 1; align-items: center; gap: 26px; min-width: 0; padding-top: 8px; }
+    .main-nav a { position: relative; flex: 0 0 auto; padding: 10px 0 12px; color: var(--ink-soft); font-size: 15px; white-space: nowrap; }
+    .main-nav a:hover { color: var(--green); }
+    .main-nav a[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -3px var(--green); }
+    .nav-count { position: absolute; top: -8px; right: -14px; min-width: 24px; padding: 0 6px; border-radius: 10px; background: #e6eae7; color: var(--ink-soft); font-size: 11px; font-weight: 700; line-height: 1.6; text-align: center; }
+    .nav-count.hot { background: var(--gold); color: var(--dark); }
+    .nav-gap { margin-left: 18px; }
+    .header-tools { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; margin-left: auto; }
+    .icon-button { position: relative; display: grid; width: 42px; height: 42px; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink); }
     .icon-button:hover { background: var(--green-pale); }
-    .icon-button svg, .account-chip svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-button svg, .account-chip svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
     .icon-button svg .filled, .account-chip svg .filled { fill: currentColor; stroke: none; }
-    .tool-count { position: absolute; top: 0; right: -2px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: #e6eae7; color: var(--ink-soft); font-size: 9px; font-weight: 750; line-height: 1.7; }
-    .account-chip { display: flex; align-items: center; gap: 9px; margin-left: 8px; padding: 4px 4px 4px 14px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--ink); text-align: left; }
-    .account-chip svg { width: 34px; height: 34px; color: var(--ink-soft); }
-    .account-chip strong { display: block; font-size: 14px; font-weight: 600; }
-    .account-chip small { display: block; color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: .4px; text-transform: uppercase; }
+    .tool-count { position: absolute; top: 1px; right: 0; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--green); color: white; font-size: 11px; font-weight: 750; line-height: 1.6; }
+    .tool-count.empty { display: none; }
+    .account-chip { display: flex; align-items: center; gap: 9px; margin-left: 10px; padding: 4px 4px 4px 14px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--ink); text-align: left; }
+    .account-chip svg { width: 32px; height: 32px; color: var(--ink-soft); }
+    .account-chip strong { display: block; font-size: 14px; font-weight: 650; }
+    .account-chip small { display: block; color: var(--green); font-size: 11px; font-weight: 750; letter-spacing: .3px; text-transform: uppercase; }
+    .account-dot { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 50%; background: #d64045; vertical-align: 1px; }
+    .account-dot.on { background: var(--green); }
+    .menu-button { display: none; }
 
-    .status-strip { border-bottom: 1px solid var(--line); background: #e7ece8; }
-    .status-inner { display: flex; min-height: 38px; align-items: center; justify-content: space-between; gap: 18px; color: var(--ink-soft); font-size: 11px; }
-    .status-left { display: flex; align-items: center; gap: 9px; }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
-    .preview-label { color: #725b2d; font-weight: 750; }
-    .timezone { color: var(--muted); }
+    /* --- Bandeau d'accueil avec recherche --- */
+    .hero { position: relative; overflow: hidden; background: var(--surface); }
+    .hero-photo { position: absolute; inset: 0 0 0 38%; width: 62%; height: 100%; object-fit: cover; object-position: 50% 62%; }
+    .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #fff 40%, #ffffffcc 50%, #ffffff00 70%); pointer-events: none; }
+    .hero-inner { position: relative; z-index: 1; padding: 64px 0 56px; }
+    .hero h1 { max-width: 620px; margin: 0; font-size: 50px; line-height: 1.08; font-weight: 800; letter-spacing: -.5px; }
+    .hero-lead { max-width: 500px; margin: 18px 0 0; color: var(--ink-soft); font-size: 21px; line-height: 1.45; }
+    .hero-lead strong { color: var(--ink); }
+    .hero-search { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: center; max-width: 880px; margin-top: 36px; padding: 10px 10px 10px 8px; border-radius: 48px; background: var(--surface); box-shadow: 0 10px 40px #10151324, 0 0 0 1px #10151310; }
+    .hero-search label { display: grid; padding: 4px 18px; border-right: 1px solid var(--line); }
+    .hero-search label span { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .hero-search select { width: 100%; padding: 2px 0; border: 0; background: transparent; color: var(--ink); font-size: 15px; font-weight: 650; }
+    .hero-search select:focus-visible { outline-offset: 6px; }
+    .hero-submit { min-height: 54px; margin-left: 10px; padding: 0 26px; border: 0; border-radius: 30px; background: var(--green); color: white; font-size: 15px; font-weight: 750; white-space: nowrap; }
+    .hero-submit:hover { background: var(--green-dark); }
+    .advanced-link { display: inline-flex; align-items: center; gap: 8px; margin: 16px 0 0 22px; color: var(--ink); font-size: 14px; font-weight: 700; }
+    .advanced-link:hover { color: var(--green); }
 
-    main { padding: 34px 0 64px; }
-    .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; padding: 0 0 25px; }
-    .eyebrow { margin: 0 0 7px; color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
-    h1 { margin: 0; font-size: 34px; line-height: 1.14; font-weight: 760; letter-spacing: 0; }
-    .heading-note { max-width: 390px; margin: 0; color: var(--muted); font-size: 13px; }
+    /* --- Atouts --- */
+    .features { border-bottom: 1px solid var(--line); background: var(--surface); }
+    .features-inner { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; padding: 34px 0 38px; }
+    .feature { display: grid; justify-items: center; gap: 8px; text-align: center; }
+    .feature svg { width: 30px; height: 30px; color: var(--green); stroke-width: 1.7; }
+    .feature h2 { margin: 0; font-size: 15px; line-height: 1.3; }
+    .feature p { margin: 0; color: var(--muted); font-size: 13px; }
 
-    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-    .stat { display: flex; min-height: 82px; align-items: center; gap: 14px; padding: 15px 20px; }
-    .stat + .stat { border-left: 1px solid var(--line); }
-    .stat-number { color: var(--green); font-size: 25px; font-weight: 780; line-height: 1; }
-    .stat-label { display: grid; color: var(--muted); font-size: 11px; }
-    .stat-label strong { color: var(--ink); font-size: 13px; }
+    /* --- Sections de la page --- */
+    main { padding: 0 0 64px; }
+    .section-title { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 0 0 18px; padding-bottom: 10px; border-bottom: 2px solid var(--gold); }
+    .section-title h2 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; }
+    .block { padding-top: 44px; }
 
-    .market { display: grid; grid-template-columns: 250px minmax(0, 1fr); align-items: start; gap: 18px; }
-    .filter-panel, .listing-panel, .side-panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-    .filter-panel { padding: 19px; }
-    .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 18px; font-size: 14px; font-weight: 780; }
-    .clear-button { padding: 0; border: 0; background: none; color: var(--green); font-size: 11px; font-weight: 700; }
-    .filter-group { display: grid; gap: 7px; margin-top: 16px; }
-    .filter-group label { color: var(--ink-soft); font-size: 11px; font-weight: 700; }
-    .field, .select-field { width: 100%; min-height: 42px; padding: 0 11px; border: 1px solid var(--line); border-radius: 5px; background: #fbfcfb; color: var(--ink); font-size: 12px; }
-    .field::placeholder { color: #8a938e; }
-    .filter-hint { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .recent-track { display: grid; grid-auto-columns: minmax(250px, 1fr); grid-auto-flow: column; gap: 14px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
+    .recent-card { position: relative; display: block; min-height: 210px; overflow: hidden; padding: 0; border: 0; border-radius: var(--radius); background: var(--dark); color: white; text-align: center; scroll-snap-align: start; }
+    .recent-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .82; transition: opacity .2s, transform .3s; }
+    .recent-card:hover img { opacity: .65; transform: scale(1.03); }
+    .recent-card span { position: relative; display: grid; min-height: 210px; align-content: center; gap: 6px; padding: 16px; background: linear-gradient(0deg, #10151399, #10151340); }
+    .recent-card strong { font-size: 20px; line-height: 1.2; text-shadow: 0 1px 8px #0008; }
+    .recent-card em { color: #f1cf85; font-style: normal; }
+    .recent-card small { font-size: 13px; font-weight: 650; }
+    .track-buttons { display: flex; gap: 6px; }
+    .track-buttons button { width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 50%; background: white; color: var(--ink); font-size: 18px; line-height: 1; }
+    .track-buttons button:hover { border-color: var(--green); color: var(--green); }
 
-    .listing-panel { min-width: 0; overflow: hidden; }
-    .listing-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 15px 18px; border-bottom: 1px solid var(--line); }
-    .tabs { display: flex; align-items: center; gap: 7px; overflow-x: auto; }
-    .tab { flex: 0 0 auto; min-height: 34px; padding: 0 11px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; }
-    .tab[aria-pressed="true"] { border-color: #b7d4c5; background: var(--green-pale); color: #1d5e49; }
-    .sort-control { width: auto; min-width: 145px; min-height: 34px; font-size: 11px; }
-    .result-line { display: flex; justify-content: space-between; gap: 12px; padding: 12px 18px; color: var(--muted); font-size: 11px; }
-    .result-line strong { color: var(--ink); }
-    .lot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 0 16px 16px; }
-    .lot-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
-    .lot-photo { display: grid; min-height: 180px; place-items: center; background: #e6eae7; color: var(--muted); text-align: center; }
-    .lot-photo img { display: block; width: 100%; height: 180px; object-fit: cover; }
-    .photo-missing { display: grid; gap: 4px; padding: 20px; font-size: 11px; }
-    .photo-missing strong { color: var(--ink-soft); font-size: 13px; }
-    .lot-body { padding: 14px; }
-    .lot-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 10px; }
-    .lot-status { padding: 4px 7px; border-radius: 3px; background: var(--green-pale); color: var(--green); font-weight: 750; }
-    .lot-title { margin: 11px 0 8px; font-size: 16px; line-height: 1.3; }
-    .lot-specs { display: flex; flex-wrap: wrap; gap: 6px 12px; color: var(--muted); font-size: 11px; }
-    .lot-price { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
-    .lot-price small { display: block; color: var(--muted); font-size: 10px; }
-    .lot-price strong { font-size: 18px; }
-    .lot-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-    .source-link { color: var(--green); font-size: 10px; font-weight: 700; }
+    .brand-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+    .brand-chip { display: inline-flex; min-height: 46px; align-items: center; gap: 10px; padding: 0 18px; border: 1px solid var(--line); border-radius: 26px; background: white; color: var(--ink); font-size: 15px; font-weight: 700; }
+    .brand-chip span { color: var(--muted); font-size: 13px; font-weight: 600; }
+    .brand-chip:hover { border-color: var(--green); color: var(--green); }
+
+    /* --- Catalogue : filtres à gauche, résultats en lignes --- */
+    .market { display: grid; grid-template-columns: 290px minmax(0, 1fr); align-items: start; gap: 22px; }
+    .filter-panel { position: sticky; top: 84px; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .panel-title { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 17px; font-weight: 800; text-transform: uppercase; }
+    .filter-toggle { display: none; }
+    .field, .select-field { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; color: var(--ink); font-size: 14px; }
+    .field::placeholder { color: #7d8781; }
+    .filter-group { display: grid; gap: 6px; margin-top: 12px; }
+    .filter-group label { display: flex; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+    .filter-group label svg { color: var(--muted); }
+    .filter-submit { width: 100%; min-height: 46px; margin-top: 18px; border: 0; border-radius: 24px; background: var(--green); color: white; font-size: 15px; font-weight: 750; }
+    .filter-submit:hover { background: var(--green-dark); }
+    .clear-button { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; border: 0; background: none; color: var(--ink-soft); font-size: 14px; font-weight: 650; }
+    .clear-button:hover { color: var(--green); }
+
+    .listing-panel { min-width: 0; }
+    .results-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
+    .results-head h2 { margin: 0; font-size: 19px; font-weight: 800; text-transform: uppercase; }
+    .results-note { color: var(--muted); font-size: 13px; }
+    .sort-control { width: auto; min-width: 210px; }
+
+    .lot-grid { display: grid; gap: 14px; }
+    .lot-card { display: grid; grid-template-columns: 240px minmax(0, 1fr) 230px; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); transition: box-shadow .2s, border-color .2s; }
+    .lot-card:hover { border-color: #c3ccc6; box-shadow: 0 6px 22px #1015130f; }
+    .lot-photo { position: relative; display: grid; min-height: 190px; place-items: center; background: #e6eae7; color: var(--muted); text-align: center; }
+    .lot-photo img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+    .photo-open { position: absolute; inset: 0; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+    .photo-count { position: absolute; right: 8px; bottom: 8px; padding: 2px 8px; border-radius: 3px; background: #101513c4; color: white; font-size: 12px; font-weight: 700; }
+    .photo-missing { display: grid; gap: 4px; padding: 20px; font-size: 13px; }
+    .photo-missing strong { color: var(--ink-soft); font-size: 14px; }
+    .lot-status { position: absolute; top: 0; left: 0; z-index: 1; padding: 5px 11px; border-bottom-right-radius: 6px; background: var(--green); color: white; font-size: 12px; font-weight: 750; letter-spacing: .3px; text-transform: uppercase; }
+    .lot-status.upcoming { background: var(--gold); color: var(--dark); }
+    .lot-status.open { background: #b8402f; }
+    .lot-body { display: flex; min-width: 0; flex-direction: column; gap: 10px; padding: 14px 18px; }
+    .lot-title { margin: 0; font-size: 17px; line-height: 1.3; }
+    .lot-meta { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .lot-specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; margin: 0; padding: 10px 0; border-block: 1px solid var(--line); list-style: none; }
+    .lot-specs li { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 13px; }
+    .lot-specs li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lot-specs svg { color: var(--muted); }
+    .lot-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-top: auto; }
+    .lot-side { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-left: 1px solid var(--line); background: #fafbfa; }
+    .lot-price { display: grid; gap: 1px; }
+    .lot-price small { color: var(--muted); font-size: 12px; }
+    .lot-price strong { font-size: 21px; line-height: 1.2; }
+    .lot-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: auto; }
+    .detail-link { min-height: 42px; padding: 0 12px; border: 0; border-radius: 22px; background: var(--green); color: white; font-size: 14px; font-weight: 750; }
+    .detail-link:hover { background: var(--green-dark); }
+    .lot-action { display: grid; width: 42px; height: 42px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: white; color: var(--ink-soft); }
+    .lot-action svg { width: 20px; height: 20px; }
+    .lot-action[aria-pressed="true"] { border-color: var(--green); background: var(--green-pale); color: var(--green); }
+    .lot-action[aria-pressed="true"] svg path { fill: currentColor; }
+    .source-link { display: inline-flex; min-height: 36px; align-items: center; gap: 6px; color: var(--green); font-size: 13px; font-weight: 700; }
     .source-link:hover { text-decoration: underline; }
-    button.source-link { padding: 0; border: 0; background: none; font-family: inherit; cursor: pointer; }
-    .photo-open { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
-    .photo-count { position: absolute; right: 8px; bottom: 8px; padding: 3px 7px; border-radius: 3px; background: #101513c4; color: white; font-size: 10px; font-weight: 700; }
-    .detail-link { margin-left: auto; min-height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 11px; font-weight: 700; cursor: pointer; }
-    .detail-link:hover { border-color: var(--green); color: var(--green); }
-    .price-lines, .pickup-lines { display: grid; gap: 4px; margin: 10px 0 0; font-size: 11px; }
-    .price-lines div, .pickup-lines div { display: flex; justify-content: space-between; gap: 12px; }
+    button.source-link { padding: 0; border: 0; background: none; }
+    .price-lines, .pickup-lines { display: grid; gap: 4px; margin: 0; font-size: 13px; }
+    .price-lines div { display: flex; justify-content: space-between; gap: 10px; }
     .price-lines dt, .pickup-lines dt { color: var(--muted); }
-    .price-lines dd, .pickup-lines dd { margin: 0; font-weight: 750; text-align: right; }
-    .pickup-lines { padding: 9px 10px; border-radius: 4px; background: #f5f8f5; }
+    .price-lines dd, .pickup-lines dd { margin: 0; font-weight: 750; }
+    .lot-body .pickup-lines { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .lot-body .pickup-lines div { display: grid; gap: 0; }
+    .lot-body .pickup-lines dt { font-size: 12px; }
+    .lot-dialog .lot-price { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .lot-dialog .lot-actions, .lot-dialog .buy-now, .lot-dialog .price-lines { display: flex; margin-top: 10px; }
+    .lot-dialog .price-lines { display: grid; }
+    .lot-dialog .pickup-lines { padding: 10px 12px; border-radius: 6px; background: #f5f8f5; }
+    .lot-dialog .pickup-lines div { display: flex; justify-content: space-between; gap: 12px; }
+    .lot-dialog .pickup-lines dd { text-align: right; }
     .pickup-lines dd.to-confirm { color: var(--muted); font-weight: 600; font-style: italic; }
+    .buy-now { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid var(--gold); border-radius: 22px; background: var(--gold-pale); color: #5c4720; font-size: 13px; font-weight: 750; }
+    .buy-now:hover { background: var(--gold); color: var(--dark); }
+
+    .empty-state { display: grid; min-height: 300px; align-content: center; justify-items: center; padding: 34px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-align: center; }
+    .empty-mark { display: grid; width: 50px; height: 50px; place-items: center; margin-bottom: 14px; border: 1px solid #d6dfd9; border-radius: 50%; background: #f5f8f5; color: var(--green); font-size: 21px; }
+    .empty-state h2 { margin: 0; font-size: 19px; }
+    .empty-state p { max-width: 460px; margin: 9px 0 18px; color: var(--muted); font-size: 14px; }
+    .primary-action { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 18px; border: 1px solid var(--green); border-radius: 22px; background: var(--green); color: white; font-size: 14px; font-weight: 750; }
+    .primary-action:hover { background: var(--green-dark); }
+
+    /* --- Fonctionnement, conditions, contact --- */
+    .below-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr); gap: 18px; }
+    .side-panel { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .side-panel h2 { margin: 0 0 10px; font-size: 18px; }
+    .side-panel p { margin: 0; color: var(--muted); font-size: 14px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
+    .step { padding-top: 11px; border-top: 2px solid var(--gold); }
+    .step b { display: block; margin-bottom: 5px; color: var(--green); font-size: 14px; }
+    .step span { color: var(--ink-soft); font-size: 13px; }
+    .price-note { border-left: 3px solid var(--gold); background: #fbf8f0; }
+    .price-note strong { color: var(--gold-ink); }
+    .contact-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .text-action { display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; background: white; color: var(--ink); font-size: 14px; font-weight: 700; }
+    .text-action:hover { border-color: var(--green); color: var(--green); }
+
+    footer { padding: 26px 0; background: var(--dark); color: #d6ddd8; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 13px; }
+    .footer-inner strong { color: white; }
+
+    /* --- Fenêtres : fiche, connexion, page personnelle --- */
     .fiche-section { margin: 18px 0 0; font-size: 13px; }
     .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 16px 0; }
     .auth-tabs button { min-height: 38px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -183,9 +249,6 @@
     .offer-status.accepted { background: var(--green-pale); color: var(--green); }
     .offer-status.refused { background: #fbeaea; color: #8f2a2a; }
     .logout-button { margin-top: 18px; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 12px; font-weight: 700; }
-    .buy-now { width: 100%; min-height: 38px; margin-top: 12px; padding: 0 11px; border: 1px solid var(--gold); border-radius: 4px; background: var(--gold-pale); color: #5c4720; font-size: 11px; font-weight: 750; cursor: pointer; }
-    .buy-now:hover { background: var(--gold); color: var(--dark); }
-
     .lot-dialog { width: min(880px, calc(100% - 28px)); }
     .lot-dialog .dialog-head { margin-bottom: 14px; }
     .gallery-main { display: grid; place-items: center; overflow: hidden; border-radius: 6px; background: var(--dark); }
@@ -199,35 +262,6 @@
     .spec-list dt { color: var(--muted); }
     .spec-list dd { margin: 0; font-weight: 700; text-align: right; }
     @media (max-width: 680px) { .spec-list { grid-template-columns: 1fr; } }
-    .lot-action { min-height: 36px; padding: 0 11px; border: 1px solid var(--green); border-radius: 4px; background: var(--green); color: white; font-size: 11px; font-weight: 750; }
-    .lot-action:hover { background: #185740; }
-
-    .empty-state { display: grid; min-height: 315px; align-content: center; justify-items: center; padding: 34px; border-top: 1px solid #eef0ed; text-align: center; }
-    .empty-mark { display: grid; width: 50px; height: 50px; place-items: center; margin-bottom: 14px; border: 1px solid #d6dfd9; border-radius: 50%; background: #f5f8f5; color: var(--green); font-size: 21px; }
-    .empty-state h2 { margin: 0; font-size: 19px; }
-    .empty-state p { max-width: 460px; margin: 9px 0 18px; color: var(--muted); font-size: 13px; }
-    .primary-action { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 0 15px; border: 1px solid var(--green); border-radius: 4px; background: var(--green); color: white; font-size: 12px; font-weight: 750; }
-    .primary-action:hover { background: #185740; }
-    .empty-disclaimer { margin-top: 12px; color: var(--muted); font-size: 10px; }
-
-    .below-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr); gap: 18px; margin-top: 18px; }
-    .side-panel { padding: 20px; }
-    .side-panel h2 { margin: 0 0 10px; font-size: 15px; }
-    .side-panel p { margin: 0; color: var(--muted); font-size: 12px; }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 17px; }
-    .step { padding-top: 11px; border-top: 2px solid var(--gold); }
-    .step b { display: block; margin-bottom: 5px; color: var(--green); font-size: 11px; }
-    .step span { color: var(--ink-soft); font-size: 11px; }
-    .price-note { border-left: 3px solid var(--gold); background: #fbf8f0; }
-    .price-note strong { color: #725b2d; }
-    .contact-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-    .text-action { display: inline-flex; min-height: 38px; align-items: center; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); font-size: 11px; font-weight: 700; }
-    .text-action:hover { border-color: var(--green); color: var(--green); }
-
-    footer { padding: 24px 0; border-top: 1px solid var(--line); background: #e7ece8; }
-    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 10px; }
-    .footer-inner strong { color: var(--ink); }
-
     dialog { width: min(540px, calc(100% - 28px)); padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); box-shadow: 0 24px 80px #10151335; }
     dialog::backdrop { background: #101513a8; }
     .dialog-inner { padding: 22px; }
@@ -245,55 +279,76 @@
     .form-submit { width: 100%; min-height: 42px; border: 0; border-radius: 4px; background: var(--green); color: white; font-size: 12px; font-weight: 750; }
     .hidden { display: none !important; }
 
-    @media (max-width: 900px) {
-      .main-nav { gap: 16px; }
-      .market { grid-template-columns: 215px minmax(0, 1fr); }
-      .lot-grid { grid-template-columns: 1fr; }
+    @media (max-width: 1180px) {
+      .header-inner { gap: 18px; }
+      .main-nav { gap: 20px; }
+      .main-nav a { font-size: 14px; }
+      .nav-gap { margin-left: 4px; }
+      .account-chip span { display: none; }
+      .lot-card { grid-template-columns: 220px minmax(0, 1fr); }
+      .lot-side { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(220px, auto); align-items: center; border-top: 1px solid var(--line); border-left: 0; }
+      .lot-actions { margin-top: 0; }
+      .features-inner { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 920px) {
+      .menu-button { display: grid; }
+      .main-nav { position: absolute; top: 100%; right: 0; left: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 8px 24px 16px; border-bottom: 1px solid var(--line); background: var(--surface); box-shadow: 0 16px 30px #1015131a; }
+      .site-header.menu-open .main-nav { display: flex; }
+      .main-nav a { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #edf0ee; font-size: 16px; }
+      .main-nav a[aria-current="true"] { box-shadow: none; color: var(--green); font-weight: 700; }
+      .nav-count { position: static; }
+      .nav-gap { margin-left: 0; }
+      .hero-photo { inset: 0; width: 100%; opacity: .22; }
+      .hero::after { background: linear-gradient(180deg, #ffffffb3, #ffffffe6); }
+      .hero h1 { font-size: 40px; }
+      .hero-search { grid-template-columns: 1fr; gap: 10px; padding: 0; border-radius: 0; background: none; box-shadow: none; }
+      .hero-search label { padding: 10px 16px; border: 0; border-radius: 12px; background: white; box-shadow: 0 4px 18px #10151318; }
+      .hero-submit { margin: 4px 0 0; }
+      .advanced-link { margin-left: 0; }
+      .market { grid-template-columns: 1fr; }
+      .filter-panel { position: static; }
+      .filter-toggle { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 24px; background: white; color: var(--ink); font-size: 15px; font-weight: 750; }
+      .filter-panel .panel-title { display: none; }
+      .filter-panel:not(.open) .filter-body { display: none; }
+      .filter-panel.open .filter-toggle { margin-bottom: 4px; }
+      .filter-panel { padding: 10px; }
       .below-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 680px) {
-      .shell { width: min(100% - 28px, 560px); }
-      .topbar-inner { min-height: 66px; gap: 12px; }
-      .brand { min-width: 0; }
-      .brand img { width: 42px; height: 42px; }
-      .main-nav { display: none; }
-      .market-bar-inner { flex-direction: column; align-items: stretch; gap: 0; padding-bottom: 6px; }
-      .market-links { gap: 26px; padding: 12px 14px 0 0; }
-      .market-links a, .nav-account { font-size: 13px; }
-      .nav-gap { margin-left: 0; }
-      .market-tools { justify-content: space-between; }
-      .account-chip { margin-left: auto; }
-      .currency { padding-inline: 8px; }
-      .contact-link { min-height: 36px; padding-inline: 10px; font-size: 10px; }
-      .status-inner { align-items: start; flex-direction: column; justify-content: center; gap: 2px; padding-block: 7px; }
-      main { padding-top: 25px; }
-      .page-heading { display: grid; gap: 10px; padding-bottom: 18px; }
-      h1 { font-size: 29px; }
-      .heading-note { font-size: 12px; }
-      .stats { grid-template-columns: repeat(3, 1fr); }
-      .stat { min-height: 72px; flex-direction: column; align-items: start; justify-content: center; gap: 5px; padding: 10px; }
-      .stat-number { font-size: 20px; }
-      .stat-label { font-size: 9px; }
-      .stat-label strong { font-size: 10px; }
-      .market { grid-template-columns: 1fr; }
-      .filter-panel { padding: 14px; }
-      .filter-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
-      .filter-group { margin-top: 10px; }
-      .listing-toolbar { align-items: start; flex-direction: column; }
-      .tabs { max-width: 100%; }
+      .shell { width: calc(100% - 28px); }
+      .header-inner { min-height: 60px; gap: 8px; }
+      .brand img { width: 38px; height: 38px; }
+      .brand-name { font-size: 12px; }
+      .brand-name small { font-size: 10px; }
+      .account-chip { margin-left: 2px; padding-left: 8px; }
+      .icon-button { width: 38px; height: 38px; }
+      #nav-search { display: none; }
+      .main-nav { padding-inline: 14px; }
+      .hero-inner { padding: 34px 0 30px; }
+      .hero h1 { font-size: 31px; }
+      .hero-lead { font-size: 17px; }
+      .hero-search { margin-top: 24px; }
+      .features-inner { display: flex; gap: 12px; overflow-x: auto; padding: 18px 0; scroll-snap-type: x mandatory; }
+      .feature { flex: 0 0 72%; justify-items: start; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); text-align: left; scroll-snap-align: start; }
+      .block { padding-top: 30px; }
+      .section-title h2, .results-head h2 { font-size: 16px; }
+      .track-buttons { display: none; }
+      .recent-track { grid-auto-columns: 78%; }
+      .lot-card { grid-template-columns: 1fr; }
+      .lot-photo { min-height: 210px; }
+      .lot-specs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .lot-body .pickup-lines { grid-template-columns: 1fr; gap: 3px; }
+      .lot-body .pickup-lines div { display: flex; justify-content: space-between; }
+      .lot-side { display: flex; align-items: stretch; }
       .sort-control { width: 100%; }
-      .result-line { padding-inline: 14px; }
-      .empty-state { min-height: 285px; padding: 24px 17px; }
       .steps { grid-template-columns: 1fr; gap: 10px; }
       .account-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .footer-inner { align-items: start; flex-direction: column; gap: 5px; }
     }
+    @media (max-width: 359px) {
+      .brand-name { display: none; }
+    }
     @media (max-width: 390px) {
-      .brand-name { font-size: 11px; }
-      .brand-name small { font-size: 9px; }
-      .header-tools { gap: 6px; }
-      .currency { font-size: 10px; }
-      .filter-fields { grid-template-columns: 1fr; }
       .form-grid { grid-template-columns: 1fr; }
       .form-field.full { grid-column: auto; }
     }
@@ -304,168 +359,167 @@
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="shell topbar-inner">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 17a8.5 8.5 0 1 1 15 0"/><path d="m12 14 4-5"/><circle cx="12" cy="14" r="1.2"/></symbol>
+    <symbol id="i-fuel" viewBox="0 0 24 24"><path d="M5 20V5.5A1.5 1.5 0 0 1 6.5 4h6A1.5 1.5 0 0 1 14 5.5V20M3.5 20h12M5 10h9"/><path d="M14 8h2.5a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 0 3 0V8.5L18 6"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16.5V12l2-5h12l2 5v4.5M4 16.5h16M4 16.5V19M20 16.5V19M4 12h16"/><circle cx="7.5" cy="14.3" r=".6"/><circle cx="16.5" cy="14.3" r=".6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6.5-6 6.5-11a6.5 6.5 0 0 0-13 0c0 5 6.5 11 6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9Z"/><circle cx="8" cy="8" r="1.4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2Z"/></symbol>
+    <symbol id="i-gavel" viewBox="0 0 24 24"><path d="m13.5 4.5 6 6M11 7l6 6M15 5.5 9 11.5M18.5 9l-6 6M10.5 12.5 3.5 19.5M4 21h8"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 9.5h4.5a1.75 1.75 0 0 1 0 3.5h-3a1.75 1.75 0 0 0 0 3.5H15M12 7v2.5M12 16.5V17"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5.5c0 4.5 3 7.8 7 9.5 4-1.7 7-5 7-9.5V6Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6.5h11v9H3zM14 9.5h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4M9 12h6M9 16h6"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  </svg>
+
+  <header class="site-header" id="site-header">
+    <div class="shell header-inner">
       <a class="brand" href="#accueil" aria-label="M&Y AUTO EXPORT, accueil">
         <img src="logo.png" alt="Logo M&Y AUTO EXPORT">
-        <span class="brand-name">M&Y AUTO EXPORT<small>VENTES AUTOMOBILES · TUNISIE</small></span>
+        <span class="brand-name">M&Y AUTO EXPORT<small>Véhicules européens · Tunisie</small></span>
       </a>
-      <nav class="main-nav" aria-label="Navigation principale">
-        <a href="#ventes">Les ventes</a>
-        <a href="#fonctionnement">Comment participer</a>
-        <a href="#conditions">Prix & conditions</a>
-      </nav>
-      <div class="header-tools">
-        <span class="currency" aria-label="Devise tunisienne">TND</span>
-        <button class="contact-link" type="button" id="account-button">Espace acheteur</button>
-      </div>
-    </div>
-  </header>
-
-  <nav class="market-bar" aria-label="Catalogue et espace acheteur">
-    <div class="shell market-bar-inner">
-      <div class="market-links">
+      <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
         <a href="#ventes" data-nav="all" aria-current="true">Tous les véhicules <span class="nav-count" id="nav-count-all">0</span></a>
         <a href="#ventes" data-nav="stock">Notre stock <span class="nav-count" id="nav-count-stock">0</span></a>
         <a href="#ventes" data-nav="auction">Enchères <span class="nav-count" id="nav-count-auction">0</span></a>
         <a href="#ventes" data-nav="fixed">Prix fixes <span class="nav-count" id="nav-count-fixed">0</span></a>
         <a href="#ventes" data-nav="exclusive">Exclusivités <span class="nav-count hot" id="nav-count-exclusive">0</span></a>
         <a class="nav-gap" href="#contact">Contact</a>
-        <button type="button" class="nav-account" data-open-account>Page personnelle <span class="account-dot" id="account-dot" aria-hidden="true"></span></button>
-      </div>
-      <div class="market-tools">
-        <button class="icon-button" type="button" id="nav-search" aria-label="Rechercher un véhicule">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
-        </button>
+      </nav>
+      <div class="header-tools">
+        <button class="icon-button" type="button" id="nav-search" aria-label="Rechercher un véhicule"><svg><use href="#i-search"/></svg></button>
         <button class="icon-button" type="button" id="nav-favorites" aria-label="Mes favoris">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path class="filled" d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2Z"/></svg>
-          <span class="tool-count" id="nav-favorites-count">0</span>
+          <svg><use class="filled" href="#i-heart"/></svg><span class="tool-count empty" id="nav-favorites-count">0</span>
         </button>
         <button class="icon-button" type="button" id="nav-offers" aria-label="Mes offres">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13.5 4.5 6 6M11 7l6 6M15 5.5 9 11.5M18.5 9l-6 6M10.5 12.5 3.5 19.5"/><path d="M4 21h8"/></svg>
-          <span class="tool-count" id="nav-offers-count">0</span>
+          <svg><use href="#i-gavel"/></svg><span class="tool-count empty" id="nav-offers-count">0</span>
         </button>
-        <button class="account-chip" type="button" data-open-account>
+        <button class="account-chip" type="button" id="account-button" data-open-account>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="filled" cx="12" cy="8" r="4"/><path class="filled" d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7Z"/></svg>
-          <span id="account-label"><strong>Se connecter</strong><small>Créer un compte</small></span>
+          <span id="account-label"><strong><span class="account-dot" id="account-dot" aria-hidden="true"></span>Se connecter</strong><small>Créer un compte</small></span>
         </button>
+        <button class="icon-button menu-button" type="button" id="menu-button" aria-label="Menu" aria-expanded="false" aria-controls="main-nav"><svg><use href="#i-menu"/></svg></button>
       </div>
     </div>
-  </nav>
+  </header>
 
-  <div class="status-strip">
-    <div class="shell status-inner">
-      <span class="status-left"><span class="status-dot" aria-hidden="true"></span><span>Place de ventes automobile · Tunisie</span></span>
-      <span class="preview-label">Aperçu — enchères en ligne non activées</span>
-      <span class="timezone">Horaires affichés en heure de Tunis</span>
+  <section class="hero" id="accueil" aria-labelledby="page-title">
+    <img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" onerror="this.remove()">
+    <div class="shell hero-inner">
+      <h1 id="page-title">Votre véhicule européen, livré en Tunisie</h1>
+      <p class="hero-lead"><strong id="hero-total">Des véhicules</strong> sélectionnés en Europe, en vente directe ou aux enchères, avec des prix affichés en dinars tunisiens.</p>
+      <form class="hero-search" id="hero-search" role="search" aria-label="Recherche rapide">
+        <label><span>Marque</span><select id="hero-make"><option value="">Toutes</option></select></label>
+        <label><span>Modèle</span><select id="hero-model"><option value="">Tous</option></select></label>
+        <label><span>Immatriculé depuis</span><select id="hero-year"><option value="">Toutes années</option></select></label>
+        <button class="hero-submit" type="submit" id="hero-submit">Rechercher</button>
+      </form>
+      <a class="advanced-link" href="#ventes" id="advanced-link"><svg class="icon"><use href="#i-sliders"/></svg>Filtres avancés</a>
     </div>
-  </div>
+  </section>
 
-  <main class="shell" id="accueil">
-    <section class="page-heading" aria-labelledby="page-title">
-      <div>
-        <p class="eyebrow">M&Y · Marché automobile</p>
-        <h1 id="page-title">Ventes & enchères</h1>
+  <section class="features" aria-label="Nos engagements">
+    <div class="shell features-inner">
+      <div class="feature"><svg class="icon"><use href="#i-coin"/></svg><h2>Prix en dinars tunisiens</h2><p>Prix indicatifs calculés selon une formule publiée, sans conversion à faire.</p></div>
+      <div class="feature"><svg class="icon"><use href="#i-shield"/></svg><h2>Véhicules sélectionnés</h2><p>Chaque annonce est vérifiée par l'équipe M&Y AUTO EXPORT avant publication.</p></div>
+      <div class="feature"><svg class="icon"><use href="#i-truck"/></svg><h2>Livraison en Tunisie</h2><p>De l'Europe jusqu'à vous : enlèvement et acheminement organisés avec vous.</p></div>
+      <div class="feature"><svg class="icon"><use href="#i-gavel"/></svg><h2>Enchères ou achat direct</h2><p>Faites une offre depuis votre espace acheteur ou achetez au prix affiché.</p></div>
+      <div class="feature"><svg class="icon"><use href="#i-file"/></svg><h2>Démarches accompagnées</h2><p>Régime FCR, dédouanement et immatriculation confirmés selon votre situation.</p></div>
+    </div>
+  </section>
+
+  <main class="shell">
+    <section class="block" id="arrivages" aria-labelledby="recent-title" hidden>
+      <div class="section-title"><h2 id="recent-title">Arrivages récents</h2>
+        <div class="track-buttons"><button type="button" data-scroll="-1" aria-label="Précédents">‹</button><button type="button" data-scroll="1" aria-label="Suivants">›</button></div>
       </div>
-      <p class="heading-note">Consultez les lots publiés après vérification des informations, de la disponibilité et des conditions de vente.</p>
+      <div class="recent-track" id="recent-track"></div>
     </section>
 
-    <section class="stats" aria-label="État des ventes">
-      <div class="stat"><span class="stat-number" id="open-count">0</span><span class="stat-label"><strong>Lots en vente</strong>disponibilité confirmée</span></div>
-      <div class="stat"><span class="stat-number" id="upcoming-count">0</span><span class="stat-label"><strong>Ventes à venir</strong>lots en préparation non publiés</span></div>
-      <div class="stat"><span class="stat-number" id="stock-count">0</span><span class="stat-label"><strong>En stock</strong>vente directe, prix en TND</span></div>
+    <section class="block" id="marques" aria-labelledby="brands-title" hidden>
+      <div class="section-title"><h2 id="brands-title">Acheter par marque</h2></div>
+      <div class="brand-chips" id="brand-chips"></div>
     </section>
 
-    <section class="market" id="ventes" aria-label="Catalogue des ventes">
-      <aside class="filter-panel" aria-label="Filtres de recherche">
-        <h2 class="panel-title">Affiner la recherche <button class="clear-button" id="clear-filters" type="button">Effacer</button></h2>
-        <div class="filter-fields">
-          <div class="filter-group">
-            <label for="search">Mot-clé ou référence</label>
-            <input class="field" id="search" type="search" placeholder="Ex. SUV, référence…" autocomplete="off">
-          </div>
-          <div class="filter-group">
-            <label for="make">Marque</label>
-            <select class="select-field" id="make"><option value="">Toutes les marques</option></select>
-          </div>
-          <div class="filter-group">
-            <label for="body-type">Catégorie</label>
-            <select class="select-field" id="body-type"><option value="">Toutes les catégories</option></select>
-          </div>
-          <div class="filter-group">
-            <label for="sale-status">État de la vente</label>
-            <select class="select-field" id="sale-status">
-              <option value="">Tous les états</option>
-              <option value="open">Lots en vente</option>
-              <option value="upcoming">À venir</option>
-              <option value="stock">En stock</option>
-            </select>
-          </div>
+    <section class="block market" id="ventes" aria-label="Catalogue des véhicules">
+      <aside class="filter-panel" id="filter-panel" aria-label="Filtres de recherche">
+        <button class="filter-toggle" type="button" id="filter-toggle" aria-expanded="false" aria-controls="filter-body"><svg class="icon"><use href="#i-sliders"/></svg>Filtrer les véhicules</button>
+        <div class="filter-body" id="filter-body">
+          <h2 class="panel-title"><svg class="icon"><use href="#i-search"/></svg>Recherche</h2>
+          <input class="field" id="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off" aria-label="Référence, marque ou modèle">
+          <div class="filter-group"><label for="make"><svg class="icon"><use href="#i-car"/></svg>Marque</label><select class="select-field" id="make"><option value="">Toutes les marques</option></select></div>
+          <div class="filter-group"><label for="model"><svg class="icon"><use href="#i-tag"/></svg>Modèle</label><select class="select-field" id="model"><option value="">Tous les modèles</option></select></div>
+          <div class="filter-group"><label for="fuel"><svg class="icon"><use href="#i-fuel"/></svg>Énergie</label><select class="select-field" id="fuel"><option value="">Toutes les énergies</option></select></div>
+          <div class="filter-group"><label for="year-min"><svg class="icon"><use href="#i-calendar"/></svg>Première immatriculation</label><select class="select-field" id="year-min"><option value="">Toutes les années</option></select></div>
+          <div class="filter-group"><label for="price-max"><svg class="icon"><use href="#i-coin"/></svg>Prix maximum</label>
+            <select class="select-field" id="price-max"><option value="">Sans limite</option><option value="80000">80 000 TND</option><option value="120000">120 000 TND</option><option value="160000">160 000 TND</option><option value="220000">220 000 TND</option><option value="300000">300 000 TND</option></select></div>
+          <div class="filter-group"><label for="body-type"><svg class="icon"><use href="#i-car"/></svg>Catégorie</label><select class="select-field" id="body-type"><option value="">Toutes les catégories</option></select></div>
+          <button class="filter-submit" type="button" id="filter-submit">Afficher les véhicules</button>
+          <button class="clear-button" id="clear-filters" type="button"><svg class="icon"><use href="#i-reset"/></svg>Réinitialiser les filtres</button>
         </div>
-        <p class="filter-hint">Les lots apparaissent ici après validation manuelle. Aucune disponibilité n'est présumée.</p>
       </aside>
 
       <div class="listing-panel">
-        <div class="listing-toolbar">
-          <div class="tabs" role="group" aria-label="Filtrer par ventes">
-            <button class="tab" type="button" data-tab="all" aria-pressed="true">Toutes</button>
-            <button class="tab" type="button" data-tab="open" aria-pressed="false">En vente</button>
-            <button class="tab" type="button" data-tab="upcoming" aria-pressed="false">À venir</button>
-            <button class="tab" type="button" data-tab="stock" aria-pressed="false">En stock</button>
-            <button class="tab" type="button" data-tab="watchlist" aria-pressed="false">Ma sélection <span id="watch-count">0</span></button>
-          </div>
-          <label class="hidden" for="sort">Trier les lots</label>
-          <select class="select-field sort-control" id="sort" aria-label="Trier les lots">
-            <option value="ending">Fin de vente</option>
-            <option value="price-low">Prix indicatif croissant</option>
-            <option value="price-high">Prix indicatif décroissant</option>
+        <div class="section-title results-head">
+          <h2 id="result-count">Résultats</h2>
+          <label class="hidden" for="sort">Trier les véhicules</label>
+          <select class="select-field sort-control" id="sort" aria-label="Trier les véhicules">
+            <option value="ending">Fin de vente la plus proche</option>
             <option value="newest">Ajouts récents</option>
+            <option value="price-low">Prix croissant</option>
+            <option value="price-high">Prix décroissant</option>
           </select>
         </div>
-        <div class="result-line"><span id="result-count"><strong>0 lot</strong></span><span>Informations à confirmer avant toute enchère</span></div>
         <div class="lot-grid hidden" id="lot-grid" aria-live="polite"></div>
         <div class="empty-state" id="empty-state">
           <span class="empty-mark" aria-hidden="true">—</span>
-          <h2 id="empty-title">Aucun lot validé pour le moment</h2>
-          <p id="empty-copy">Les véhicules en préparation ne sont pas affichés comme disponibles. Les lots seront présentés ici après contrôle des données, des photos autorisées et des conditions.</p>
-          <button class="primary-action" type="button" id="request-catalog">Être informé des prochaines ventes</button>
-          <span class="empty-disclaimer">Cette page ne reçoit ni n'enregistre actuellement d'enchères.</span>
+          <h2 id="empty-title">Chargement des véhicules…</h2>
+          <p id="empty-copy">Le catalogue M&Y AUTO EXPORT est en cours de lecture.</p>
+          <button class="primary-action" type="button" id="request-catalog">Être informé des prochains arrivages</button>
         </div>
+        <p class="results-note">Prix et disponibilités confirmés par l'équipe avant tout engagement.</p>
       </div>
     </section>
 
-    <section class="below-grid" id="fonctionnement">
+    <section class="block below-grid" id="fonctionnement">
       <article class="side-panel">
-        <h2>Un parcours encadré</h2>
-        <p>Chaque vente doit préciser ses propres règles. Les étapes ci-dessous décrivent le fonctionnement prévu; elles ne remplacent pas les conditions d'un lot.</p>
+        <h2>Comment acheter</h2>
+        <p>Chaque vente précise ses propres conditions. Les étapes ci-dessous décrivent le parcours habituel.</p>
         <div class="steps">
-          <div class="step"><b>01 · Consulter</b><span>Lire la fiche, l'état du véhicule et les conditions propres à la vente.</span></div>
-          <div class="step"><b>02 · Vérifier</b><span>Confirmer la disponibilité, les documents et les frais indiqués au lot.</span></div>
-          <div class="step"><b>03 · Participer</b><span>Le canal d'enchère sera précisé lorsque la fonction sera mise en service.</span></div>
+          <div class="step"><b>01 · Consulter</b><span>Lire la fiche, les photos, l'état du véhicule et les conditions de la vente.</span></div>
+          <div class="step"><b>02 · Créer son espace</b><span>Un compte acheteur gratuit pour suivre vos favoris, vos offres et vos documents.</span></div>
+          <div class="step"><b>03 · Faire une offre</b><span>Depuis la fiche du véhicule. L'équipe vous recontacte pour confirmer chaque offre.</span></div>
         </div>
       </article>
       <article class="side-panel price-note" id="conditions">
         <h2>Prix affichés en TND</h2>
-        <p><strong>Un prix indicatif n'est pas un prix dédouané.</strong> Le régime FCR, les frais éventuels, le dédouanement et l'immatriculation en Tunisie doivent être confirmés selon le véhicule et la situation de l'acheteur.</p>
+        <p><strong>Un prix indicatif n'est pas un prix dédouané.</strong> Le régime FCR, les frais éventuels, le dédouanement et l'immatriculation en Tunisie sont confirmés selon le véhicule et votre situation.</p>
         <div class="contact-actions"><a class="text-action" href="mailto:contact@myautoexport.com?subject=Conditions%20des%20ventes%20M%26Y">Demander les conditions</a><a class="text-action" href="mailto:contact@myautoexport.com?subject=Recherche%20de%20v%C3%A9hicule">Décrire ma recherche</a></div>
       </article>
     </section>
 
-    <section class="below-grid" id="contact">
+    <section class="block below-grid" id="contact">
       <article class="side-panel">
-        <h2>Recevoir les prochaines ventes</h2>
-        <p>Prépare un message à l'équipe M&Y AUTO EXPORT. Ton application e-mail s'ouvrira; rien n'est envoyé automatiquement par ce site.</p>
+        <h2>Une question sur un véhicule ?</h2>
+        <p>Indiquez sa référence. Votre application e-mail s'ouvre avec un message prêt à envoyer.</p>
         <div class="contact-actions"><button class="primary-action" type="button" id="open-contact">Préparer une demande</button><a class="text-action" href="mailto:contact@myautoexport.com">contact@myautoexport.com</a></div>
       </article>
       <article class="side-panel">
-        <h2>Une question sur un véhicule ?</h2>
-        <p>Indique sa référence lorsqu'elle est disponible. Les prix et la disponibilité seront confirmés par l'équipe avant tout engagement.</p>
+        <h2>Vous cherchez un modèle précis ?</h2>
+        <p>Décrivez votre recherche : marque, budget, année. L'équipe vous prévient dès qu'un véhicule correspondant arrive.</p>
       </article>
     </section>
   </main>
 
   <footer>
-    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Tunisie</span><span>Prix et disponibilités à confirmer · Aucune enchère n'est transmise depuis cette version</span></div>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · Disponibilités confirmées par l'équipe</span></div>
   </footer>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
@@ -530,31 +584,57 @@
     } catch {
       localStorage.removeItem("my-auto-watchlist");
     }
-    const tabButtons = [...document.querySelectorAll("[data-tab]")];
-    const filterInputs = [
-      document.getElementById("search"),
-      document.getElementById("make"),
-      document.getElementById("body-type"),
-      document.getElementById("sale-status"),
-      document.getElementById("sort")
-    ];
+    const FILTRES = ["search", "make", "model", "fuel", "year-min", "price-max", "body-type"];
     let activeTab = "all";
 
+    function valeur(id) {
+      return document.getElementById(id).value;
+    }
+
+    // Regroupe les libellés d'énergie variés (« Hybride (essence / électrique) »…) en familles filtrables.
+    function familleEnergie(fuel) {
+      const texte = (fuel || "").toLocaleLowerCase("fr");
+      if (texte.includes("hybride")) return "Hybride";
+      if (texte.includes("électrique") || texte.includes("electrique")) return "Électrique";
+      if (texte.includes("diesel")) return "Diesel";
+      if (texte.includes("essence")) return "Essence";
+      return fuel || "";
+    }
+
+    function correspond(lot, criteres) {
+      const searchable = `${lot.reference} ${lot.make} ${lot.model} ${lot.trim || ""}`.toLocaleLowerCase("fr");
+      const prix = prixLot(lot);
+      return (!criteres.query || searchable.includes(criteres.query))
+        && (!criteres.make || lot.make === criteres.make)
+        && (!criteres.model || lot.model === criteres.model)
+        && (!criteres.fuel || familleEnergie(lot.fuel) === criteres.fuel)
+        && (!criteres.yearMin || Number(lot.year) >= criteres.yearMin)
+        && (!criteres.priceMax || (prix != null && prix <= criteres.priceMax))
+        && (!criteres.bodyType || lot.bodyType === criteres.bodyType);
+    }
+
+    function criteresFiltres() {
+      return {
+        query: valeur("search").trim().toLocaleLowerCase("fr"),
+        make: valeur("make"),
+        model: valeur("model"),
+        fuel: valeur("fuel"),
+        yearMin: Number(valeur("year-min")) || 0,
+        priceMax: Number(valeur("price-max")) || 0,
+        bodyType: valeur("body-type")
+      };
+    }
+
+    function pluriel(nombre, mot) {
+      return `${nombre} ${mot}${nombre > 1 ? "s" : ""}`;
+    }
+
     function updateView() {
-      const query = document.getElementById("search").value.trim().toLocaleLowerCase("fr");
-      const make = document.getElementById("make").value;
-      const bodyType = document.getElementById("body-type").value;
-      const saleStatus = document.getElementById("sale-status").value;
+      const criteres = criteresFiltres();
+      const filtresActifs = Object.values(criteres).some(Boolean);
       const watchOnly = activeTab === "watchlist";
-      let visibleLots = lots.filter((lot) => {
-        const searchable = `${lot.reference} ${lot.make} ${lot.model} ${lot.trim || ""}`.toLocaleLowerCase("fr");
-        return (!query || searchable.includes(query))
-          && (!make || lot.make === make)
-          && (!bodyType || lot.bodyType === bodyType)
-          && (!saleStatus || lot.status === saleStatus)
-          && (watchOnly || CATEGORIES[activeTab](lot))
-          && (!watchOnly || watchlist.has(lot.reference));
-      });
+      let visibleLots = lots.filter((lot) => correspond(lot, criteres)
+        && (watchOnly ? watchlist.has(lot.reference) : CATEGORIES[activeTab](lot)));
 
       const sort = document.getElementById("sort").value;
       if (sort === "price-low") visibleLots.sort((a, b) => (prixLot(a) ?? Infinity) - (prixLot(b) ?? Infinity));
@@ -562,15 +642,15 @@
       if (sort === "ending") visibleLots.sort((a, b) => (a.endsAt || "9999").localeCompare(b.endsAt || "9999"));
       if (sort === "newest") visibleLots.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
-      document.getElementById("open-count").textContent = lots.filter((lot) => lot.status === "open").length;
-      document.getElementById("upcoming-count").textContent = lots.filter((lot) => lot.status === "upcoming").length;
-      document.getElementById("stock-count").textContent = lots.filter((lot) => lot.status === "stock").length;
       ["all", "stock", "auction", "fixed", "exclusive"].forEach((categorie) => {
         document.getElementById(`nav-count-${categorie}`).textContent = lots.filter(CATEGORIES[categorie]).length;
       });
-      document.getElementById("nav-favorites-count").textContent = watchlist.size;
-      document.getElementById("watch-count").textContent = watchlist.size;
-      document.getElementById("result-count").innerHTML = `<strong>${visibleLots.length} lot${visibleLots.length === 1 ? "" : "s"}</strong>`;
+      majCompteurs();
+      const rubrique = watchOnly ? "Mes favoris" : { all: "Résultats", stock: "Notre stock", auction: "Enchères", fixed: "Prix fixes", exclusive: "Exclusivités" }[activeTab] || "Résultats";
+      document.getElementById("result-count").textContent = `${rubrique} (${pluriel(visibleLots.length, "véhicule")})`;
+      document.getElementById("filter-submit").textContent = `Afficher ${pluriel(visibleLots.length, "véhicule")}`;
+      document.getElementById("hero-total").textContent = pluriel(lots.length, "véhicule");
+      majRechercheRapide();
 
       const grid = document.getElementById("lot-grid");
       const empty = document.getElementById("empty-state");
@@ -581,21 +661,86 @@
       const title = document.getElementById("empty-title");
       const copy = document.getElementById("empty-copy");
       if (catalogueEtat === "loading") {
-        title.textContent = "Chargement des ventes…";
+        title.textContent = "Chargement des véhicules…";
         copy.textContent = "Le catalogue M&Y AUTO EXPORT est en cours de lecture.";
       } else if (catalogueEtat === "error") {
         title.textContent = "Catalogue momentanément indisponible";
-        copy.textContent = "Les lots n'ont pas pu être chargés. Réessaie plus tard ou contacte l'équipe.";
+        copy.textContent = "Les véhicules n'ont pas pu être chargés. Réessayez plus tard ou contactez l'équipe.";
       } else if (watchOnly) {
-        title.textContent = "Ta sélection est vide";
-        copy.textContent = "Les lots suivis apparaîtront ici dès que des ventes validées seront disponibles.";
-      } else if (query || make || bodyType || saleStatus || activeTab !== "all") {
-        title.textContent = "Aucun lot ne correspond à ces filtres";
-        copy.textContent = "Modifie les critères ou efface les filtres pour consulter l'ensemble des ventes publiées.";
+        title.textContent = "Aucun favori pour le moment";
+        copy.textContent = "Cliquez sur le cœur d'une annonce pour la retrouver ici.";
+      } else if (filtresActifs || activeTab !== "all") {
+        title.textContent = "Aucun véhicule ne correspond à ces critères";
+        copy.textContent = "Modifiez les filtres ou réinitialisez-les pour voir tout le catalogue.";
       } else {
-        title.textContent = "Aucun lot validé pour le moment";
-        copy.textContent = "Les véhicules en préparation ne sont pas affichés comme disponibles. Les lots seront présentés ici après contrôle des données, des photos autorisées et des conditions.";
+        title.textContent = "Aucun véhicule publié pour le moment";
+        copy.textContent = "Les véhicules sont publiés après contrôle des données, des photos et des conditions de vente.";
       }
+    }
+
+    function majCompteurs() {
+      [["nav-favorites-count", watchlist.size], ["nav-offers-count", compte.offers.length]].forEach(([id, nombre]) => {
+        const badge = document.getElementById(id);
+        badge.textContent = nombre;
+        badge.classList.toggle("empty", nombre === 0);
+      });
+    }
+
+    // Recherche du bandeau d'accueil : mêmes critères que les filtres, appliqués au clic.
+    function criteresRapides() {
+      return { make: valeur("hero-make"), model: valeur("hero-model"), yearMin: Number(valeur("hero-year")) || 0 };
+    }
+
+    function majRechercheRapide() {
+      if (catalogueEtat !== "ready") return;
+      const nombre = lots.filter((lot) => correspond(lot, criteresRapides())).length;
+      document.getElementById("hero-submit").textContent = `Rechercher ${pluriel(nombre, "véhicule")}`;
+    }
+
+    function remplirModeles(selectId, marque, libelleInitial) {
+      const select = document.getElementById(selectId);
+      const actuel = select.value;
+      remplirFiltre(selectId, lots.filter((lot) => !marque || lot.make === marque).map((lot) => lot.model), libelleInitial);
+      if ([...select.options].some((option) => option.value === actuel)) select.value = actuel;
+    }
+
+    function remplirAnnees(selectId, libelleInitial) {
+      const select = document.getElementById(selectId);
+      select.replaceChildren(new Option(libelleInitial, ""));
+      [...new Set(lots.map((lot) => Number(lot.year)).filter(Number.isFinite))]
+        .sort((a, b) => b - a)
+        .forEach((annee) => select.add(new Option(`${annee} et plus`, annee)));
+    }
+
+    function photoPrincipale(lot) {
+      return photosLot(lot)[0]?.url || null;
+    }
+
+    function renderArrivages() {
+      const recents = lots.filter(photoPrincipale)
+        .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+        .slice(0, 10);
+      document.getElementById("arrivages").hidden = recents.length === 0;
+      document.getElementById("recent-track").innerHTML = recents.map((lot) => `
+        <button class="recent-card" type="button" data-detail="${escapeHtml(lot.reference)}">
+          <img src="${escapeHtml(photoPrincipale(lot))}" alt="" loading="lazy">
+          <span><strong>${escapeHtml(lot.make)} <em>${escapeHtml(lot.model)}</em></strong>
+          <small>${escapeHtml(lot.year || "")}${lot.mileageKm == null ? "" : ` · ${new Intl.NumberFormat("fr-TN").format(lot.mileageKm)} km`}</small></span>
+        </button>`).join("");
+    }
+
+    function renderMarques() {
+      const marques = new Map();
+      lots.forEach((lot) => marques.set(lot.make, (marques.get(lot.make) || 0) + 1));
+      document.getElementById("marques").hidden = marques.size === 0;
+      document.getElementById("brand-chips").innerHTML = [...marques]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr"))
+        .map(([marque, nombre]) => `<button class="brand-chip" type="button" data-make="${escapeHtml(marque)}">${escapeHtml(marque)} <span>${nombre}</span></button>`)
+        .join("");
+    }
+
+    function allerAuCatalogue() {
+      document.getElementById("ventes").scrollIntoView();
     }
 
     // open = enchère en cours (date de fin obligatoire), upcoming = enchère à venir, stock = vente directe.
@@ -618,7 +763,6 @@
 
     function choisirOnglet(onglet) {
       activeTab = onglet;
-      tabButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.tab === onglet)));
       document.querySelectorAll("[data-nav]").forEach((link) => link.setAttribute("aria-current", String(link.dataset.nav === onglet)));
       updateView();
     }
@@ -756,12 +900,10 @@
     function afficherCompte() {
       const user = compte.user;
       document.getElementById("account-label").innerHTML = user
-        ? `<strong>${escapeHtml(user.name.split(" ")[0])} ${numeroMembre(user)}</strong><small>Acheteur</small>`
-        : `<strong>Se connecter</strong><small>Créer un compte</small>`;
-      document.getElementById("account-button").textContent = user ? "Mon espace" : "Espace acheteur";
-      document.getElementById("account-dot").classList.toggle("on", Boolean(user));
-      document.getElementById("nav-offers-count").textContent = compte.offers.length;
-      document.getElementById("nav-favorites-count").textContent = watchlist.size;
+        ? `<strong><span class="account-dot on" aria-hidden="true"></span>${escapeHtml(user.name.split(" ")[0])} ${numeroMembre(user)}</strong><small>Acheteur</small>`
+        : `<strong><span class="account-dot" aria-hidden="true"></span>Se connecter</strong><small>Créer un compte</small>`;
+      document.getElementById("account-button").setAttribute("aria-label", user ? `Mon espace acheteur, ${user.name}` : "Se connecter ou créer un compte");
+      majCompteurs();
     }
 
     async function basculerFavori(reference) {
@@ -886,20 +1028,36 @@
         : `<button class="source-link" type="button" data-contact="${escapeHtml(lot.reference)}">Se renseigner</button>`;
     }
 
+    function specLot(lot, nom) {
+      return (Array.isArray(lot.specs) ? lot.specs : []).find((spec) => Array.isArray(spec) && spec[0] === nom)?.[1];
+    }
+
+    function icone(nom) {
+      return `<svg class="icon" aria-hidden="true"><use href="#i-${nom}"/></svg>`;
+    }
+
     function renderLot(lot) {
       const isWatched = watchlist.has(lot.reference);
       const photos = photosLot(lot);
       const price = libellePrix(lot);
+      const caracteristiques = [
+        ["calendar", specLot(lot, "Mise en circulation") || lot.year || "Année à confirmer"],
+        ["gauge", lot.mileageKm == null ? "Km à confirmer" : `${new Intl.NumberFormat("fr-TN").format(lot.mileageKm)} km`],
+        ["fuel", lot.fuel || "Énergie à confirmer"],
+        ...[["car", lot.bodyType], ["gear", specLot(lot, "Transmission")], ["pin", lot.country]].filter(([, texte]) => texte)
+      ].slice(0, 6);
       return `<article class="lot-card">
-        <div class="lot-photo">${photos.length ? `<button class="photo-open" type="button" data-detail="${escapeHtml(lot.reference)}" aria-label="Voir les photos"><img src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(lot.make)} ${escapeHtml(lot.model)}" loading="lazy">${photos.length > 1 ? `<span class="photo-count">${photos.length} photos</span>` : ""}</button>` : `<div class="photo-missing"><strong>Photo à confirmer</strong><span>Visuel autorisé non fourni</span></div>`}</div>
+        <div class="lot-photo"><span class="lot-status ${escapeHtml(lot.status)}">${statutLot(lot)}</span>${photos.length ? `<button class="photo-open" type="button" data-detail="${escapeHtml(lot.reference)}" aria-label="Voir les photos de ${escapeHtml(titreLot(lot))}"><img src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(lot.make)} ${escapeHtml(lot.model)}" loading="lazy">${photos.length > 1 ? `<span class="photo-count">${photos.length} photos</span>` : ""}</button>` : `<div class="photo-missing"><strong>Photo à confirmer</strong><span>Visuel autorisé non fourni</span></div>`}</div>
         <div class="lot-body">
-          <div class="lot-meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="lot-status">${statutLot(lot)}</span></div>
-          <h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2>
-          <div class="lot-specs"><span>${escapeHtml(lot.year || "Année à confirmer")}</span><span>${escapeHtml(lot.mileageKm == null ? "Kilométrage à confirmer" : `${new Intl.NumberFormat("fr-TN").format(lot.mileageKm)} km`)}</span><span>${escapeHtml(lot.fuel || "Motorisation à confirmer")}</span></div>
+          <div><h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
+          <ul class="lot-specs">${caracteristiques.map(([nom, texte]) => `<li>${icone(nom === "gear" ? "sliders" : nom)}<span title="${escapeHtml(texte)}">${escapeHtml(texte)}</span></li>`).join("")}</ul>
           ${enlevementLot(lot)}
-          <div class="lot-price"><span><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></span></div>
+          <div class="lot-foot">${lienLot(lot)}</div>
+        </div>
+        <div class="lot-side">
+          <div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>
           ${prixEnchere(lot)}${boutonAchat(lot)}
-          <div class="lot-actions">${lienLot(lot)}<button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}">${isWatched ? "Suivie" : "Suivre"}</button></div>
+          <div class="lot-actions"><button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}" aria-pressed="${isWatched}" aria-label="${isWatched ? "Retirer des favoris" : "Ajouter aux favoris"}">${icone("heart")}</button></div>
         </div>
       </article>`;
     }
@@ -963,8 +1121,16 @@
         }
         lots = catalogue.filter((lot) => lot.status !== "open" || Date.parse(lot.endsAt) > Date.now());
         remplirFiltre("make", lots.map((lot) => lot.make), "Toutes les marques");
+        remplirFiltre("hero-make", lots.map((lot) => lot.make), "Toutes");
+        remplirModeles("model", "", "Tous les modèles");
+        remplirModeles("hero-model", "", "Tous");
+        remplirFiltre("fuel", lots.map((lot) => familleEnergie(lot.fuel)), "Toutes les énergies");
+        remplirAnnees("year-min", "Toutes les années");
+        remplirAnnees("hero-year", "Toutes années");
         remplirFiltre("body-type", lots.map((lot) => lot.bodyType), "Toutes les catégories");
         catalogueEtat = "ready";
+        renderArrivages();
+        renderMarques();
       } catch {
         lots = [];
         catalogueEtat = "error";
@@ -981,28 +1147,90 @@
     document.addEventListener("input", (event) => {
       if (event.target.matches("#search")) updateView();
     });
-    filterInputs.slice(1).forEach((input) => input.addEventListener("change", updateView));
+    FILTRES.slice(1).concat("sort").forEach((id) => document.getElementById(id).addEventListener("change", updateView));
+    document.getElementById("make").addEventListener("change", () => {
+      remplirModeles("model", valeur("make"), "Tous les modèles");
+      updateView();
+    });
     document.getElementById("clear-filters").addEventListener("click", () => {
-      document.getElementById("search").value = "";
-      document.getElementById("make").value = "";
-      document.getElementById("body-type").value = "";
-      document.getElementById("sale-status").value = "";
+      FILTRES.forEach((id) => { document.getElementById(id).value = ""; });
+      remplirModeles("model", "", "Tous les modèles");
       document.getElementById("sort").value = "ending";
       choisirOnglet("all");
     });
-    tabButtons.forEach((button) => button.addEventListener("click", () => choisirOnglet(button.dataset.tab)));
-    document.querySelectorAll("[data-nav]").forEach((link) => link.addEventListener("click", () => choisirOnglet(link.dataset.nav)));
+    document.querySelectorAll("[data-nav]").forEach((link) => link.addEventListener("click", () => {
+      choisirOnglet(link.dataset.nav);
+      fermerMenu();
+    }));
     document.getElementById("nav-search").addEventListener("click", () => {
-      document.getElementById("ventes").scrollIntoView();
+      allerAuCatalogue();
       document.getElementById("search").focus();
     });
     document.getElementById("nav-favorites").addEventListener("click", () => {
       choisirOnglet("watchlist");
-      document.getElementById("ventes").scrollIntoView();
+      allerAuCatalogue();
     });
     document.getElementById("nav-offers").addEventListener("click", () => ouvrirEspace());
     document.querySelectorAll("[data-open-account]").forEach((button) => button.addEventListener("click", () => ouvrirEspace()));
-    document.getElementById("account-button").addEventListener("click", () => ouvrirEspace());
+
+    const siteHeader = document.getElementById("site-header");
+    const menuButton = document.getElementById("menu-button");
+    function fermerMenu() {
+      siteHeader.classList.remove("menu-open");
+      menuButton.setAttribute("aria-expanded", "false");
+    }
+    menuButton.addEventListener("click", () => {
+      const ouvert = siteHeader.classList.toggle("menu-open");
+      menuButton.setAttribute("aria-expanded", String(ouvert));
+    });
+    document.querySelector("#main-nav a[href='#contact']").addEventListener("click", fermerMenu);
+
+    document.getElementById("hero-make").addEventListener("change", () => {
+      remplirModeles("hero-model", valeur("hero-make"), "Tous");
+      majRechercheRapide();
+    });
+    ["hero-model", "hero-year"].forEach((id) => document.getElementById(id).addEventListener("change", majRechercheRapide));
+    document.getElementById("hero-search").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const rapides = criteresRapides();
+      FILTRES.forEach((id) => { document.getElementById(id).value = ""; });
+      document.getElementById("make").value = rapides.make;
+      remplirModeles("model", rapides.make, "Tous les modèles");
+      document.getElementById("model").value = rapides.model;
+      document.getElementById("year-min").value = rapides.yearMin || "";
+      choisirOnglet("all");
+      allerAuCatalogue();
+    });
+    document.getElementById("advanced-link").addEventListener("click", () => {
+      document.getElementById("filter-panel").classList.add("open");
+      document.getElementById("filter-toggle").setAttribute("aria-expanded", "true");
+    });
+    document.getElementById("filter-toggle").addEventListener("click", (event) => {
+      const ouvert = document.getElementById("filter-panel").classList.toggle("open");
+      event.currentTarget.setAttribute("aria-expanded", String(ouvert));
+    });
+    document.getElementById("filter-submit").addEventListener("click", () => {
+      document.getElementById("filter-panel").classList.remove("open");
+      document.getElementById("filter-toggle").setAttribute("aria-expanded", "false");
+      document.querySelector(".listing-panel").scrollIntoView();
+    });
+    document.getElementById("brand-chips").addEventListener("click", (event) => {
+      const chip = event.target.closest("[data-make]");
+      if (!chip) return;
+      FILTRES.forEach((id) => { document.getElementById(id).value = ""; });
+      document.getElementById("make").value = chip.dataset.make;
+      remplirModeles("model", chip.dataset.make, "Tous les modèles");
+      choisirOnglet("all");
+      allerAuCatalogue();
+    });
+    document.getElementById("recent-track").addEventListener("click", (event) => {
+      const carte = event.target.closest("[data-detail]");
+      if (carte) ouvrirFiche(carte.dataset.detail);
+    });
+    document.querySelectorAll("[data-scroll]").forEach((button) => button.addEventListener("click", () => {
+      const piste = document.getElementById("recent-track");
+      piste.scrollBy({ left: Number(button.dataset.scroll) * piste.clientWidth * 0.8, behavior: "smooth" });
+    }));
     document.getElementById("lot-grid").addEventListener("click", (event) => {
       const contact = event.target.closest("[data-contact]");
       if (contact) {

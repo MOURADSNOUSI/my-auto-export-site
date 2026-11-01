@@ -67,7 +67,7 @@ class CatalogueTest(unittest.TestCase):
 
     def test_catalogue_vide_affiche_aucun_lot_valide(self):
         page = self.open_site([])
-        self.assertEqual(page.text_content("#empty-title"), "Aucun lot validé pour le moment")
+        self.assertEqual(page.text_content("#empty-title"), "Aucun véhicule publié pour le moment")
         self.assertTrue(page.is_hidden("#lot-grid"))
 
     def test_lots_valides_sont_affiches_et_comptes(self):
@@ -76,11 +76,50 @@ class CatalogueTest(unittest.TestCase):
             lot(reference="MY-002", make="Audi", status="upcoming", endsAt=None),
         ])
         self.assertEqual(page.locator(".lot-card").count(), 2)
-        self.assertEqual(page.text_content("#open-count"), "1")
-        self.assertEqual(page.text_content("#upcoming-count"), "1")
-        self.assertEqual(page.text_content("#result-count"), "2 lots")
+        self.assertEqual(page.text_content("#nav-count-all"), "2")
+        self.assertEqual(page.text_content("#nav-count-auction"), "2")
+        self.assertEqual(page.text_content("#result-count"), "Résultats (2 véhicules)")
         makes = page.eval_on_selector_all("#make option", "opts => opts.map(o => o.value)")
         self.assertEqual(makes, ["", "Audi", "Peugeot"])
+        self.assertEqual(page.text_content("#hero-submit"), "Rechercher 2 véhicules")
+
+    def test_recherche_rapide_applique_les_filtres(self):
+        page = self.open_site([
+            lot(reference="MY-001", make="Peugeot", model="3008", year=2021),
+            lot(reference="MY-002", make="Peugeot", model="208", year=2019),
+            lot(reference="MY-003", make="Audi", model="A3", year=2022),
+        ])
+        page.select_option("#hero-make", "Peugeot")
+        self.assertEqual(page.eval_on_selector_all("#hero-model option", "o => o.map(x => x.value)"), ["", "208", "3008"])
+        self.assertEqual(page.text_content("#hero-submit"), "Rechercher 2 véhicules")
+        page.select_option("#hero-year", "2021")
+        self.assertEqual(page.text_content("#hero-submit"), "Rechercher 1 véhicule")
+        page.click("#hero-submit")
+        self.assertEqual(page.locator(".lot-card").count(), 1)
+        self.assertIn("MY-001", page.text_content("#lot-grid"))
+        self.assertEqual(page.input_value("#make"), "Peugeot")
+
+    def test_filtres_energie_et_prix(self):
+        page = self.open_site([
+            lot(reference="MY-H", fuel="Hybride (essence / électrique)", indicativePriceTnd=90000),
+            lot(reference="MY-D", fuel="Diesel", indicativePriceTnd=150000),
+            lot(reference="MY-X", fuel="Hybride", indicativePriceTnd=None),
+        ])
+        self.assertEqual(page.eval_on_selector_all("#fuel option", "o => o.map(x => x.value)"), ["", "Diesel", "Hybride"])
+        page.select_option("#fuel", "Hybride")
+        self.assertEqual(page.locator(".lot-card").count(), 2)
+        page.select_option("#price-max", "120000")
+        self.assertEqual(page.locator(".lot-card").count(), 1)
+        page.click("#clear-filters")
+        self.assertEqual(page.locator(".lot-card").count(), 3)
+
+    def test_marques_et_arrivages(self):
+        photos = [{"url": "photos/a.jpg", "authorized": True}]
+        page = self.open_site([lot(reference="MY-1", make="Audi", photos=photos), lot(reference="MY-2", make="BMW")])
+        self.assertEqual(page.locator(".recent-card").count(), 1)
+        page.click(".brand-chip[data-make='BMW']")
+        self.assertEqual(page.locator(".lot-card").count(), 1)
+        self.assertIn("MY-2", page.text_content("#lot-grid"))
 
     def test_lot_en_vente_expire_est_masque(self):
         page = self.open_site([
@@ -142,8 +181,8 @@ class CatalogueTest(unittest.TestCase):
         del stock["endsAt"]
         page = self.open_site([stock, lot(reference="MY-ENCHERE")])
         self.assertEqual(page.evaluate("catalogueEtat"), "ready")
-        self.assertEqual(page.text_content("#stock-count"), "1")
-        page.click("[data-tab='stock']")
+        self.assertEqual(page.text_content("#nav-count-stock"), "1")
+        page.click("[data-nav='stock']")
         self.assertEqual(page.locator(".lot-card").count(), 1)
         self.assertEqual(page.text_content(".lot-status"), "En stock")
 
