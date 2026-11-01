@@ -1133,7 +1133,7 @@
       const user = compte.user;
       const favoris = [...watchlist].map((reference) => lots.find((lot) => lot.reference === reference)).filter(Boolean);
       const statuts = {
-        pending: "En attente de confirmation", accepted: "Acceptée", refused: "Refusée",
+        pending: "En attente de confirmation", accepted: "Acceptée · l'équipe vous contacte", refused: "Refusée",
         leading: "Vous menez", outbid: "Surenchérie", won: "Remportée", lost: "Perdue", reserve_not_met: "Réserve non atteinte"
       };
       const statutsVehicule = { purchased: "Acheté", in_preparation: "En préparation", ready_for_pickup: "Prêt à enlever", picked_up: "Enlevé" };

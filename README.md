@@ -104,3 +104,15 @@ Projet rédigé selon le droit tunisien (COC, loi n° 2000-83, loi n° 92-117, l
 
 ⚠️ Appliquer la migration **avant** de pousser le code, sinon la connexion échoue :
 `npx wrangler d1 migrations apply DB --remote`, puis `git push origin main`.
+
+## Accepter ou refuser les offres (administration)
+
+En haut de `/admin`, la rubrique « À traiter » liste les ventes terminées en attente de décision et les demandes
+d'achat immédiat. « Décider » ouvre les offres du véhicule (acheteur, e-mail, téléphone) :
+
+- **Accepter** (possible seulement après la fin de la vente pour une enchère, y compris sous la réserve) : les autres
+  offres en attente passent en « Refusée », le véhicule apparaît dans « Mes véhicules » de l'acheteur et, si la case est
+  cochée, il est retiré du site. Le bouton « Envoyer la confirmation écrite » prépare l'e-mail prévu par les CGV (art. 6.3).
+- **Refuser** : l'offre seule passe en « Refusée ».
+
+L'acheteur voit « Acceptée · l'équipe vous contacte » ou « Refusée » dans sa page personnelle.

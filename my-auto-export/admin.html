@@ -89,6 +89,19 @@
     .bids { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
     .bids li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
     .bids li.best strong { color: var(--green); }
+    .bid-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 2px; }
+    .decision { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .badge.offer-accepted, .badge.sold { background: var(--green); color: white; }
+    .badge.offer-refused { background: #e6eae7; color: var(--muted); text-decoration: line-through; }
+    .badge.offer-pending { background: var(--gold-pale); color: #725b2d; }
+    .remove-check { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-size: 14px; font-weight: 650; }
+    .remove-check input { width: 20px; height: 20px; accent-color: var(--green); }
+    .todo { margin-bottom: 16px; padding: 14px 16px; border: 2px solid var(--gold); border-radius: var(--radius); background: #fffaf0; }
+    .todo h2 { margin: 0 0 8px; font-size: 17px; }
+    .todo-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .todo-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 10px 12px; border-radius: 6px; background: white; }
+    .todo-list li div { display: grid; }
+    .todo-list li span { color: var(--muted); font-size: 13px; }
     .bids span { color: var(--muted); font-size: 13px; }
     .vehicle-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
 
@@ -170,6 +183,10 @@
       <h1 id="list-title">Catalogue</h1>
       <p class="lead" id="counts"></p>
       <p class="message info hidden" id="photos-off">Le stockage des photos n'est pas encore configuré : tu peux enregistrer des véhicules, mais pas envoyer de photos (voir le README).</p>
+      <section class="todo hidden" id="todo" aria-labelledby="todo-title">
+        <h2 id="todo-title">À traiter</h2>
+        <ul class="todo-list" id="todo-list"></ul>
+      </section>
       <div class="toolbar">
         <div class="field"><label for="search">Rechercher</label><input id="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off"></div>
         <div class="field" style="flex: 0 1 200px"><label for="show">Afficher</label>
@@ -252,8 +269,14 @@
 
   <dialog class="editor" id="bids-dialog" aria-labelledby="bids-title">
     <form method="dialog">
-      <div class="editor-head"><h2 id="bids-title">Enchères</h2><button class="button small" style="margin-left:auto" aria-label="Fermer">✕</button></div>
-      <div class="editor-body" id="bids-body"></div>
+      <div class="editor-head"><h2 id="bids-title">Offres</h2><button class="button small" style="margin-left:auto" aria-label="Fermer">✕</button></div>
+      <div class="editor-body">
+        <div id="bids-summary"></div>
+        <label class="remove-check" id="remove-check"><input type="checkbox" id="remove-from-site" checked> Retirer le véhicule du site après acceptation</label>
+        <p class="message ok hidden" id="decision-ok" role="status"></p>
+        <p class="message error hidden" id="decision-error" role="alert"></p>
+        <div id="bids-body"></div>
+      </div>
     </form>
   </dialog>
 
@@ -312,8 +335,11 @@
     }
 
     async function charger() {
-      const data = await api("/api/admin/vehicles");
+      const [data, offres] = await Promise.all([api("/api/admin/vehicles"), api("/api/admin/offers")]);
       etat.vehicles = data.vehicles;
+      etat.offres = offres.offers;
+      etat.lotsOffres = offres.lots;
+      renderAFaire();
       etat.photosEnabled = data.photosEnabled;
       $("photos-off").classList.toggle("hidden", etat.photosEnabled);
       $("makes").innerHTML = [...new Set(etat.vehicles.map((item) => item.lot.make))].sort().map((m) => `<option value="${escapeHtml(m)}">`).join("");
@@ -341,14 +367,104 @@
       return `<div class="meta auction-meta">Enchère ${fin} · ${meilleure}${reserve}</div>`;
     }
 
+    const STATUTS_OFFRE = { pending: "En attente", accepted: "Acceptée", refused: "Refusée" };
+
+    function offresDe(reference) {
+      return (etat.offres || []).filter((offre) => offre.reference === reference);
+    }
+
+    // Véhicules qui attendent une décision : vente terminée avec des enchères en attente, ou demande d'achat immédiat.
+    function aTraiter() {
+      const references = [...new Set((etat.offres || []).map((offre) => offre.reference))];
+      return references.map((reference) => {
+        const offres = offresDe(reference);
+        if (offres.some((offre) => offre.status === "accepted")) return null;
+        const lot = etat.lotsOffres?.[reference];
+        const achats = offres.filter((offre) => offre.kind === "buy_now" && offre.status === "pending");
+        const meilleure = offres.find((offre) => offre.kind === "bid" && offre.best);
+        const venteTerminee = lot?.auction?.status === "ended" && meilleure?.status === "pending";
+        if (!achats.length && !venteTerminee) return null;
+        const raisons = [];
+        if (venteTerminee) {
+          const reserve = lot.auction.reserveMet === false ? " · réserve non atteinte" : lot.auction.reserveMet ? " · réserve atteinte" : "";
+          raisons.push(`Vente terminée · meilleure enchère ${tnd(meilleure.amountTnd)}${reserve}`);
+        }
+        if (achats.length) raisons.push(`${achats.length} demande${achats.length > 1 ? "s" : ""} d'achat immédiat · ${tnd(achats[0].amountTnd)}`);
+        return { reference, titre: lot?.title || reference, raisons };
+      }).filter(Boolean);
+    }
+
+    function renderAFaire() {
+      const items = aTraiter();
+      $("todo").classList.toggle("hidden", items.length === 0);
+      $("todo-title").textContent = `À traiter (${items.length})`;
+      $("todo-list").innerHTML = items.map((item) => `<li>
+        <div><strong>${escapeHtml(item.titre)}</strong><span>Réf. ${escapeHtml(item.reference)} · ${item.raisons.map(escapeHtml).join(" · ")}</span></div>
+        <button class="button small primary" type="button" data-bids="${escapeHtml(item.reference)}">Décider</button></li>`).join("");
+    }
+
+    function lienConfirmation(offre, titreLot) {
+      const sujet = `M&Y AUTO EXPORT — confirmation de votre achat (réf. ${offre.reference})`;
+      const corps = [
+        `Bonjour ${offre.name},`,
+        "",
+        `Nous avons le plaisir de vous confirmer ${offre.kind === "bid" ? "l'adjudication à votre profit de" : "l'acceptation de votre demande d'achat immédiat pour"} : ${titreLot} (réf. ${offre.reference}), au prix de ${tnd(offre.amountTnd)}.`,
+        "",
+        "Conformément à nos conditions générales de vente (www.myautoexport.com/conditions), la vente est conclue par cette confirmation écrite.",
+        "Nous revenons vers vous pour l'acompte, le paiement du solde et l'organisation de l'enlèvement.",
+        "",
+        "Cordialement,",
+        "L'équipe M&Y AUTO EXPORT"
+      ].join("\n");
+      return `mailto:${encodeURIComponent(offre.email)}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+    }
+
     async function afficherEncheres(reference) {
-      const { bids } = await api(`/api/admin/auctions/${encodeURIComponent(reference)}`);
-      $("bids-title").textContent = `Enchères · réf. ${reference}`;
-      $("bids-body").innerHTML = bids.length ? `<ol class="bids">${bids.map((bid, index) => `<li${index === 0 ? ` class="best"` : ""}>
-          <strong>${tnd(bid.amountTnd)}</strong> · ${escapeHtml(bid.bidder)} · ${dateHeure(bid.createdAt)}<br>
-          <span>${escapeHtml(bid.name)} · <a href="mailto:${escapeHtml(bid.email)}">${escapeHtml(bid.email)}</a>${bid.phone ? ` · <a href="tel:${escapeHtml(bid.phone)}">${escapeHtml(bid.phone)}</a>` : ""}</span></li>`).join("")}</ol>`
-        : "<p>Aucune enchère.</p>";
-      $("bids-dialog").showModal();
+      const { offers, lots } = await api(`/api/admin/offers?reference=${encodeURIComponent(reference)}`);
+      const lot = lots[reference];
+      const auction = lot?.auction;
+      const vendu = offers.find((offre) => offre.status === "accepted");
+      $("bids-title").textContent = `Offres · ${lot?.title || ""} (réf. ${reference})`;
+      $("bids-summary").innerHTML = auction ? `<p class="message ${auction.status === "live" ? "info" : "ok"}">${auction.status === "live"
+        ? `Vente en cours jusqu'au ${dateHeure(auction.endsAt)} : les enchères pourront être acceptées à la fin.`
+        : `Vente ${auction.status === "ended" ? "terminée" : "à venir"} · ${auction.bidCount} enchère(s)${auction.reserveMet == null ? "" : auction.reserveMet ? " · réserve atteinte" : " · réserve non atteinte"}`}</p>` : "";
+      $("remove-check").classList.toggle("hidden", Boolean(vendu));
+      $("decision-error").classList.add("hidden");
+      $("bids-body").innerHTML = offers.length ? `<ol class="bids">${offers.map((offre) => {
+        const decidable = offre.status === "pending" && !vendu && !(offre.kind === "bid" && auction?.status === "live");
+        return `<li${offre.best ? ` class="best"` : ""}>
+          <div class="bid-line"><strong>${tnd(offre.amountTnd)}</strong>
+            <span class="badge ${offre.kind === "bid" ? "upcoming" : "stock"}">${offre.kind === "bid" ? "Enchère" : "Achat immédiat"}</span>
+            <span class="badge offer-${escapeHtml(offre.status)}">${STATUTS_OFFRE[offre.status] || escapeHtml(offre.status)}</span>
+            ${offre.best ? `<span class="badge open">Meilleure enchère</span>` : ""}</div>
+          <span>${offre.bidder ? `${escapeHtml(offre.bidder)} · ` : ""}${escapeHtml(offre.name)} · <a href="mailto:${escapeHtml(offre.email)}">${escapeHtml(offre.email)}</a>${offre.phone ? ` · <a href="tel:${escapeHtml(offre.phone)}">${escapeHtml(offre.phone)}</a>` : ""} · ${dateHeure(offre.createdAt)}</span>
+          ${decidable ? `<div class="decision"><button class="button small primary" type="button" data-accept="${offre.id}">Accepter</button><button class="button small danger" type="button" data-refuse="${offre.id}">Refuser</button></div>` : ""}
+          ${offre.status === "accepted" ? `<div class="decision"><a class="button small primary" href="${lienConfirmation(offre, lot?.title || reference)}">Envoyer la confirmation écrite</a></div>` : ""}
+        </li>`;
+      }).join("")}</ol>` : "<p>Aucune offre.</p>";
+      $("bids-dialog").dataset.reference = reference;
+      if (!$("bids-dialog").open) $("bids-dialog").showModal();
+    }
+
+    async function decider(id, accepter) {
+      const offre = etat.offres.find((item) => item.id === id) || {};
+      const texte = accepter
+        ? `Accepter l'offre de ${tnd(offre.amountTnd)} de ${offre.name} ? Les autres offres en attente sur ce véhicule seront refusées.`
+        : `Refuser l'offre de ${tnd(offre.amountTnd)} de ${offre.name} ?`;
+      if (!confirm(texte)) return;
+      $("decision-error").classList.add("hidden");
+      try {
+        await api(`/api/admin/offers/${id}/${accepter ? "accept" : "refuse"}`, { method: "POST", body: { removeFromSite: $("remove-from-site").checked } });
+        await charger();
+        await afficherEncheres($("bids-dialog").dataset.reference);
+        $("decision-ok").textContent = accepter
+          ? "Offre acceptée. Le véhicule apparaît dans « Mes véhicules » de l'acheteur. Envoie-lui maintenant la confirmation écrite."
+          : "Offre refusée.";
+        $("decision-ok").classList.remove("hidden");
+      } catch (error) {
+        $("decision-error").textContent = error.message;
+        $("decision-error").classList.remove("hidden");
+      }
     }
 
     function renderListe() {
@@ -366,11 +482,11 @@
         return `<li class="vehicle${item.removed ? " removed" : ""}">
           <div class="thumb">${photo ? `<img src="${escapeHtml(photo)}" alt="" loading="lazy">` : ""}</div>
           <div><h2>${escapeHtml(titre(lot))}</h2>
-            <div class="meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="badge ${escapeHtml(lot.status)}">${STATUTS[lot.status] || escapeHtml(lot.status)}</span>
-              ${item.removed ? `<span class="badge removed">Retiré</span>` : ""}<span>${escapeHtml(prix(lot))}</span><span>${(lot.photos || []).length} photo(s)</span></div>
+            <div class="meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="badge ${escapeHtml(lot.status)}">${item.auction?.status === "ended" ? "Enchère terminée" : STATUTS[lot.status] || escapeHtml(lot.status)}</span>
+              ${item.removed ? `<span class="badge removed">Retiré</span>` : ""}${offresDe(lot.reference).some((o) => o.status === "accepted") ? `<span class="badge sold">Vendu</span>` : ""}<span>${escapeHtml(prix(lot))}</span><span>${(lot.photos || []).length} photo(s)</span></div>
             ${resumeEnchere(item.auction)}</div>
           <div class="vehicle-actions">
-            ${item.auction?.bidCount ? `<button class="button small" type="button" data-bids="${escapeHtml(lot.reference)}">Enchères (${item.auction.bidCount})</button>` : ""}
+            ${offresDe(lot.reference).length ? `<button class="button small" type="button" data-bids="${escapeHtml(lot.reference)}">Offres (${offresDe(lot.reference).length})</button>` : ""}
             <button class="button small" type="button" data-edit="${escapeHtml(lot.reference)}">Modifier</button>
             ${item.removed
               ? `<button class="button small" type="button" data-restore="${escapeHtml(lot.reference)}">Remettre en ligne</button>`
@@ -556,6 +672,16 @@
 
     // --- Liste ---
 
+    $("todo-list").addEventListener("click", (event) => {
+      const bouton = event.target.closest("[data-bids]");
+      if (bouton) afficherEncheres(bouton.dataset.bids).catch((error) => alert(error.message));
+    });
+    $("bids-dialog").addEventListener("click", (event) => {
+      const accepter = event.target.closest("[data-accept]");
+      const refuser = event.target.closest("[data-refuse]");
+      if (accepter || refuser) decider(Number((accepter || refuser).dataset.accept || (accepter || refuser).dataset.refuse), Boolean(accepter));
+    });
+    $("bids-dialog").addEventListener("close", () => $("decision-ok").classList.add("hidden"));
     $("vehicle-list").addEventListener("click", async (event) => {
       const encheres = event.target.closest("[data-bids]");
       if (encheres) return afficherEncheres(encheres.dataset.bids).catch((error) => alert(error.message));

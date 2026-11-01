@@ -394,7 +394,8 @@ async function detailEnchere(request, env, reference) {
 
 // Statut d'une enchère de l'acheteur : leading / outbid tant que la vente dure, won / reserve_not_met / lost ensuite.
 function statutEnchere(offre, meilleureId, auction) {
-  if (!auction) return offre.status;
+  // Une décision de l'administration (acceptée / refusée) l'emporte sur l'état calculé de la vente.
+  if (offre.status === "accepted" || offre.status === "refused" || !auction) return offre.status;
   const enTete = offre.id === meilleureId;
   if (auction.status !== "ended") return enTete ? "leading" : "outbid";
   if (!enTete) return "lost";
@@ -443,6 +444,9 @@ async function routeAdmin(request, env, path, method) {
   const vehicule = path.match(/^\/api\/admin\/vehicles\/([^/]{1,64})$/);
   if (vehicule && method === "PUT") return enregistrerVehicule(request, env, user, decodeURIComponent(vehicule[1]));
   if (vehicule && method === "DELETE") return retirerVehicule(request, env, user, decodeURIComponent(vehicule[1]));
+  if (path === "/api/admin/offers" && method === "GET") return listerOffres(request, env, new URL(request.url).searchParams.get("reference"));
+  const decision = path.match(/^\/api\/admin\/offers\/(\d+)\/(accept|refuse)$/);
+  if (decision && method === "POST") return deciderOffre(request, env, Number(decision[1]), decision[2] === "accept");
   if (path === "/api/admin/photos" && method === "POST") return envoyerPhoto(request, env);
   const photo = path.match(/^\/api\/admin\/photos\/(vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp))$/);
   if (photo && method === "DELETE") {
@@ -451,6 +455,83 @@ async function routeAdmin(request, env, path, method) {
     return json({ deleted: photo[1] });
   }
   throw new ApiError(404, "Route inconnue.");
+}
+
+// Toutes les enchères et demandes d'achat immédiat (ou celles d'un véhicule), avec l'acheteur et l'état de la vente.
+async function listerOffres(request, env, reference) {
+  const [items, resumes, etiquettes, { results }] = await Promise.all([
+    catalogueComplet(request, env),
+    resumesEncheres(env),
+    reference ? etiquettesEncherisseurs(env, reference) : Promise.resolve(null),
+    env.DB.prepare(
+      `SELECT offers.id, offers.reference, offers.kind, offers.amount_tnd, offers.status, offers.created_at, offers.user_id,
+              users.name, users.email, users.phone FROM offers JOIN users ON users.id = offers.user_id
+       ${reference ? "WHERE offers.reference = ?" : ""} ORDER BY offers.reference, offers.kind, offers.amount_tnd DESC, offers.created_at ASC LIMIT 1000`
+    ).bind(...(reference ? [reference] : [])).all()
+  ]);
+  const maintenant = Date.now();
+  const lots = {};
+  for (const item of items) {
+    if (!results.some((row) => row.reference === item.lot.reference)) continue;
+    lots[item.lot.reference] = {
+      title: `${item.lot.make} ${item.lot.model} ${item.lot.trim || ""}`.trim(),
+      removed: item.removed,
+      auction: etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant)
+    };
+  }
+  const meilleures = new Map();
+  for (const row of results) {
+    if (row.kind === "bid" && !meilleures.has(row.reference)) meilleures.set(row.reference, row.id);
+  }
+  return json({
+    lots,
+    offers: results.map((row) => ({
+      id: row.id, reference: row.reference, kind: row.kind, amountTnd: row.amount_tnd, status: row.status, createdAt: row.created_at,
+      best: meilleures.get(row.reference) === row.id, bidder: etiquettes?.get(row.user_id) || null,
+      name: row.name, email: row.email, phone: row.phone || ""
+    }))
+  });
+}
+
+// Accepter une offre : les autres offres en attente du véhicule sont refusées, le véhicule rejoint « Mes véhicules »
+// de l'acheteur et, si demandé, il est retiré du site. Refuser : l'offre seule passe en « refusée ».
+async function deciderOffre(request, env, offreId, accepter) {
+  const user = await exigerAdmin(request, env);
+  const body = await lireJson(request).catch(() => ({}));
+  const offre = await env.DB.prepare("SELECT id, user_id, reference, kind, amount_tnd, status FROM offers WHERE id = ?").bind(offreId).first();
+  if (!offre) throw new ApiError(404, "Offre introuvable.");
+  if (offre.status !== "pending") throw new ApiError(409, "Cette offre a déjà été traitée.");
+  if (!accepter) {
+    await env.DB.prepare("UPDATE offers SET status = 'refused' WHERE id = ? AND status = 'pending'").bind(offreId).run();
+    return json({ id: offreId, status: "refused" });
+  }
+
+  const item = (await catalogueComplet(request, env)).find((entry) => entry.lot.reference === offre.reference);
+  if (!item) throw new ApiError(404, "Véhicule introuvable.");
+  const dejaVendu = await env.DB.prepare("SELECT id FROM offers WHERE reference = ? AND status = 'accepted'").bind(offre.reference).first();
+  if (dejaVendu) throw new ApiError(409, "Une offre a déjà été acceptée pour ce véhicule.");
+  if (offre.kind === "bid") {
+    const auction = etatEnchere(item.lot, (await resumesEncheres(env)).get(offre.reference), Date.now());
+    if (auction?.status === "live") throw new ApiError(409, "La vente est encore en cours : attends sa fin pour accepter une enchère.");
+  }
+
+  const maintenant = new Date().toISOString();
+  const requetes = [
+    env.DB.prepare("UPDATE offers SET status = 'accepted' WHERE id = ? AND status = 'pending'").bind(offreId),
+    env.DB.prepare("UPDATE offers SET status = 'refused' WHERE reference = ? AND id <> ? AND status = 'pending'").bind(offre.reference, offreId),
+    env.DB.prepare(
+      `INSERT INTO customer_vehicles (user_id, reference, make, model, trim, status, purchased_at) VALUES (?, ?, ?, ?, ?, 'purchased', ?)
+       ON CONFLICT(user_id, reference) DO NOTHING`
+    ).bind(offre.user_id, offre.reference, item.lot.make, item.lot.model, item.lot.trim || null, maintenant)
+  ];
+  if (body.removeFromSite !== false) {
+    requetes.push(env.DB.prepare(
+      `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 1, ?, ?)
+       ON CONFLICT(reference) DO UPDATE SET removed = 1, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
+    ).bind(offre.reference, JSON.stringify(item.lot), maintenant, user.id));
+  }
+  await env.DB.batch(requetes);
+  return json({ id: offreId, status: "accepted", removedFromSite: body.removeFromSite !== false });
 }
 
 const STATUTS = ["open", "upcoming", "stock"];

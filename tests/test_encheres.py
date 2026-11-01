@@ -218,6 +218,94 @@ class EncheresTest(unittest.TestCase):
         for texte in ("loi n° 2000-83", "loi organique n° 2004-63", "Code des obligations et des contrats", "droit tunisien"):
             self.assertIn(texte, page)
 
+    def terminer(self, reference):
+        """Ramène la dernière enchère dans le passé puis attend la fin prévue (endsAt dans 3 s)."""
+        subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", self.persist, "-c", self.config, "--command",
+                        f"UPDATE offers SET created_at = '2000-01-01T00:00:00.000Z' WHERE reference = '{reference}' AND kind = 'bid'"],
+                       cwd=PROJET, check=True, capture_output=True)
+        time.sleep(3)
+
+    def offres(self, reference, email="admin@ex.com"):
+        return self.requete(f"/api/admin/offers?reference={reference}", cookie=self.cookies[email])
+
+    def decider(self, offre_id, action, corps=None, email="admin@ex.com"):
+        return self.requete(f"/api/admin/offers/{offre_id}/{action}", corps or {}, "POST", self.cookies[email])
+
+    def test_accepter_la_meilleure_enchere_apres_la_fin(self):
+        self.creer_lot("ACC-1", endsAt=dans(seconds=4), reservePriceTnd=105000)
+        self.encherir("alice", "ACC-1", 100000)
+        self.encherir("bob", "ACC-1", 101000)
+        statut, data, _ = self.offres("ACC-1")
+        meilleure = next(o for o in data["offers"] if o["best"])
+        self.assertEqual((statut, meilleure["email"]), (200, "bob@ex.com"))
+        self.assertEqual(self.decider(meilleure["id"], "accept")[0], 409, "vente encore en cours")
+
+        self.terminer("ACC-1")
+        self.assertIs(self.offres("ACC-1")[1]["lots"]["ACC-1"]["auction"]["reserveMet"], False)
+        statut, data, _ = self.decider(meilleure["id"], "accept", {"removeFromSite": True})
+        self.assertEqual((statut, data["status"]), (200, "accepted"), "acceptation possible sous la réserve (CGV 6.3)")
+        statuts = {o["email"]: o["status"] for o in self.offres("ACC-1")[1]["offers"]}
+        self.assertEqual(statuts, {"bob@ex.com": "accepted", "alice@ex.com": "refused"})
+
+        bob = self.requete("/api/me", cookie=self.cookies["bob@ex.com"])[1]
+        self.assertEqual([o["status"] for o in bob["offers"] if o["reference"] == "ACC-1"], ["accepted"])
+        self.assertIn("ACC-1", [v["reference"] for v in bob["vehicles"]])
+        alice = self.requete("/api/me", cookie=self.cookies["alice@ex.com"])[1]
+        self.assertEqual([o["status"] for o in alice["offers"] if o["reference"] == "ACC-1"], ["refused"])
+        self.assertNotIn("ACC-1", [v["reference"] for v in alice["vehicles"]])
+        self.assertNotIn("ACC-1", [lot["reference"] for lot in self.requete("/api/catalogue")[1]], "retiré du site")
+        self.assertEqual(self.decider(meilleure["id"], "accept")[0], 409, "déjà traitée")
+
+    def test_achat_immediat_refuse_puis_accepte_sans_retirer(self):
+        self.creer_lot("ACC-2", status="stock", endsAt=None, indicativePriceTnd=90000, buyNowPriceTnd=95000)
+        for email in ("alice", "bob"):
+            statut, _, _ = self.requete("/api/offers", {"reference": "ACC-2", "kind": "buy_now"}, "POST", self.cookies[f"{email}@ex.com"])
+            self.assertEqual(statut, 201)
+        offres = {o["email"]: o for o in self.offres("ACC-2")[1]["offers"]}
+        self.assertEqual(self.decider(offres["alice@ex.com"]["id"], "refuse")[0], 200)
+        self.assertEqual(self.decider(offres["bob@ex.com"]["id"], "accept", {"removeFromSite": False})[0], 200)
+        self.assertIn("ACC-2", [lot["reference"] for lot in self.requete("/api/catalogue")[1]], "laissé en ligne")
+        statuts = {o["email"]: o["status"] for o in self.offres("ACC-2")[1]["offers"]}
+        self.assertEqual(statuts, {"alice@ex.com": "refused", "bob@ex.com": "accepted"})
+
+    def test_reserve_aux_administrateurs(self):
+        self.creer_lot("ACC-3")
+        self.encherir("alice", "ACC-3", 100000)
+        offre_id = self.offres("ACC-3")[1]["offers"][0]["id"]
+        self.assertEqual(self.offres("ACC-3", "alice@ex.com")[0], 403)
+        self.assertEqual(self.decider(offre_id, "accept", email="alice@ex.com")[0], 403)
+        self.assertEqual(self.decider(offre_id, "refuse", email="bob@ex.com")[0], 403)
+
+    def test_decision_dans_la_page_admin(self):
+        self.creer_lot("ACC-4", make="Kia", model="Sorento", endsAt=dans(seconds=4))
+        self.encherir("alice", "ACC-4", 100000)
+        self.encherir("bob", "ACC-4", 101000)
+        self.terminer("ACC-4")
+        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.addCleanup(context.close)
+        page = context.new_page()
+        page.on("dialog", lambda dialog: dialog.accept())
+        page.goto(self.base + "/admin.html")
+        page.fill("#login-email", "admin@ex.com")
+        page.fill("#login-password", MOT_DE_PASSE)
+        page.click("#login-form [type=submit]")
+        page.wait_for_selector("#todo:not(.hidden)")
+        ligne = page.locator("#todo-list li", has_text="ACC-4")
+        self.assertIn("Vente terminée · meilleure enchère 101", ligne.text_content())
+        ligne.get_by_text("Décider").click()
+        page.wait_for_selector("#bids-dialog[open] [data-accept]")
+        page.locator("#bids-body li.best [data-accept]").click()
+        page.wait_for_selector("#decision-ok:not(.hidden)")
+        lien = page.get_attribute("#bids-body a.button[href^='mailto:']", "href")
+        self.assertTrue(lien.startswith("mailto:bob%40ex.com?subject="), lien)
+        self.assertIn("ACC-4", urllib.request.unquote(lien))
+        self.assertEqual(page.locator("#bids-body [data-accept]").count(), 0)
+        page.keyboard.press("Escape")
+        self.assertEqual(page.locator("#todo-list li", has_text="ACC-4").count(), 0)
+        # Retiré du site à l'acceptation (case cochée par défaut) : visible avec le filtre « Retirés ».
+        page.select_option("#show", "removed")
+        self.assertEqual(page.locator(".vehicle", has_text="ACC-4").locator(".badge.sold").count(), 1)
+
     def test_parcours_dans_le_navigateur(self):
         self.creer_lot("ENC-9", make="Audi", model="Q7", reservePriceTnd=101000)
         context = self.browser.new_context(viewport={"width": 390, "height": 844})
