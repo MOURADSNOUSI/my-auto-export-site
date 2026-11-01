@@ -4,6 +4,8 @@ const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100000; // maximum accepté par Cloudflare Workers
 const MAX_LOGIN_FAILURES = 5; // par adresse e-mail sur 15 minutes
 const MAX_OFFER_TND = 10_000_000;
+// Version des conditions générales (conditions.html). La changer redemande l'acceptation à tous les acheteurs.
+const CGV_VERSION = "2026-11-01";
 const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes repousse la fin de 2 minutes
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -46,6 +48,7 @@ async function routeApi(request, env, url) {
   if (path === "/api/login" && method === "POST") return login(request, env);
   if (path === "/api/logout" && method === "POST") return logout(request, env);
   if (path === "/api/offers" && method === "POST") return createOffer(request, env);
+  if (path === "/api/terms" && method === "POST") return accepterConditions(request, env);
   const favorite = path.match(/^\/api\/favorites\/([^/]{1,64})$/);
   if (favorite && (method === "PUT" || method === "DELETE")) {
     return toggleFavorite(request, env, decodeURIComponent(favorite[1]), method === "PUT");
@@ -133,7 +136,7 @@ async function utilisateurConnecte(request, env) {
   const token = lireCookie(request, SESSION_COOKIE);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   return env.DB.prepare(
-    `SELECT users.id, users.email, users.name, users.phone, users.role, users.created_at FROM sessions
+    `SELECT users.id, users.email, users.name, users.phone, users.role, users.terms_version, users.created_at FROM sessions
      JOIN users ON users.id = sessions.user_id
      WHERE sessions.token_hash = ? AND sessions.expires_at > ?`
   ).bind(await sha256(token), new Date().toISOString()).first();
@@ -146,7 +149,19 @@ async function exigerUtilisateur(request, env) {
 }
 
 function profil(user) {
-  return { id: user.id, email: user.email, name: user.name, phone: user.phone || "", role: user.role || "buyer", createdAt: user.created_at };
+  return {
+    id: user.id, email: user.email, name: user.name, phone: user.phone || "", role: user.role || "buyer", createdAt: user.created_at,
+    termsAccepted: user.terms_version === CGV_VERSION, termsVersion: CGV_VERSION
+  };
+}
+
+async function accepterConditions(request, env) {
+  const user = await exigerUtilisateur(request, env);
+  const body = await lireJson(request);
+  if (body.version !== CGV_VERSION) throw new ApiError(409, "Les conditions ont changé : recharge la page pour lire la dernière version.");
+  await env.DB.prepare("UPDATE users SET terms_version = ?, terms_accepted_at = ? WHERE id = ?")
+    .bind(CGV_VERSION, new Date().toISOString(), user.id).run();
+  return json({ termsAccepted: true, termsVersion: CGV_VERSION });
 }
 
 // --- Routes ---
@@ -233,7 +248,7 @@ async function register(request, env) {
   let created;
   try {
     created = await env.DB.prepare(
-      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, created_at"
+      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, terms_version, created_at"
     ).bind(email, name, phone || null, hash, salt).first();
   } catch (error) {
     if (String(error).includes("UNIQUE")) throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail.");
@@ -568,6 +583,9 @@ async function createOffer(request, env) {
   const body = await lireJson(request);
   const reference = texte(body.reference, 64);
   const kind = body.kind === "buy_now" ? "buy_now" : "bid";
+  if (user.terms_version !== CGV_VERSION) {
+    throw new ApiError(428, "Accepte les conditions générales de vente avant d'enchérir ou d'acheter.");
+  }
   const lot = await chargerLot(request, env, reference);
   if (!lot) throw new ApiError(404, "Lot introuvable.");
 

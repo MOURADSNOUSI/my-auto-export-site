@@ -239,6 +239,9 @@
     .bid-form { margin-top: 0; background: white; }
     .quick-bids { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
     .quick-bids button { min-height: 36px; padding: 0 12px; border: 1px solid #b7d4c5; border-radius: 18px; background: var(--green-pale); color: #1d5e49; font-size: 13px; font-weight: 750; }
+    .terms-check { display: flex; align-items: start; gap: 10px; margin-top: 12px; color: var(--ink); font-size: 14px; font-weight: 600; line-height: 1.4; }
+    .terms-check input { flex: 0 0 auto; width: 22px; height: 22px; margin: 0; accent-color: var(--green); }
+    .footer-inner a { color: #f1cf85; }
     .bid-history { display: grid; margin: 8px 0 0; padding: 0; list-style: none; }
     .bid-history li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
     .bid-history li:first-child strong { color: var(--green); }
@@ -544,7 +547,7 @@
   </main>
 
   <footer>
-    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · Disponibilités confirmées par l'équipe</span></div>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · <a href="/conditions.html">Conditions générales de vente</a> · <a href="/conditions.html#donnees">Données personnelles</a></span></div>
   </footer>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
@@ -569,7 +572,7 @@
           <div class="form-field"><label for="register-phone">Téléphone (facultatif)</label><input id="register-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30"></div>
           <div class="form-field full"><label for="register-password">Mot de passe (10 caractères minimum)</label><input id="register-password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="200" required></div>
         </div>
-        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter.</p>
+        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter (<a href="/conditions.html#donnees" target="_blank" rel="noopener">données personnelles</a>).</p>
         <p class="form-error" role="alert" hidden></p>
         <button class="form-submit" type="submit">Créer mon compte</button>
       </form>
@@ -874,7 +877,8 @@
           <label for="offer-amount">Votre enchère (TND) · minimum ${formatTnd(a.minNextBidTnd)}</label>
           <div class="quick-bids">${[1, 2, 5].map((n) => `<button type="button" data-quick="${a.minNextBidTnd + (n - 1) * a.incrementTnd}">${formatTnd(a.minNextBidTnd + (n - 1) * a.incrementTnd)}</button>`).join("")}</div>
           <div class="offer-row"><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${a.minNextBidTnd}" step="1" required value="${a.minNextBidTnd}"><button type="submit">Enchérir</button></div>
-          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT contacte le gagnant pour finaliser la vente.</p>
+          ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions.html" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
+          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions.html#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
           <p class="form-error" role="alert" hidden></p>
         </form>`;
       }
@@ -962,8 +966,11 @@
         ouvrirConnexion("login", () => demanderAchat(reference));
         return;
       }
-      if (!window.confirm(`Confirmer la demande d'achat immédiat de ${titreLot(lot)} à ${formatTnd(lot.buyNowPriceTnd)} ? L'équipe M&Y AUTO EXPORT te recontactera pour finaliser.`)) return;
+      const mentionConditions = compte.user.termsAccepted ? ""
+        : "\n\nEn confirmant, vous déclarez avoir lu et accepté les conditions générales de vente (www.myautoexport.com/conditions.html).";
+      if (!window.confirm(`Confirmer la demande d'achat immédiat de ${titreLot(lot)} à ${formatTnd(lot.buyNowPriceTnd)} ? L'équipe M&Y AUTO EXPORT te recontactera pour finaliser.${mentionConditions}`)) return;
       try {
+        if (!compte.user.termsAccepted) await accepterConditions();
         const { offer } = await api("/api/offers", { method: "POST", body: { reference, kind: "buy_now" } });
         compte.offers.unshift(offer);
         afficherCompte();
@@ -1038,6 +1045,11 @@
         : `<strong><span class="account-dot" aria-hidden="true"></span>Se connecter</strong><small>Créer un compte</small>`;
       document.getElementById("account-button").setAttribute("aria-label", user ? `Mon espace acheteur, ${user.name}` : "Se connecter ou créer un compte");
       majCompteurs();
+    }
+
+    async function accepterConditions() {
+      await api("/api/terms", { method: "POST", body: { version: compte.user.termsVersion } });
+      compte.user.termsAccepted = true;
     }
 
     async function basculerFavori(reference) {
@@ -1430,6 +1442,7 @@
       if (!window.confirm(`Confirmer votre enchère de ${formatTnd(montant)} sur ${titreLot(lot)} ?`)) return;
       form.querySelector("[type=submit]").disabled = true;
       try {
+        if (form.elements.terms?.checked) await accepterConditions();
         const { offer, auction } = await api("/api/offers", { method: "POST", body: { reference, amount: montant } });
         compte.offers.unshift(offer);
         lot.auction = auction;

@@ -91,3 +91,16 @@ Un véhicule est mis aux enchères dans l'administration avec le statut « Ench�
   d'un véhicule liste les enchères avec le nom, l'e-mail et le téléphone de chaque enchérisseur.
 
 Mise en service : `npx wrangler d1 migrations apply DB --remote` (index 0004), puis `git push origin main`.
+
+## Conditions générales de vente (/conditions.html)
+
+Projet rédigé selon le droit tunisien (COC, loi n° 2000-83, loi n° 92-117, loi organique n° 2004-63),
+**à faire valider par un avocat tunisien** et à compléter (passages surlignés « À compléter ») avant publication.
+
+- Avant sa première enchère ou demande d'achat, l'acheteur coche « J'ai lu et j'accepte les conditions » ;
+  la version et la date d'acceptation sont enregistrées (`users.terms_version`, `users.terms_accepted_at`).
+- Pour publier une nouvelle version : modifier `conditions.html`, puis changer la même date dans
+  `CGV_VERSION` (worker/index.js) et dans `#cgv-version` (conditions.html). Tous les acheteurs devront réaccepter.
+
+⚠️ Appliquer la migration **avant** de pousser le code, sinon la connexion échoue :
+`npx wrangler d1 migrations apply DB --remote`, puis `git push origin main`.

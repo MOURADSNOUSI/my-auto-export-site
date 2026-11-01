@@ -25,6 +25,7 @@ except ImportError:
 PROJET = Path(__file__).resolve().parent.parent
 WRANGLER = os.environ.get("WRANGLER")
 MOT_DE_PASSE = "motdepasse-solide"
+CGV_VERSION = "2026-11-01"
 
 
 def dans(**delta):
@@ -60,6 +61,8 @@ class EncheresTest(unittest.TestCase):
         subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", cls.persist, "-c", cls.config,
                         "--command", "UPDATE users SET role = 'admin' WHERE email = 'admin@ex.com'"], cwd=PROJET, check=True, capture_output=True)
         cls.cookies = {email: cls.connexion(email) for email in ("admin@ex.com", "alice@ex.com", "bob@ex.com")}
+        for email in ("alice@ex.com", "bob@ex.com"):
+            assert cls.requete("/api/terms", {"version": CGV_VERSION}, "POST", cls.cookies[email])[0] == 200
 
     @classmethod
     def tearDownClass(cls):
@@ -167,6 +170,53 @@ class EncheresTest(unittest.TestCase):
         self.assertEqual(resultats.count(201), 1, resultats)
         self.assertIn(min(set(resultats) - {201}), (400, 409))
         self.assertEqual(self.enchere("ENC-8")["auction"]["bidCount"], 1)
+
+    def test_conditions_obligatoires_avant_d_encherir(self):
+        self.creer_lot("ENC-10")
+        self.assertEqual(self.requete("/api/register", {"name": "Carla Test", "email": "carla@ex.com", "password": MOT_DE_PASSE}, "POST")[0], 201)
+        cookie = self.connexion("carla@ex.com")
+        self.assertFalse(self.requete("/api/me", cookie=cookie)[1]["user"]["termsAccepted"])
+        statut, data, _ = self.requete("/api/offers", {"reference": "ENC-10", "amount": 100000}, "POST", cookie)
+        self.assertEqual(statut, 428, data)
+        self.assertEqual(self.requete("/api/terms", {"version": "2020-01-01"}, "POST", cookie)[0], 409, "ancienne version refusée")
+        self.assertEqual(self.requete("/api/terms", {"version": CGV_VERSION}, "POST", cookie)[0], 200)
+        self.assertTrue(self.requete("/api/me", cookie=cookie)[1]["user"]["termsAccepted"])
+        self.assertEqual(self.requete("/api/offers", {"reference": "ENC-10", "amount": 100000}, "POST", cookie)[0], 201)
+        self.assertEqual(self.requete("/api/terms", {"version": CGV_VERSION}, "POST")[0], 401)
+
+    def test_case_conditions_dans_le_navigateur(self):
+        self.creer_lot("ENC-11", make="Volvo", model="XC90")
+        self.assertEqual(self.requete("/api/register", {"name": "Dora Test", "email": "dora@ex.com", "password": MOT_DE_PASSE}, "POST")[0], 201)
+        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.addCleanup(context.close)
+        page = context.new_page()
+        page.on("dialog", lambda dialog: dialog.accept())
+        page.goto(self.base + "/")
+        page.wait_for_function("catalogueEtat === 'ready' && compte.disponible")
+        page.click(".account-chip")
+        page.fill("#login-email", "dora@ex.com")
+        page.fill("#login-password", MOT_DE_PASSE)
+        page.click("#login-form [type=submit]")
+        page.wait_for_selector("#account-dialog[open]")
+        page.keyboard.press("Escape")
+        page.locator(".lot-card", has_text="ENC-11").get_by_text("Voir la fiche").click()
+        page.wait_for_selector("#auction-panel .terms-check")
+        self.assertEqual(page.get_attribute(".terms-check a", "href"), "/conditions.html")
+        page.click("#auction-panel [type=submit]")
+        self.assertTrue(page.evaluate("!document.querySelector('.terms-check input').checkValidity()"), "case obligatoire")
+        self.assertEqual(self.enchere("ENC-11")["auction"]["bidCount"], 0)
+        page.check(".terms-check input")
+        page.click("#auction-panel [type=submit]")
+        page.wait_for_function("document.querySelector('#auction-panel .auction-head strong')?.textContent.includes('100')"
+                               " && !document.querySelector('#auction-panel .terms-check')")
+        self.assertEqual(self.enchere("ENC-11")["auction"]["bidCount"], 1)
+
+    def test_page_des_conditions(self):
+        with urllib.request.urlopen(self.base + "/conditions.html") as reponse:
+            page = reponse.read().decode()
+        self.assertIn(CGV_VERSION, page)
+        for texte in ("loi n° 2000-83", "loi organique n° 2004-63", "Code des obligations et des contrats", "droit tunisien"):
+            self.assertIn(texte, page)
 
     def test_parcours_dans_le_navigateur(self):
         self.creer_lot("ENC-9", make="Audi", model="Q7", reservePriceTnd=101000)

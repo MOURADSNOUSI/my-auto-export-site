@@ -192,7 +192,9 @@ class AdministrationTest(unittest.TestCase):
             "make": "BMW", "model": "X5", "status": "open", "endsAt": "2099-01-01T12:00:00Z", "startingPriceTnd": 100000
         }, "PUT", cookie)
         self.assertEqual(statut, 200)
-        statut, data, _ = self.requete("/api/offers", {"reference": "MY-ADM-2", "amount": 120000}, "POST", self.cookie("acheteur@example.com"))
+        acheteur = self.cookie("acheteur@example.com")
+        self.assertEqual(self.requete("/api/terms", {"version": "2026-11-01"}, "POST", acheteur)[0], 200)
+        statut, data, _ = self.requete("/api/offers", {"reference": "MY-ADM-2", "amount": 120000}, "POST", acheteur)
         self.assertEqual(statut, 201, data)
 
     def test_donnees_invalides_refusees(self):
