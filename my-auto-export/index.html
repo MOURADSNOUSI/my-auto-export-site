@@ -159,7 +159,7 @@
     .lot-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-top: auto; }
     .lot-side { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-left: 1px solid var(--line); background: #fafbfa; }
     .lot-price { display: grid; gap: 1px; }
-    .lot-price small { color: var(--muted); font-size: 12px; }
+    .lot-price small { display: block; color: var(--muted); font-size: 12px; }
     .lot-price strong { font-size: 21px; line-height: 1.2; }
     .lot-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: auto; }
     .detail-link { min-height: 42px; padding: 0 12px; border: 0; border-radius: 22px; background: var(--green); color: white; font-size: 14px; font-weight: 750; }
@@ -224,6 +224,30 @@
     .auth-form .form-submit { margin-top: 14px; }
     .offer-form { margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; }
     .offer-form label { display: block; margin-bottom: 6px; color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+    .auction-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; color: var(--ink); font-size: 13px; font-weight: 650; }
+    .auction-line svg { color: var(--green); }
+    .auction-line.ended { color: var(--muted); }
+    .countdown { font-variant-numeric: tabular-nums; font-weight: 800; }
+    .reserve-badge { padding: 1px 8px; border-radius: 10px; background: var(--gold-pale); color: var(--gold-ink); font-size: 12px; font-weight: 750; }
+    .reserve-badge.met { background: var(--green-pale); color: var(--green); }
+    .auction-panel { margin-top: 18px; padding: 16px; border: 2px solid var(--green); border-radius: 8px; background: #f8fbf9; }
+    .auction-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 18px; margin-bottom: 12px; }
+    .auction-head small { display: block; color: var(--muted); font-size: 12px; }
+    .auction-head strong { font-size: 28px; line-height: 1.1; }
+    .auction-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; color: var(--ink-soft); font-size: 13px; }
+    .auction-note { margin: 0; color: var(--ink-soft); font-size: 14px; }
+    .bid-form { margin-top: 0; background: white; }
+    .quick-bids { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .quick-bids button { min-height: 36px; padding: 0 12px; border: 1px solid #b7d4c5; border-radius: 18px; background: var(--green-pale); color: #1d5e49; font-size: 13px; font-weight: 750; }
+    .bid-history { display: grid; margin: 8px 0 0; padding: 0; list-style: none; }
+    .bid-history li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .bid-history li:first-child strong { color: var(--green); }
+    .bid-history li.you { font-weight: 700; }
+    .bid-history time { color: var(--muted); }
+    @media (max-width: 680px) {
+      .bid-history li { grid-template-columns: auto 1fr; gap: 2px 10px; }
+      .bid-history time { grid-column: 1 / -1; font-size: 12px; }
+    }
     .offer-row { display: flex; gap: 8px; }
     .offer-row input { flex: 1; min-width: 0; min-height: 40px; padding: 9px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; }
     .offer-row button { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 0; border-radius: 4px; background: var(--green); color: white; font-size: 12px; font-weight: 750; }
@@ -640,7 +664,7 @@
       const sort = document.getElementById("sort").value;
       if (sort === "price-low") visibleLots.sort((a, b) => (prixLot(a) ?? Infinity) - (prixLot(b) ?? Infinity));
       if (sort === "price-high") visibleLots.sort((a, b) => (prixLot(b) ?? -Infinity) - (prixLot(a) ?? -Infinity));
-      if (sort === "ending") visibleLots.sort((a, b) => (a.endsAt || "9999").localeCompare(b.endsAt || "9999"));
+      if (sort === "ending") visibleLots.sort((a, b) => (a.auction?.endsAt || a.endsAt || "9999").localeCompare(b.auction?.endsAt || b.endsAt || "9999"));
       if (sort === "newest") visibleLots.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
       ["all", "stock", "auction", "fixed", "exclusive"].forEach((categorie) => {
@@ -778,15 +802,124 @@
     }
 
     function libellePrix(lot) {
+      if (lot.auction?.currentBidTnd != null) {
+        return { label: lot.auction.status === "ended" ? "Dernière enchère" : "Enchère actuelle", value: formatTnd(lot.auction.currentBidTnd) };
+      }
       if (prixLot(lot) == null) return { label: "Tarif", value: "Prix sur demande" };
       return { label: lot.startingPriceTnd != null ? "Mise à prix" : "Prix indicatif export", value: formatTnd(prixLot(lot)) };
     }
 
     function prixEnchere(lot) {
-      const lignes = [["Prix de réserve", lot.reservePriceTnd], ["Achat immédiat", lot.buyNowPriceTnd]].filter(([, value]) => Number.isFinite(value));
+      const lignes = [
+        ["Mise à prix", lot.auction?.currentBidTnd != null ? lot.startingPriceTnd : null],
+        ["Prix de réserve", lot.reservePriceTnd],
+        ["Achat immédiat", lot.buyNowPriceTnd]
+      ].filter(([, value]) => Number.isFinite(value));
       if (!lignes.length) return "";
       return `<dl class="price-lines">${lignes.map(([label, value]) => `<div><dt>${label}</dt><dd>${formatTnd(value)}</dd></div>`).join("")}</dl>`;
     }
+
+    // --- Enchères en direct ---
+
+    function tempsRestant(iso) {
+      const reste = Date.parse(iso) - Date.now();
+      if (!Number.isFinite(reste)) return "";
+      if (reste <= 0) return "Terminée";
+      const s = Math.floor(reste / 1000);
+      const j = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+      if (j > 0) return `${j} j ${h} h`;
+      if (h > 0) return `${h} h ${String(m).padStart(2, "0")} min`;
+      return `${m} min ${String(sec).padStart(2, "0")} s`;
+    }
+
+    function compteARebours(iso) {
+      return `<span class="countdown" data-ends="${escapeHtml(iso)}">${tempsRestant(iso)}</span>`;
+    }
+
+    function badgeReserve(auction) {
+      if (auction.reserveMet == null) return "";
+      return auction.reserveMet
+        ? `<span class="reserve-badge met">Réserve atteinte</span>`
+        : `<span class="reserve-badge">Réserve non atteinte</span>`;
+    }
+
+    // Ligne d'état sur la carte : temps restant, nombre d'enchères, réserve.
+    function resumeEnchere(lot) {
+      const a = lot.auction;
+      if (!a) return "";
+      if (a.status === "upcoming") return `<p class="auction-line">${icone("gavel")}Enchères bientôt ouvertes</p>`;
+      if (a.status === "ended") return `<p class="auction-line ended">${icone("gavel")}Vente terminée · ${pluriel(a.bidCount, "enchère")}</p>`;
+      return `<p class="auction-line">${icone("gavel")}<span>Fin dans ${compteARebours(a.endsAt)}</span><span>${pluriel(a.bidCount, "enchère")}</span>${badgeReserve(a)}</p>`;
+    }
+
+    function panneauEnchere(lot, encheres = null) {
+      const a = lot.auction;
+      if (!a || !compte.disponible) return "";
+      const historique = encheres == null ? `<p class="account-empty">Chargement de l'historique…</p>`
+        : encheres.length ? `<ol class="bid-history">${encheres.map((bid) => `<li${bid.you ? ` class="you"` : ""}><strong>${formatTnd(bid.amountTnd)}</strong><span>${escapeHtml(bid.bidder)}${bid.you ? " (vous)" : ""}</span><time>${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(bid.createdAt))}</time></li>`).join("")}</ol>`
+        : `<p class="account-empty">Aucune enchère pour le moment. Soyez le premier !</p>`;
+      let action;
+      if (a.status === "upcoming") {
+        action = `<p class="auction-note">Les enchères de ce véhicule ne sont pas encore ouvertes. Ajoutez-le à vos favoris pour le suivre.</p>`;
+      } else if (a.status === "ended") {
+        const resultat = a.currentBidTnd == null ? "Aucune enchère n'a été placée."
+          : a.reserveMet === false ? "La meilleure enchère n'a pas atteint le prix de réserve." : "Le véhicule est adjugé au meilleur enchérisseur, contacté par l'équipe.";
+        action = `<p class="auction-note">Vente terminée. ${resultat}</p>`;
+      } else if (!compte.user) {
+        action = `<button class="form-submit" type="button" data-offer-login="${escapeHtml(lot.reference)}">Se connecter pour enchérir</button>`;
+      } else {
+        const meneur = encheres?.[0]?.you;
+        action = `<form class="offer-form bid-form" data-offer="${escapeHtml(lot.reference)}">
+          ${meneur ? `<p class="form-success">Vous êtes le meilleur enchérisseur.</p>` : ""}
+          <label for="offer-amount">Votre enchère (TND) · minimum ${formatTnd(a.minNextBidTnd)}</label>
+          <div class="quick-bids">${[1, 2, 5].map((n) => `<button type="button" data-quick="${a.minNextBidTnd + (n - 1) * a.incrementTnd}">${formatTnd(a.minNextBidTnd + (n - 1) * a.incrementTnd)}</button>`).join("")}</div>
+          <div class="offer-row"><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${a.minNextBidTnd}" step="1" required value="${a.minNextBidTnd}"><button type="submit">Enchérir</button></div>
+          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT contacte le gagnant pour finaliser la vente.</p>
+          <p class="form-error" role="alert" hidden></p>
+        </form>`;
+      }
+      return `<section class="auction-panel" id="auction-panel" data-ref="${escapeHtml(lot.reference)}" aria-live="polite">
+        <div class="auction-head">
+          <div><small>${a.currentBidTnd == null ? "Mise à prix" : a.status === "ended" ? "Dernière enchère" : "Enchère actuelle"}</small>
+            <strong>${formatTnd(a.currentBidTnd ?? a.minNextBidTnd)}</strong></div>
+          <div class="auction-meta">${a.status === "live" ? `<span>Fin dans ${compteARebours(a.endsAt)}${a.extended ? " (prolongée)" : ""}</span>` : ""}
+            <span>${pluriel(a.bidCount, "enchère")}</span>${badgeReserve(a)}</div>
+        </div>
+        ${action}
+        <h3 class="fiche-section">Historique des enchères</h3>
+        ${historique}
+      </section>`;
+    }
+
+    let suiviEnchere = null;
+
+    async function rafraichirEnchere(reference) {
+      try {
+        const data = await api(`/api/auctions/${encodeURIComponent(reference)}`);
+        const lot = lots.find((item) => item.reference === reference);
+        const panneau = document.getElementById("auction-panel");
+        if (!lot || !panneau || panneau.dataset.ref !== reference) return;
+        lot.auction = data.auction;
+        // Ne pas effacer un montant en cours de saisie : on ne remplace que si le champ n'a pas le focus.
+        if (document.activeElement?.id === "offer-amount") return;
+        panneau.outerHTML = panneauEnchere(lot, data.bids);
+      } catch {}
+    }
+
+    function suivreEnchere(reference) {
+      arreterSuiviEnchere();
+      rafraichirEnchere(reference);
+      suiviEnchere = setInterval(() => rafraichirEnchere(reference), 8000);
+    }
+
+    function arreterSuiviEnchere() {
+      clearInterval(suiviEnchere);
+      suiviEnchere = null;
+    }
+
+    setInterval(() => {
+      document.querySelectorAll("[data-ends]").forEach((element) => { element.textContent = tempsRestant(element.dataset.ends); });
+    }, 1000);
 
     // Date ISO (2026-11-15) formatée en toutes lettres, sinon texte libre (« Immédiatement »).
     function formatDisponibilite(value) {
@@ -949,7 +1082,10 @@
       }
       const user = compte.user;
       const favoris = [...watchlist].map((reference) => lots.find((lot) => lot.reference === reference)).filter(Boolean);
-      const statuts = { pending: "En attente de confirmation", accepted: "Acceptée", refused: "Refusée" };
+      const statuts = {
+        pending: "En attente de confirmation", accepted: "Acceptée", refused: "Refusée",
+        leading: "Vous menez", outbid: "Surenchérie", won: "Remportée", lost: "Perdue", reserve_not_met: "Réserve non atteinte"
+      };
       const statutsVehicule = { purchased: "Acheté", in_preparation: "En préparation", ready_for_pickup: "Prêt à enlever", picked_up: "Enlevé" };
       const statutsFacture = { issued: "Émise", paid: "Payée", void: "Annulée" };
       const date = (iso) => {
@@ -976,7 +1112,7 @@
           ${compte.offers.length ? `<ul class="account-list">${compte.offers.map((offer) => {
             const lot = lots.find((item) => item.reference === offer.reference);
             return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
-              <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Offre"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
+              <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Enchère"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
               <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span></li>`;
           }).join("")}</ul>` : `<p class="account-empty">Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères.</p>`}
         </section>
@@ -999,21 +1135,6 @@
         });
       });
       if (!accountDialog.open) accountDialog.showModal();
-    }
-
-    function formulaireOffre(lot) {
-      if (!compte.disponible || !CATEGORIES.auction(lot)) return "";
-      if (!compte.user) {
-        return `<div class="offer-form"><label>Faire une offre sur ce véhicule</label>
-          <button class="form-submit" type="button" data-offer-login="${escapeHtml(lot.reference)}">Se connecter pour enchérir</button></div>`;
-      }
-      const minimum = Number.isFinite(lot.startingPriceTnd) ? lot.startingPriceTnd : 1;
-      return `<form class="offer-form" data-offer="${escapeHtml(lot.reference)}">
-        <label for="offer-amount">Ton offre (TND)${Number.isFinite(lot.startingPriceTnd) ? ` · minimum ${formatTnd(lot.startingPriceTnd)}` : ""}</label>
-        <div class="offer-row"><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${minimum}" step="1" required placeholder="${minimum}"><button type="submit">Enregistrer mon offre</button></div>
-        <p class="form-footnote">Ton offre est transmise à l'équipe M&Y AUTO EXPORT, qui te recontacte pour la confirmer.</p>
-        <p class="form-error" role="alert" hidden></p>
-      </form>`;
     }
 
     function photosLot(lot) {
@@ -1053,6 +1174,7 @@
         <div class="lot-body">
           <div><h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
           <ul class="lot-specs">${caracteristiques.map(([nom, texte]) => `<li>${icone(nom === "gear" ? "sliders" : nom)}<span title="${escapeHtml(texte)}">${escapeHtml(texte)}</span></li>`).join("")}</ul>
+          ${resumeEnchere(lot)}
           ${enlevementLot(lot)}
           <div class="lot-foot">${lienLot(lot)}</div>
         </div>
@@ -1083,12 +1205,14 @@
         <dl class="spec-list">${specs.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>
         <h3 class="fiche-section">Enlèvement</h3>
         ${enlevementLot(lot)}
-        <div class="lot-price"><span><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></span></div>
+        ${lot.auction && compte.disponible ? "" : `<div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>`}
         ${prixEnchere(lot)}${boutonAchat(lot)}
-        ${formulaireOffre(lot)}
+        ${panneauEnchere(lot)}
         <div class="lot-actions">${lienLot(lot)}</div>`;
       document.getElementById("lot-dialog-body").dataset.photos = JSON.stringify(photos.map((photo) => photo.url));
-      lotDialog.showModal();
+      if (!lotDialog.open) lotDialog.showModal();
+      if (lot.auction && compte.disponible) suivreEnchere(reference);
+      else arreterSuiviEnchere();
     }
 
     function lotValide(lot) {
@@ -1125,7 +1249,8 @@
         if (!Array.isArray(catalogue) || catalogue.some((lot) => !lotValide(lot))) {
           throw new Error("Format de catalogue invalide.");
         }
-        lots = catalogue.filter((lot) => lot.status !== "open" || Date.parse(lot.endsAt) > Date.now());
+        // Fin effective de l'enchère (éventuellement prolongée) fournie par le serveur, sinon date prévue.
+        lots = catalogue.filter((lot) => lot.status !== "open" || Date.parse(lot.auction?.endsAt || lot.endsAt) > Date.now());
         remplirFiltre("make", lots.map((lot) => lot.make), "Toutes les marques");
         remplirFiltre("hero-make", lots.map((lot) => lot.make), "Toutes");
         remplirModeles("model", "", "Tous les modèles");
@@ -1280,6 +1405,11 @@
         demanderAchat(achat.dataset.buynow);
         return;
       }
+      const rapide = event.target.closest("[data-quick]");
+      if (rapide) {
+        document.getElementById("offer-amount").value = rapide.dataset.quick;
+        return;
+      }
       const connexionOffre = event.target.closest("[data-offer-login]");
       if (connexionOffre) {
         lotDialog.close();
@@ -1294,17 +1424,33 @@
       event.preventDefault();
       const reference = form.dataset.offer;
       const erreur = form.querySelector(".form-error");
+      const montant = Number(form.elements.amount.value);
       erreur.hidden = true;
+      const lot = lots.find((item) => item.reference === reference);
+      if (!window.confirm(`Confirmer votre enchère de ${formatTnd(montant)} sur ${titreLot(lot)} ?`)) return;
+      form.querySelector("[type=submit]").disabled = true;
       try {
-        const { offer } = await api("/api/offers", { method: "POST", body: { reference, amount: Number(form.elements.amount.value) } });
+        const { offer, auction } = await api("/api/offers", { method: "POST", body: { reference, amount: montant } });
         compte.offers.unshift(offer);
+        lot.auction = auction;
         afficherCompte();
-        form.innerHTML = `<p class="form-success">Offre de ${formatTnd(offer.amountTnd)} enregistrée. L'équipe M&Y AUTO EXPORT te recontacte pour la confirmer. Retrouve-la dans ta page personnelle.</p>`;
+        document.activeElement?.blur();
+        await rafraichirEnchere(reference);
+        updateView();
       } catch (error) {
         erreur.textContent = error.message;
         erreur.hidden = false;
+        form.querySelector("[type=submit]").disabled = false;
+        if (error.status === 409 || error.status === 400) {
+          document.activeElement?.blur();
+          setTimeout(() => rafraichirEnchere(reference).then(() => {
+            const nouvelle = document.querySelector("#auction-panel .form-error");
+            if (nouvelle) { nouvelle.textContent = error.message; nouvelle.hidden = false; }
+          }), 0);
+        }
       }
     });
+    lotDialog.addEventListener("close", arreterSuiviEnchere);
 
     const authDialog = document.getElementById("auth-dialog");
     const accountDialog = document.getElementById("account-dialog");

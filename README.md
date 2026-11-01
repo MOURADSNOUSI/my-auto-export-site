@@ -76,3 +76,18 @@ npx wrangler d1 execute DB --remote --command "UPDATE users SET role = 'admin' W
 ```
 
 Retirer l'accès : même commande avec `role = 'buyer'`.
+
+## Enchères en direct
+
+Un véhicule est mis aux enchères dans l'administration avec le statut « Enchère en cours » et une date de fin
+(« Enchère à venir » l'affiche sans permettre d'enchérir).
+
+- Chaque enchère doit dépasser la meilleure d'un pas minimum : celui du véhicule (champ « Pas d'enchère »),
+  sinon 200 TND sous 20 000, 500 sous 100 000, 1 000 sous 300 000, 2 000 au-delà. La première enchère part de la mise à prix.
+- Une enchère placée dans les 2 dernières minutes repousse la fin à 2 minutes après elle.
+- Le site affiche le prix actuel, le compte à rebours, la réserve atteinte ou non et l'historique anonymisé ;
+  la fiche se met à jour toutes les 8 secondes.
+- À la fin, le meilleur enchérisseur gagne si la réserve est atteinte. Dans l'administration, le bouton « Enchères »
+  d'un véhicule liste les enchères avec le nom, l'e-mail et le téléphone de chaque enchérisseur.
+
+Mise en service : `npx wrangler d1 migrations apply DB --remote` (index 0004), puis `git push origin main`.

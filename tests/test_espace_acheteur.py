@@ -155,29 +155,13 @@ class EspaceAcheteurTest(unittest.TestCase):
         self.assertIn("Jeep", autre.text_content("#account-body"))
         self.assertEqual(autre.text_content("#nav-favorites-count"), "1")
 
-    def test_offre_sur_un_lot_aux_encheres(self):
+    def test_enchere_a_venir_pas_encore_ouverte(self):
+        # Le parcours d'enchère complet est testé dans test_encheres.py.
         page = self.nouvelle_page()
         page.locator(".lot-card", has_text="MY-0001").get_by_text("Voir la fiche").click()
-        page.click("[data-offer-login]")
-        self.assertTrue(page.is_visible("#auth-dialog"))
-        page.click("[data-auth='register']")
-        page.fill("#register-name", "Offrant")
-        page.fill("#register-email", "offre@example.com")
-        page.fill("#register-password", "motdepasse-solide")
-        page.click("#register-form [type=submit]")
-        page.wait_for_selector("#lot-dialog[open] .offer-form")
-        page.fill("#offer-amount", "100000")
-        page.evaluate("document.getElementById('offer-amount').removeAttribute('min')")
-        page.click("#lot-dialog .offer-form [type=submit]")
-        page.wait_for_selector("#lot-dialog .form-error:not([hidden])")
-        self.assertIn("mise à prix", page.text_content("#lot-dialog .form-error"))
-        page.fill("#offer-amount", "160000")
-        page.click("#lot-dialog .offer-form [type=submit]")
-        page.wait_for_selector("#lot-dialog .form-success")
-        self.assertEqual(page.text_content("#nav-offers-count"), "1")
-        page.keyboard.press("Escape")
-        page.click("#nav-offers")
-        self.assertIn("En attente de confirmation", page.text_content("#account-body"))
+        page.wait_for_selector("#auction-panel")
+        self.assertIn("pas encore ouvertes", page.text_content("#auction-panel"))
+        self.assertEqual(page.locator("#auction-panel .bid-form").count(), 0)
 
     def test_pas_d_offre_sur_un_vehicule_en_stock(self):
         page = self.nouvelle_page()

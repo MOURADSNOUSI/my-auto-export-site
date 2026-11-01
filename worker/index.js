@@ -4,6 +4,7 @@ const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100000; // maximum accepté par Cloudflare Workers
 const MAX_LOGIN_FAILURES = 5; // par adresse e-mail sur 15 minutes
 const MAX_OFFER_TND = 10_000_000;
+const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes repousse la fin de 2 minutes
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
@@ -36,6 +37,8 @@ async function routeApi(request, env, url) {
 
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/catalogue" && method === "GET") return json(await catalogue(request, env));
+  const enchere = path.match(/^\/api\/auctions\/([^/]{1,64})$/);
+  if (enchere && method === "GET") return detailEnchere(request, env, decodeURIComponent(enchere[1]));
   if (path.startsWith("/api/admin/")) return routeAdmin(request, env, path, method);
   const invoiceDocument = path.match(/^\/api\/invoices\/(\d+)\/document$/);
   if (invoiceDocument && method === "GET") return telechargerFacture(request, env, Number(invoiceDocument[1]));
@@ -157,12 +160,30 @@ async function me(request, env) {
     env.DB.prepare("SELECT id, reference, make, model, trim, status, purchased_at FROM customer_vehicles WHERE user_id = ? ORDER BY purchased_at DESC, id DESC").bind(user.id).all(),
     env.DB.prepare("SELECT id, vehicle_id, invoice_number, issued_at, total_tnd, status, document_key FROM invoices WHERE user_id = ? ORDER BY issued_at DESC, id DESC").bind(user.id).all()
   ]);
+  const references = [...new Set(offers.results.filter((row) => row.kind === "bid").map((row) => row.reference))];
+  const encheres = new Map();
+  if (references.length) {
+    const [lots, meilleures] = await Promise.all([
+      catalogue(request, env),
+      env.DB.prepare(
+        `SELECT reference, id, MAX(amount_tnd) AS top FROM offers WHERE kind = 'bid'
+         AND reference IN (${references.map(() => "?").join(",")}) GROUP BY reference`
+      ).bind(...references).all()
+    ]);
+    for (const row of meilleures.results) {
+      encheres.set(row.reference, { meilleureId: row.id, auction: lots.find((lot) => lot.reference === row.reference)?.auction });
+    }
+  }
   return json({
     user: profil(user),
     favorites: favorites.results.map((row) => row.reference),
-    offers: offers.results.map((row) => ({
-      id: row.id, reference: row.reference, amountTnd: row.amount_tnd, kind: row.kind, status: row.status, createdAt: row.created_at
-    })),
+    offers: offers.results.map((row) => {
+      const enchere = row.kind === "bid" ? encheres.get(row.reference) : null;
+      return {
+        id: row.id, reference: row.reference, amountTnd: row.amount_tnd, kind: row.kind,
+        status: enchere ? statutEnchere(row, enchere.meilleureId, enchere.auction) : row.status, createdAt: row.created_at
+      };
+    }),
     vehicles: vehicles.results.map((row) => ({
       id: row.id, reference: row.reference, make: row.make, model: row.model, trim: row.trim || "",
       status: row.status, purchasedAt: row.purchased_at
@@ -278,8 +299,91 @@ async function catalogueComplet(request, env) {
   return resultat;
 }
 
+// Lots publics, avec l'état de leur enchère (prix actuel, fin effective…) pour les lots open et upcoming.
 async function catalogue(request, env) {
-  return (await catalogueComplet(request, env)).filter((item) => !item.removed).map((item) => item.lot);
+  const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
+  const maintenant = Date.now();
+  return items.filter((item) => !item.removed).map((item) => avecEnchere(item.lot, resumes, maintenant));
+}
+
+function avecEnchere(lot, resumes, maintenant) {
+  const auction = etatEnchere(lot, resumes.get(lot.reference), maintenant);
+  return auction ? { ...lot, auction } : lot;
+}
+
+// --- Enchères ---
+
+// Pas minimum entre deux enchères : celui du lot s'il est fixé, sinon selon le prix atteint.
+function pasEnchere(lot, montant) {
+  if (Number.isFinite(lot.bidIncrementTnd) && lot.bidIncrementTnd > 0) return lot.bidIncrementTnd;
+  if (montant < 20_000) return 200;
+  if (montant < 100_000) return 500;
+  if (montant < 300_000) return 1_000;
+  return 2_000;
+}
+
+async function resumesEncheres(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT reference, COUNT(*) AS n, MAX(amount_tnd) AS top, MAX(created_at) AS last FROM offers WHERE kind = 'bid' GROUP BY reference"
+  ).all();
+  return new Map(results.map((row) => [row.reference, row]));
+}
+
+// Fin effective : la date prévue, repoussée à 2 minutes après la dernière enchère si celle-ci est arrivée tard.
+// Chaque enchère acceptée l'a été avant la fin effective du moment, d'où ce calcul à partir de la seule dernière.
+function etatEnchere(lot, resume, maintenant) {
+  if (lot.status !== "open" && lot.status !== "upcoming") return null;
+  const depart = Number.isFinite(lot.startingPriceTnd) ? lot.startingPriceTnd : 0;
+  const top = resume?.top ?? null;
+  const prixActuel = top ?? depart;
+  const pas = pasEnchere(lot, prixActuel);
+  let fin = Date.parse(lot.endsAt);
+  if (resume?.last && Number.isFinite(fin)) fin = Math.max(fin, Date.parse(resume.last) + ANTI_SNIPE_MS);
+  const statut = lot.status === "upcoming" ? "upcoming" : (Number.isFinite(fin) && maintenant < fin ? "live" : "ended");
+  return {
+    status: statut,
+    endsAt: Number.isFinite(fin) ? new Date(fin).toISOString() : null,
+    extended: Number.isFinite(fin) && fin > Date.parse(lot.endsAt),
+    currentBidTnd: top,
+    bidCount: resume?.n ?? 0,
+    incrementTnd: pas,
+    minNextBidTnd: top == null ? Math.max(depart, 1) : top + pas,
+    reserveMet: Number.isFinite(lot.reservePriceTnd) ? top != null && top >= lot.reservePriceTnd : null
+  };
+}
+
+async function etiquettesEncherisseurs(env, reference) {
+  const { results } = await env.DB.prepare(
+    "SELECT user_id, MIN(created_at) AS premiere FROM offers WHERE reference = ? AND kind = 'bid' GROUP BY user_id ORDER BY premiere"
+  ).bind(reference).all();
+  return new Map(results.map((row, index) => [row.user_id, `Enchérisseur ${index + 1}`]));
+}
+
+async function detailEnchere(request, env, reference) {
+  const lot = await chargerLot(request, env, reference);
+  if (!lot?.auction) throw new ApiError(404, "Aucune enchère pour ce lot.");
+  const [user, etiquettes, { results }] = await Promise.all([
+    utilisateurConnecte(request, env),
+    etiquettesEncherisseurs(env, reference),
+    env.DB.prepare("SELECT user_id, amount_tnd, created_at FROM offers WHERE reference = ? AND kind = 'bid' ORDER BY amount_tnd DESC, created_at ASC LIMIT 30")
+      .bind(reference).all()
+  ]);
+  return json({
+    reference,
+    auction: lot.auction,
+    bids: results.map((row) => ({
+      amountTnd: row.amount_tnd, createdAt: row.created_at, bidder: etiquettes.get(row.user_id), you: Boolean(user && user.id === row.user_id)
+    }))
+  });
+}
+
+// Statut d'une enchère de l'acheteur : leading / outbid tant que la vente dure, won / reserve_not_met / lost ensuite.
+function statutEnchere(offre, meilleureId, auction) {
+  if (!auction) return offre.status;
+  const enTete = offre.id === meilleureId;
+  if (auction.status !== "ended") return enTete ? "leading" : "outbid";
+  if (!enTete) return "lost";
+  return auction.reserveMet === false ? "reserve_not_met" : "won";
 }
 
 async function chargerLot(request, env, reference) {
@@ -297,7 +401,29 @@ async function exigerAdmin(request, env) {
 async function routeAdmin(request, env, path, method) {
   const user = await exigerAdmin(request, env);
   if (path === "/api/admin/vehicles" && method === "GET") {
-    return json({ vehicles: await catalogueComplet(request, env), photosEnabled: Boolean(env.PHOTOS) });
+    const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
+    const maintenant = Date.now();
+    const vehicles = items.map((item) => ({ ...item, auction: etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant) }));
+    return json({ vehicles, photosEnabled: Boolean(env.PHOTOS) });
+  }
+  const encheres = path.match(/^\/api\/admin\/auctions\/([^/]{1,64})$/);
+  if (encheres && method === "GET") {
+    const reference = decodeURIComponent(encheres[1]);
+    const [etiquettes, { results }] = await Promise.all([
+      etiquettesEncherisseurs(env, reference),
+      env.DB.prepare(
+        `SELECT offers.amount_tnd, offers.created_at, offers.user_id, users.name, users.email, users.phone FROM offers
+         JOIN users ON users.id = offers.user_id WHERE offers.reference = ? AND offers.kind = 'bid'
+         ORDER BY offers.amount_tnd DESC, offers.created_at ASC`
+      ).bind(reference).all()
+    ]);
+    return json({
+      reference,
+      bids: results.map((row) => ({
+        amountTnd: row.amount_tnd, createdAt: row.created_at, bidder: etiquettes.get(row.user_id),
+        name: row.name, email: row.email, phone: row.phone || ""
+      }))
+    });
   }
   const vehicule = path.match(/^\/api\/admin\/vehicles\/([^/]{1,64})$/);
   if (vehicule && method === "PUT") return enregistrerVehicule(request, env, user, decodeURIComponent(vehicule[1]));
@@ -347,7 +473,7 @@ function validerVehicule(body, reference) {
     if (!Number.isInteger(annee) || annee < 1950 || annee > 2100) throw new ApiError(400, "Année invalide.");
     lot.year = annee;
   }
-  for (const [cle, nom] of [["mileageKm", "Kilométrage"], ["indicativePriceTnd", "Prix"], ["startingPriceTnd", "Mise à prix"], ["reservePriceTnd", "Prix de réserve"], ["buyNowPriceTnd", "Achat immédiat"]]) {
+  for (const [cle, nom] of [["mileageKm", "Kilométrage"], ["indicativePriceTnd", "Prix"], ["startingPriceTnd", "Mise à prix"], ["reservePriceTnd", "Prix de réserve"], ["buyNowPriceTnd", "Achat immédiat"], ["bidIncrementTnd", "Pas d'enchère"]]) {
     const valeur = nombre(body[cle], nom);
     if (valeur !== null) lot[cle] = valeur;
   }
@@ -445,23 +571,38 @@ async function createOffer(request, env) {
   const lot = await chargerLot(request, env, reference);
   if (!lot) throw new ApiError(404, "Lot introuvable.");
 
-  let amount;
-  if (kind === "buy_now") {
-    if (!Number.isFinite(lot.buyNowPriceTnd)) throw new ApiError(400, "Ce lot n'a pas d'achat immédiat.");
-    amount = Math.round(lot.buyNowPriceTnd);
-  } else {
-    if (!["open", "upcoming"].includes(lot.status)) throw new ApiError(400, "Ce lot n'est pas mis aux enchères.");
-    if (lot.status === "open" && Date.parse(lot.endsAt) <= Date.now()) throw new ApiError(400, "La vente de ce lot est terminée.");
-    amount = Number(body.amount);
-    if (!Number.isInteger(amount) || amount <= 0 || amount > MAX_OFFER_TND) throw new ApiError(400, "Montant invalide (nombre entier de dinars).");
-    if (Number.isFinite(lot.startingPriceTnd) && amount < lot.startingPriceTnd) {
-      throw new ApiError(400, `L'offre doit être d'au moins ${lot.startingPriceTnd} TND (mise à prix).`);
-    }
-  }
+  if (kind === "bid") return placerEnchere(request, env, user, lot, body);
+  if (!Number.isFinite(lot.buyNowPriceTnd)) throw new ApiError(400, "Ce lot n'a pas d'achat immédiat.");
+  if (lot.auction?.status === "ended") throw new ApiError(400, "La vente de ce lot est terminée.");
   const offer = await env.DB.prepare(
-    "INSERT INTO offers (user_id, reference, amount_tnd, kind) VALUES (?, ?, ?, ?) RETURNING id, reference, amount_tnd, kind, status, created_at"
-  ).bind(user.id, reference, amount, kind).first();
+    "INSERT INTO offers (user_id, reference, amount_tnd, kind) VALUES (?, ?, ?, 'buy_now') RETURNING id, reference, amount_tnd, kind, status, created_at"
+  ).bind(user.id, reference, Math.round(lot.buyNowPriceTnd)).first();
   return json({
     offer: { id: offer.id, reference: offer.reference, amountTnd: offer.amount_tnd, kind: offer.kind, status: offer.status, createdAt: offer.created_at }
+  }, 201);
+}
+
+async function placerEnchere(request, env, user, lot, body) {
+  const etat = lot.auction;
+  if (lot.status === "upcoming") throw new ApiError(400, "Les enchères de ce lot ne sont pas encore ouvertes.");
+  if (!etat) throw new ApiError(400, "Ce lot n'est pas mis aux enchères.");
+  if (etat.status !== "live") throw new ApiError(400, "La vente de ce lot est terminée.");
+  const amount = Number(body.amount);
+  if (!Number.isInteger(amount) || amount <= 0 || amount > MAX_OFFER_TND) throw new ApiError(400, "Montant invalide (nombre entier de dinars).");
+  if (amount < etat.minNextBidTnd) throw new ApiError(400, `L'enchère minimale est de ${etat.minNextBidTnd} TND.`);
+
+  // Vérification et insertion en une seule requête : deux enchères simultanées ne peuvent pas passer toutes les deux.
+  const offer = await env.DB.prepare(
+    `INSERT INTO offers (user_id, reference, amount_tnd, kind, created_at)
+     SELECT ?, ?, ?, 'bid', ?
+     WHERE ? >= COALESCE((SELECT MAX(amount_tnd) FROM offers WHERE reference = ? AND kind = 'bid') + ?, ?)
+     RETURNING id, reference, amount_tnd, kind, created_at`
+  ).bind(user.id, lot.reference, amount, new Date().toISOString(), amount, lot.reference, etat.incrementTnd, etat.minNextBidTnd).first();
+  if (!offer) throw new ApiError(409, "Une enchère plus haute vient d'être placée. Le prix a été mis à jour, réessaie.");
+
+  const auction = etatEnchere(lot, (await resumesEncheres(env)).get(lot.reference), Date.now());
+  return json({
+    offer: { id: offer.id, reference: offer.reference, amountTnd: offer.amount_tnd, kind: offer.kind, status: "leading", createdAt: offer.created_at },
+    auction
   }, 201);
 }

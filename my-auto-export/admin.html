@@ -85,6 +85,11 @@
     .badge.upcoming { background: var(--gold-pale); color: #725b2d; }
     .badge.open { background: var(--red-pale); color: var(--red); }
     .badge.removed { background: #333; color: white; }
+    .auction-meta { color: var(--green); font-weight: 650; }
+    .bids { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+    .bids li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .bids li.best strong { color: var(--green); }
+    .bids span { color: var(--muted); font-size: 13px; }
     .vehicle-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
 
     dialog.editor { width: min(860px, 100%); max-height: calc(100% - 24px); padding: 0; border: 0; border-radius: 10px; color: var(--ink); box-shadow: 0 24px 80px #10151340; }
@@ -208,6 +213,7 @@
             <div class="field"><label for="f-startingPriceTnd">Mise à prix</label><input id="f-startingPriceTnd" name="startingPriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
             <div class="field"><label for="f-reservePriceTnd">Prix de réserve</label><input id="f-reservePriceTnd" name="reservePriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
             <div class="field"><label for="f-buyNowPriceTnd">Achat immédiat</label><input id="f-buyNowPriceTnd" name="buyNowPriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
+            <div class="field"><label for="f-bidIncrementTnd">Pas d'enchère</label><input id="f-bidIncrementTnd" name="bidIncrementTnd" type="number" inputmode="numeric" min="1" step="1" placeholder="Automatique"><small>Vide : selon le prix (200 à 2 000 TND)</small></div>
             <div class="field wide"><label for="f-sourceUrl">Lien fournisseur (facultatif)</label><input id="f-sourceUrl" name="sourceUrl" type="url" inputmode="url" placeholder="https://…"></div>
           </div>
         </fieldset>
@@ -244,6 +250,13 @@
     </form>
   </dialog>
 
+  <dialog class="editor" id="bids-dialog" aria-labelledby="bids-title">
+    <form method="dialog">
+      <div class="editor-head"><h2 id="bids-title">Enchères</h2><button class="button small" style="margin-left:auto" aria-label="Fermer">✕</button></div>
+      <div class="editor-body" id="bids-body"></div>
+    </form>
+  </dialog>
+
   <datalist id="makes"></datalist>
   <datalist id="fuels"><option value="Essence"><option value="Diesel"><option value="Hybride"><option value="Hybride rechargeable"><option value="Électrique"></datalist>
   <datalist id="bodies"><option value="SUV"><option value="4x4"><option value="Berline"><option value="Break"><option value="Citadine"><option value="Coupé"><option value="Pick-up"><option value="Utilitaire"></datalist>
@@ -251,7 +264,7 @@
   <script>
     const STATUTS = { stock: "En stock", upcoming: "Enchère à venir", open: "Enchère en cours" };
     const CHAMPS_TEXTE = ["make", "model", "trim", "fuel", "bodyType", "country", "availableFrom", "pickupLocation", "seller", "sourceUrl"];
-    const CHAMPS_NOMBRE = ["year", "mileageKm", "indicativePriceTnd", "startingPriceTnd", "reservePriceTnd", "buyNowPriceTnd"];
+    const CHAMPS_NOMBRE = ["year", "mileageKm", "indicativePriceTnd", "startingPriceTnd", "reservePriceTnd", "buyNowPriceTnd", "bidIncrementTnd"];
     const TAILLE_MAX = 1600; // côté le plus long des photos envoyées, en pixels
 
     const etat = { user: null, vehicles: [], photosEnabled: false, edition: null, photos: [], envois: 0, aSupprimer: new Set() };
@@ -317,6 +330,27 @@
       return valeur == null ? "Prix sur demande" : `${new Intl.NumberFormat("fr-TN").format(valeur)} TND`;
     }
 
+    const tnd = (valeur) => `${new Intl.NumberFormat("fr-TN").format(valeur)} TND`;
+    const dateHeure = (iso) => new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+
+    function resumeEnchere(auction) {
+      if (!auction || auction.status === "upcoming") return "";
+      const fin = auction.status === "live" ? `fin le ${dateHeure(auction.endsAt)}${auction.extended ? " (prolongée)" : ""}` : "terminée";
+      const meilleure = auction.currentBidTnd == null ? "aucune enchère" : `meilleure : ${tnd(auction.currentBidTnd)}`;
+      const reserve = auction.reserveMet == null ? "" : auction.reserveMet ? " · réserve atteinte" : " · réserve non atteinte";
+      return `<div class="meta auction-meta">Enchère ${fin} · ${meilleure}${reserve}</div>`;
+    }
+
+    async function afficherEncheres(reference) {
+      const { bids } = await api(`/api/admin/auctions/${encodeURIComponent(reference)}`);
+      $("bids-title").textContent = `Enchères · réf. ${reference}`;
+      $("bids-body").innerHTML = bids.length ? `<ol class="bids">${bids.map((bid, index) => `<li${index === 0 ? ` class="best"` : ""}>
+          <strong>${tnd(bid.amountTnd)}</strong> · ${escapeHtml(bid.bidder)} · ${dateHeure(bid.createdAt)}<br>
+          <span>${escapeHtml(bid.name)} · <a href="mailto:${escapeHtml(bid.email)}">${escapeHtml(bid.email)}</a>${bid.phone ? ` · <a href="tel:${escapeHtml(bid.phone)}">${escapeHtml(bid.phone)}</a>` : ""}</span></li>`).join("")}</ol>`
+        : "<p>Aucune enchère.</p>";
+      $("bids-dialog").showModal();
+    }
+
     function renderListe() {
       const query = $("search").value.trim().toLocaleLowerCase("fr");
       const show = $("show").value;
@@ -333,8 +367,10 @@
           <div class="thumb">${photo ? `<img src="${escapeHtml(photo)}" alt="" loading="lazy">` : ""}</div>
           <div><h2>${escapeHtml(titre(lot))}</h2>
             <div class="meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="badge ${escapeHtml(lot.status)}">${STATUTS[lot.status] || escapeHtml(lot.status)}</span>
-              ${item.removed ? `<span class="badge removed">Retiré</span>` : ""}<span>${escapeHtml(prix(lot))}</span><span>${(lot.photos || []).length} photo(s)</span></div></div>
+              ${item.removed ? `<span class="badge removed">Retiré</span>` : ""}<span>${escapeHtml(prix(lot))}</span><span>${(lot.photos || []).length} photo(s)</span></div>
+            ${resumeEnchere(item.auction)}</div>
           <div class="vehicle-actions">
+            ${item.auction?.bidCount ? `<button class="button small" type="button" data-bids="${escapeHtml(lot.reference)}">Enchères (${item.auction.bidCount})</button>` : ""}
             <button class="button small" type="button" data-edit="${escapeHtml(lot.reference)}">Modifier</button>
             ${item.removed
               ? `<button class="button small" type="button" data-restore="${escapeHtml(lot.reference)}">Remettre en ligne</button>`
@@ -521,6 +557,8 @@
     // --- Liste ---
 
     $("vehicle-list").addEventListener("click", async (event) => {
+      const encheres = event.target.closest("[data-bids]");
+      if (encheres) return afficherEncheres(encheres.dataset.bids).catch((error) => alert(error.message));
       const modifier = event.target.closest("[data-edit]");
       const retirer = event.target.closest("[data-remove]");
       const remettre = event.target.closest("[data-restore]");
