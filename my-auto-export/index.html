@@ -1,5 +1,551 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="M&Y AUTO EXPORT : achat, vente, recherche personnalisée et exportation de véhicules en France et à l'international."><title>M&Y AUTO EXPORT — Votre prochaine voiture commence ici</title><style>
-:root{--bg:#0b0d10;--surface:#15181c;--gold:#d8b66a;--muted:#aab0b7;--white:#f7f6f2}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--white);font-family:Inter,Arial,sans-serif}a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}button{cursor:pointer}.wrap{width:min(1160px,calc(100% - 40px));margin:auto}.nav{position:sticky;top:0;z-index:10;background:#0b0d10e8;backdrop-filter:blur(16px);border-bottom:1px solid #ffffff15}.navin{display:flex;align-items:center;justify-content:space-between;min-height:78px;gap:20px}.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:2px}.brand img{width:56px;height:56px;object-fit:cover;border-radius:50%}.links{display:flex;gap:25px;color:#d6d8da;font-size:14px}.links a:hover{color:var(--gold)}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--gold);color:#101112;border:1px solid var(--gold);border-radius:7px;padding:14px 22px;font-weight:750}.btn.secondary{background:transparent;color:var(--white);border-color:#ffffff55}.btn:hover{filter:brightness(1.13)}.hero{min-height:650px;display:flex;align-items:center;position:relative;overflow:hidden;background:radial-gradient(ellipse at 75% 60%,#65502d50,transparent 50%),linear-gradient(125deg,#101216,#1c2027 55%,#0c0e11)}.hero:before{content:"";position:absolute;width:650px;height:650px;right:-130px;top:70px;border:1px solid #d8b66a44;border-radius:50%;box-shadow:0 0 0 70px #d8b66a08,0 0 0 150px #d8b66a05}.hero .wrap{position:relative;z-index:1}.eyebrow{text-transform:uppercase;letter-spacing:4px;font-size:12px;color:var(--gold);font-weight:800}.hero h1{font-size:clamp(44px,6vw,86px);line-height:1.05;letter-spacing:-3px;max-width:800px;margin:22px 0}.hero h1 em{font-style:normal;color:var(--gold)}.hero p{max-width:580px;color:#c1c4c8;font-size:18px;line-height:1.7}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}.heroStats{display:flex;gap:40px;flex-wrap:wrap;margin-top:75px;color:#ddd}.heroStats b{display:block;color:var(--gold);font-size:22px;margin-bottom:6px}.heroStats span{font-size:12px;letter-spacing:1px;text-transform:uppercase}.section{padding:95px 0}.head{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:35px}.head h2{font-size:clamp(30px,4vw,46px);margin:12px 0 0;letter-spacing:-1.5px}.head p{color:var(--muted);max-width:440px;line-height:1.6}.filters{display:flex;gap:12px;flex-wrap:wrap;margin:25px 0}.filters select,.field{background:#1c2025;border:1px solid #3b3d40;border-radius:6px;padding:13px;color:white;min-width:175px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.car{background:var(--surface);border:1px solid #ffffff16;border-radius:12px;overflow:hidden}.carVisual{height:210px;background:linear-gradient(135deg,#303640,#101216);display:flex;align-items:center;justify-content:center;position:relative}.carVisual svg{width:75%;max-width:260px;opacity:.85}.tag{position:absolute;top:15px;left:15px;background:#d8b66a;color:#111;padding:7px 10px;font-size:11px;font-weight:800;border-radius:3px}.carBody{padding:24px}.carBody h3{font-size:21px;margin:0 0 12px}.specs{display:flex;gap:12px;flex-wrap:wrap;color:#aeb3b8;font-size:13px}.price{border-top:1px solid #ffffff20;margin-top:20px;padding-top:20px;display:flex;align-items:center;justify-content:space-between}.price b{color:var(--gold)}.demo{font-size:12px;color:#aaa;margin-top:16px}.services{background:#121519}.serviceGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.service{border:1px solid #ffffff19;padding:35px;background:#191d21;border-radius:10px}.service .ico{font-size:32px;color:var(--gold)}.service h3{margin:20px 0 10px}.service p{color:var(--muted);line-height:1.7;font-size:14px}.about{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}.aboutPanel{border:1px solid #d8b66a55;border-radius:14px;min-height:340px;display:grid;place-items:center;background:radial-gradient(circle,#413622,#101214 65%)}.aboutPanel img{width:min(300px,80%);border-radius:50%}.about p{color:var(--muted);line-height:1.85}.contact{background:#161a1e}.contactGrid{display:grid;grid-template-columns:1fr 1.1fr;gap:70px}.contact p{color:var(--muted);line-height:1.8}form{display:grid;gap:13px}form input,form textarea,form select{width:100%}textarea{resize:vertical;min-height:110px}footer{padding:32px 0;border-top:1px solid #ffffff1b;color:#9ca1a6;font-size:13px}.foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.note{color:#aeb3b8;font-size:13px;line-height:1.6}.hide{display:none!important}@media(max-width:800px){.links{display:none}.cards,.serviceGrid{grid-template-columns:repeat(2,1fr)}.about,.contactGrid{grid-template-columns:1fr}.hero{min-height:590px}.heroStats{margin-top:45px}.section{padding:65px 0}}@media(max-width:560px){.cards,.serviceGrid{grid-template-columns:1fr}.head{display:block}.hero h1{letter-spacing:-1.5px}.navin{min-height:68px}.navin>.btn{padding:10px;font-size:12px}.brand{font-size:12px;letter-spacing:0}.brand img{width:42px;height:42px}}
-</style></head><body><header class="nav"><div class="wrap navin"><a class="brand" href="#accueil"><img src="logo.png" alt="Logo M&Y AUTO EXPORT"><span>M&Y AUTO EXPORT</span></a><nav class="links"><a href="#vehicules">Véhicules</a><a href="#services">Services</a><a href="#apropos">À propos</a><a href="#contact">Contact</a></nav><a class="btn" href="#contact">Nous contacter ↗</a></div></header><main><section id="accueil" class="hero"><div class="wrap"><div class="eyebrow">France · Europe · International</div><h1>L'automobile<br><em>sans frontières.</em></h1><p>Découvrez une sélection de véhicules et bénéficiez d'un accompagnement personnalisé pour l'achat, la vente et l'exportation automobile.</p><div class="actions"><a class="btn" href="#vehicules">Explorer les véhicules →</a><a class="btn secondary" href="#contact">Faire une demande</a></div><div class="heroStats"><div><b>01</b><span>Recherche personnalisée</span></div><div><b>02</b><span>Achat & vente</span></div><div><b>03</b><span>Export international</span></div></div></div></section><section class="section" id="vehicules"><div class="wrap"><div class="head"><div><div class="eyebrow">Notre sélection</div><h2>Véhicules à découvrir</h2></div><p>Exemples de présentation du futur catalogue. Les véhicules ci-dessous ne sont pas des offres réelles.</p></div><div class="filters"><select id="brandFilter" aria-label="Filtrer par marque"><option value="all">Toutes les marques</option><option>Mercedes-Benz</option><option>BMW</option><option>Audi</option></select><select id="typeFilter" aria-label="Filtrer par type"><option value="all">Toutes les catégories</option><option>Berline</option><option>SUV</option></select><button class="btn secondary" id="reset">Réinitialiser</button></div><div class="cards" id="carList"></div><p class="demo">* Catalogue de démonstration : marques, modèles et caractéristiques fictifs à remplacer avant publication commerciale.</p></div></section><section class="section services" id="services"><div class="wrap"><div class="head"><div><div class="eyebrow">Nos prestations</div><h2>Un service sur mesure</h2></div></div><div class="serviceGrid"><article class="service"><div class="ico">◇</div><h3>Achat & vente</h3><p>Un interlocuteur dédié pour vos projets d'achat ou de vente automobile.</p></article><article class="service"><div class="ico">⌕</div><h3>Recherche personnalisée</h3><p>Faites-nous part de vos critères : modèle, budget, motorisation et équipements.</p></article><article class="service"><div class="ico">◎</div><h3>Import & export</h3><p>Accompagnement dans votre projet de mobilité internationale, selon la destination et les formalités applicables.</p></article></div></div></section><section class="section" id="apropos"><div class="wrap about"><div class="aboutPanel"><img src="logo.png" alt="M&Y AUTO EXPORT"></div><div><div class="eyebrow">Qui sommes-nous ?</div><h2>La passion automobile, au-delà des frontières.</h2><p>M&Y AUTO EXPORT accompagne les particuliers et les professionnels dans leurs projets automobiles. Notre approche : comprendre vos attentes, identifier les véhicules qui correspondent à vos besoins et vous accompagner dans les étapes de votre projet.</p><a href="#contact" class="btn">Parlons de votre projet →</a></div></div></section><section class="section contact" id="contact"><div class="wrap contactGrid"><div><div class="eyebrow">Restons en contact</div><h2>Vous cherchez un véhicule ?</h2><p>Décrivez votre recherche et nous vous aiderons à préparer votre demande. Les coordonnées professionnelles seront ajoutées avant la mise en ligne.</p><p class="note">Contact WhatsApp et e-mail : à configurer.</p></div><form id="leadForm"><input class="field" name="nom" placeholder="Votre nom *" required><input class="field" type="email" name="email" placeholder="Votre adresse e-mail *" required><select class="field" name="objet"><option>Recherche de véhicule</option><option>Vente de véhicule</option><option>Demande d'exportation</option><option>Autre demande</option></select><textarea class="field" name="message" placeholder="Votre demande (modèle, budget, destination...) *" required></textarea><button class="btn" type="submit">Préparer mon message →</button><p id="formStatus" class="note" role="status"></p></form></div></section></main><footer><div class="wrap foot"><span>© <span id="year"></span> M&Y AUTO EXPORT · Tous droits réservés.</span><span>Site vitrine de démonstration · Mentions légales à compléter avant publication.</span></div></footer><script>
-const cars=[{brand:'Mercedes-Benz',model:'Classe CLA',type:'Berline',year:'2023',engine:'Hybride',km:'48 000 km'},{brand:'BMW',model:'X5',type:'SUV',year:'2022',engine:'Hybride',km:'65 000 km'},{brand:'Audi',model:'Q5',type:'SUV',year:'2023',engine:'Hybride',km:'52 000 km'}];const carIcon='<svg viewBox="0 0 300 140" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M36 90L57 66Q70 54 96 51L135 30H209L245 61L273 71L284 92V108H268C266 123 254 133 239 133C224 133 212 123 210 108H91C89 123 77 133 62 133C47 133 35 123 33 108H18V95L36 90Z" stroke="#d8b66a" stroke-width="4"/><path d="M102 52L141 36H203L231 61H95Z" stroke="#d8b66a" stroke-width="3"/><circle cx="62" cy="107" r="19" stroke="#eee" stroke-width="5"/><circle cx="239" cy="107" r="19" stroke="#eee" stroke-width="5"/></svg>';function render(){const b=document.getElementById('brandFilter').value,t=document.getElementById('typeFilter').value;const matches=cars.filter(c=>(b==='all'||c.brand===b)&&(t==='all'||c.type===t));document.getElementById('carList').innerHTML=matches.length?matches.map(c=>`<article class="car"><div class="carVisual"><span class="tag">EXEMPLE</span>${carIcon}</div><div class="carBody"><h3>${c.brand} ${c.model}</h3><div class="specs"><span>${c.year}</span><span>• ${c.engine}</span><span>• ${c.km}</span><span>• ${c.type}</span></div><div class="price"><b>Prix sur demande</b><a href="#contact">Se renseigner →</a></div></div></article>`).join(''):'<p>Aucun modèle dans cette catégorie.</p>'}document.querySelectorAll('.filters select').forEach(el=>el.addEventListener('change',render));document.getElementById('reset').onclick=()=>{document.getElementById('brandFilter').value='all';document.getElementById('typeFilter').value='all';render()};document.getElementById('year').textContent=new Date().getFullYear();document.getElementById('leadForm').addEventListener('submit',e=>{e.preventDefault();const d=new FormData(e.currentTarget);const subject=`M&Y AUTO EXPORT — ${d.get('objet')}`;const body=`Nom : ${d.get('nom')}\nE-mail : ${d.get('email')}\nObjet : ${d.get('objet')}\n\n${d.get('message')}`;navigator.clipboard?.writeText(subject+'\n\n'+body).then(()=>{document.getElementById('formStatus').textContent='Demande copiée dans le presse-papiers. Ajoutez votre adresse de contact pour activer un envoi direct.'}).catch(()=>{document.getElementById('formStatus').textContent='Votre demande est prête, mais aucun destinataire n’est encore configuré. Merci de contacter l’entreprise directement.'})});render();
-</script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101513">
+  <meta name="description" content="M&Y AUTO EXPORT — ventes et enchères automobiles pour la Tunisie. Consultez les lots après vérification de leur disponibilité et de leurs conditions.">
+  <title>Ventes automobiles — M&Y AUTO EXPORT</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17201d;
+      --ink-soft: #44514c;
+      --paper: #f0f2ef;
+      --surface: #ffffff;
+      --line: #d7ddd8;
+      --gold: #c99d4d;
+      --gold-pale: #f4ead5;
+      --green: #23755b;
+      --green-pale: #e4f0e9;
+      --muted: #6a756f;
+      --dark: #101513;
+      --dark-line: #303a35;
+      --radius: 8px;
+      font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background-color: var(--paper);
+      background-image: repeating-linear-gradient(0deg, transparent 0, transparent 39px, #dce2dd 40px);
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+    button, input, select, textarea { font: inherit; }
+    button, a, select { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; }
+    :focus-visible { outline: 3px solid #2a8b69; outline-offset: 3px; }
+
+    .shell { width: min(1280px, calc(100% - 48px)); margin-inline: auto; }
+    .topbar {
+      min-height: 76px;
+      background: var(--dark);
+      color: #f5f4ed;
+      border-bottom: 1px solid #29312d;
+    }
+    .topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 76px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; min-width: 220px; }
+    .brand img { display: block; width: 48px; height: 48px; border: 1px solid #ad8b4e; border-radius: 50%; object-fit: cover; }
+    .brand-name { display: grid; gap: 1px; font-size: 13px; font-weight: 800; letter-spacing: 0; }
+    .brand-name small { color: #c9b991; font-size: 10px; font-weight: 600; }
+    .main-nav { display: flex; align-items: center; gap: 28px; color: #d6ddd8; font-size: 13px; }
+    .main-nav a:hover { color: #e2bd73; }
+    .header-tools { display: flex; align-items: center; gap: 12px; }
+    .currency { padding: 7px 10px; border-left: 1px solid var(--dark-line); color: #d8c99e; font-size: 12px; font-weight: 750; }
+    .contact-link { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid #c99d4d; border-radius: 5px; color: #f5d992; font-size: 12px; font-weight: 750; }
+    .contact-link:hover { background: #c99d4d; color: #171a17; }
+
+    .status-strip { border-bottom: 1px solid var(--line); background: #e7ece8; }
+    .status-inner { display: flex; min-height: 38px; align-items: center; justify-content: space-between; gap: 18px; color: var(--ink-soft); font-size: 11px; }
+    .status-left { display: flex; align-items: center; gap: 9px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+    .preview-label { color: #725b2d; font-weight: 750; }
+    .timezone { color: var(--muted); }
+
+    main { padding: 34px 0 64px; }
+    .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; padding: 0 0 25px; }
+    .eyebrow { margin: 0 0 7px; color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 34px; line-height: 1.14; font-weight: 760; letter-spacing: 0; }
+    .heading-note { max-width: 390px; margin: 0; color: var(--muted); font-size: 13px; }
+
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .stat { display: flex; min-height: 82px; align-items: center; gap: 14px; padding: 15px 20px; }
+    .stat + .stat { border-left: 1px solid var(--line); }
+    .stat-number { color: var(--green); font-size: 25px; font-weight: 780; line-height: 1; }
+    .stat-label { display: grid; color: var(--muted); font-size: 11px; }
+    .stat-label strong { color: var(--ink); font-size: 13px; }
+
+    .market { display: grid; grid-template-columns: 250px minmax(0, 1fr); align-items: start; gap: 18px; }
+    .filter-panel, .listing-panel, .side-panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .filter-panel { padding: 19px; }
+    .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 18px; font-size: 14px; font-weight: 780; }
+    .clear-button { padding: 0; border: 0; background: none; color: var(--green); font-size: 11px; font-weight: 700; }
+    .filter-group { display: grid; gap: 7px; margin-top: 16px; }
+    .filter-group label { color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+    .field, .select-field { width: 100%; min-height: 42px; padding: 0 11px; border: 1px solid var(--line); border-radius: 5px; background: #fbfcfb; color: var(--ink); font-size: 12px; }
+    .field::placeholder { color: #8a938e; }
+    .filter-hint { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+
+    .listing-panel { min-width: 0; overflow: hidden; }
+    .listing-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 15px 18px; border-bottom: 1px solid var(--line); }
+    .tabs { display: flex; align-items: center; gap: 7px; overflow-x: auto; }
+    .tab { flex: 0 0 auto; min-height: 34px; padding: 0 11px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; }
+    .tab[aria-pressed="true"] { border-color: #b7d4c5; background: var(--green-pale); color: #1d5e49; }
+    .sort-control { width: auto; min-width: 145px; min-height: 34px; font-size: 11px; }
+    .result-line { display: flex; justify-content: space-between; gap: 12px; padding: 12px 18px; color: var(--muted); font-size: 11px; }
+    .result-line strong { color: var(--ink); }
+    .lot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 0 16px 16px; }
+    .lot-card { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .lot-photo { display: grid; min-height: 180px; place-items: center; background: #e6eae7; color: var(--muted); text-align: center; }
+    .lot-photo img { display: block; width: 100%; height: 180px; object-fit: cover; }
+    .photo-missing { display: grid; gap: 4px; padding: 20px; font-size: 11px; }
+    .photo-missing strong { color: var(--ink-soft); font-size: 13px; }
+    .lot-body { padding: 14px; }
+    .lot-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 10px; }
+    .lot-status { padding: 4px 7px; border-radius: 3px; background: var(--green-pale); color: var(--green); font-weight: 750; }
+    .lot-title { margin: 11px 0 8px; font-size: 16px; line-height: 1.3; }
+    .lot-specs { display: flex; flex-wrap: wrap; gap: 6px 12px; color: var(--muted); font-size: 11px; }
+    .lot-price { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .lot-price small { display: block; color: var(--muted); font-size: 10px; }
+    .lot-price strong { font-size: 18px; }
+    .lot-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .source-link { color: var(--green); font-size: 10px; font-weight: 700; }
+    .source-link:hover { text-decoration: underline; }
+    .lot-action { min-height: 36px; padding: 0 11px; border: 1px solid var(--green); border-radius: 4px; background: var(--green); color: white; font-size: 11px; font-weight: 750; }
+    .lot-action:hover { background: #185740; }
+
+    .empty-state { display: grid; min-height: 315px; align-content: center; justify-items: center; padding: 34px; border-top: 1px solid #eef0ed; text-align: center; }
+    .empty-mark { display: grid; width: 50px; height: 50px; place-items: center; margin-bottom: 14px; border: 1px solid #d6dfd9; border-radius: 50%; background: #f5f8f5; color: var(--green); font-size: 21px; }
+    .empty-state h2 { margin: 0; font-size: 19px; }
+    .empty-state p { max-width: 460px; margin: 9px 0 18px; color: var(--muted); font-size: 13px; }
+    .primary-action { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 0 15px; border: 1px solid var(--green); border-radius: 4px; background: var(--green); color: white; font-size: 12px; font-weight: 750; }
+    .primary-action:hover { background: #185740; }
+    .empty-disclaimer { margin-top: 12px; color: var(--muted); font-size: 10px; }
+
+    .below-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr); gap: 18px; margin-top: 18px; }
+    .side-panel { padding: 20px; }
+    .side-panel h2 { margin: 0 0 10px; font-size: 15px; }
+    .side-panel p { margin: 0; color: var(--muted); font-size: 12px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 17px; }
+    .step { padding-top: 11px; border-top: 2px solid var(--gold); }
+    .step b { display: block; margin-bottom: 5px; color: var(--green); font-size: 11px; }
+    .step span { color: var(--ink-soft); font-size: 11px; }
+    .price-note { border-left: 3px solid var(--gold); background: #fbf8f0; }
+    .price-note strong { color: #725b2d; }
+    .contact-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .text-action { display: inline-flex; min-height: 38px; align-items: center; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); font-size: 11px; font-weight: 700; }
+    .text-action:hover { border-color: var(--green); color: var(--green); }
+
+    footer { padding: 24px 0; border-top: 1px solid var(--line); background: #e7ece8; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 10px; }
+    .footer-inner strong { color: var(--ink); }
+
+    dialog { width: min(540px, calc(100% - 28px)); padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); box-shadow: 0 24px 80px #10151335; }
+    dialog::backdrop { background: #101513a8; }
+    .dialog-inner { padding: 22px; }
+    .dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+    .dialog-head h2 { margin: 0; font-size: 19px; }
+    .close-dialog { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 18px; }
+    .dialog-copy { margin: 8px 0 18px; color: var(--muted); font-size: 12px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-field { display: grid; gap: 5px; }
+    .form-field.full { grid-column: 1 / -1; }
+    .form-field label { color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+    .form-field input, .form-field textarea { width: 100%; min-height: 40px; padding: 9px; border: 1px solid var(--line); border-radius: 4px; background: #fbfcfb; color: var(--ink); font-size: 12px; }
+    .form-field textarea { min-height: 82px; resize: vertical; }
+    .form-footnote { margin: 12px 0; color: var(--muted); font-size: 10px; }
+    .form-submit { width: 100%; min-height: 42px; border: 0; border-radius: 4px; background: var(--green); color: white; font-size: 12px; font-weight: 750; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      .main-nav { gap: 16px; }
+      .market { grid-template-columns: 215px minmax(0, 1fr); }
+      .lot-grid { grid-template-columns: 1fr; }
+      .below-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 28px, 560px); }
+      .topbar-inner { min-height: 66px; gap: 12px; }
+      .brand { min-width: 0; }
+      .brand img { width: 42px; height: 42px; }
+      .main-nav { display: none; }
+      .currency { padding-inline: 8px; }
+      .contact-link { min-height: 36px; padding-inline: 10px; font-size: 10px; }
+      .status-inner { align-items: start; flex-direction: column; justify-content: center; gap: 2px; padding-block: 7px; }
+      main { padding-top: 25px; }
+      .page-heading { display: grid; gap: 10px; padding-bottom: 18px; }
+      h1 { font-size: 29px; }
+      .heading-note { font-size: 12px; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+      .stat { min-height: 72px; flex-direction: column; align-items: start; justify-content: center; gap: 5px; padding: 10px; }
+      .stat-number { font-size: 20px; }
+      .stat-label { font-size: 9px; }
+      .stat-label strong { font-size: 10px; }
+      .market { grid-template-columns: 1fr; }
+      .filter-panel { padding: 14px; }
+      .filter-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+      .filter-group { margin-top: 10px; }
+      .listing-toolbar { align-items: start; flex-direction: column; }
+      .tabs { max-width: 100%; }
+      .sort-control { width: 100%; }
+      .result-line { padding-inline: 14px; }
+      .empty-state { min-height: 285px; padding: 24px 17px; }
+      .steps { grid-template-columns: 1fr; gap: 10px; }
+      .footer-inner { align-items: start; flex-direction: column; gap: 5px; }
+    }
+    @media (max-width: 390px) {
+      .brand-name { font-size: 11px; }
+      .brand-name small { font-size: 9px; }
+      .header-tools { gap: 6px; }
+      .currency { font-size: 10px; }
+      .filter-fields { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-field.full { grid-column: auto; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="#accueil" aria-label="M&Y AUTO EXPORT, accueil">
+        <img src="logo.png" alt="Logo M&Y AUTO EXPORT">
+        <span class="brand-name">M&Y AUTO EXPORT<small>VENTES AUTOMOBILES · TUNISIE</small></span>
+      </a>
+      <nav class="main-nav" aria-label="Navigation principale">
+        <a href="#ventes">Les ventes</a>
+        <a href="#fonctionnement">Comment participer</a>
+        <a href="#conditions">Prix & conditions</a>
+      </nav>
+      <div class="header-tools">
+        <span class="currency" aria-label="Devise tunisienne">TND</span>
+        <a class="contact-link" href="#contact">Espace acheteur</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="status-strip">
+    <div class="shell status-inner">
+      <span class="status-left"><span class="status-dot" aria-hidden="true"></span><span>Place de ventes automobile · Tunisie</span></span>
+      <span class="preview-label">Aperçu — enchères en ligne non activées</span>
+      <span class="timezone">Horaires affichés en heure de Tunis</span>
+    </div>
+  </div>
+
+  <main class="shell" id="accueil">
+    <section class="page-heading" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">M&Y · Marché automobile</p>
+        <h1 id="page-title">Ventes & enchères</h1>
+      </div>
+      <p class="heading-note">Consultez les lots publiés après vérification des informations, de la disponibilité et des conditions de vente.</p>
+    </section>
+
+    <section class="stats" aria-label="État des ventes">
+      <div class="stat"><span class="stat-number" id="open-count">0</span><span class="stat-label"><strong>Lots en vente</strong>disponibilité confirmée</span></div>
+      <div class="stat"><span class="stat-number" id="upcoming-count">0</span><span class="stat-label"><strong>Ventes à venir</strong>lots en préparation non publiés</span></div>
+      <div class="stat"><span class="stat-number">TND</span><span class="stat-label"><strong>Devise d'affichage</strong>dinar tunisien</span></div>
+    </section>
+
+    <section class="market" id="ventes" aria-label="Catalogue des ventes">
+      <aside class="filter-panel" aria-label="Filtres de recherche">
+        <h2 class="panel-title">Affiner la recherche <button class="clear-button" id="clear-filters" type="button">Effacer</button></h2>
+        <div class="filter-fields">
+          <div class="filter-group">
+            <label for="search">Mot-clé ou référence</label>
+            <input class="field" id="search" type="search" placeholder="Ex. SUV, référence…" autocomplete="off">
+          </div>
+          <div class="filter-group">
+            <label for="make">Marque</label>
+            <select class="select-field" id="make"><option value="">Toutes les marques</option></select>
+          </div>
+          <div class="filter-group">
+            <label for="body-type">Catégorie</label>
+            <select class="select-field" id="body-type"><option value="">Toutes les catégories</option></select>
+          </div>
+          <div class="filter-group">
+            <label for="sale-status">État de la vente</label>
+            <select class="select-field" id="sale-status">
+              <option value="">Tous les états</option>
+              <option value="open">Lots en vente</option>
+              <option value="upcoming">À venir</option>
+            </select>
+          </div>
+        </div>
+        <p class="filter-hint">Les lots apparaissent ici après validation manuelle. Aucune disponibilité n'est présumée.</p>
+      </aside>
+
+      <div class="listing-panel">
+        <div class="listing-toolbar">
+          <div class="tabs" role="group" aria-label="Filtrer par ventes">
+            <button class="tab" type="button" data-tab="all" aria-pressed="true">Toutes</button>
+            <button class="tab" type="button" data-tab="open" aria-pressed="false">En vente</button>
+            <button class="tab" type="button" data-tab="upcoming" aria-pressed="false">À venir</button>
+            <button class="tab" type="button" data-tab="watchlist" aria-pressed="false">Ma sélection <span id="watch-count">0</span></button>
+          </div>
+          <label class="hidden" for="sort">Trier les lots</label>
+          <select class="select-field sort-control" id="sort" aria-label="Trier les lots">
+            <option value="ending">Fin de vente</option>
+            <option value="price-low">Prix indicatif croissant</option>
+            <option value="price-high">Prix indicatif décroissant</option>
+            <option value="newest">Ajouts récents</option>
+          </select>
+        </div>
+        <div class="result-line"><span id="result-count"><strong>0 lot</strong></span><span>Informations à confirmer avant toute enchère</span></div>
+        <div class="lot-grid hidden" id="lot-grid" aria-live="polite"></div>
+        <div class="empty-state" id="empty-state">
+          <span class="empty-mark" aria-hidden="true">—</span>
+          <h2 id="empty-title">Aucun lot validé pour le moment</h2>
+          <p id="empty-copy">Les véhicules en préparation ne sont pas affichés comme disponibles. Les lots seront présentés ici après contrôle des données, des photos autorisées et des conditions.</p>
+          <button class="primary-action" type="button" id="request-catalog">Être informé des prochaines ventes</button>
+          <span class="empty-disclaimer">Cette page ne reçoit ni n'enregistre actuellement d'enchères.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="below-grid" id="fonctionnement">
+      <article class="side-panel">
+        <h2>Un parcours encadré</h2>
+        <p>Chaque vente doit préciser ses propres règles. Les étapes ci-dessous décrivent le fonctionnement prévu; elles ne remplacent pas les conditions d'un lot.</p>
+        <div class="steps">
+          <div class="step"><b>01 · Consulter</b><span>Lire la fiche, l'état du véhicule et les conditions propres à la vente.</span></div>
+          <div class="step"><b>02 · Vérifier</b><span>Confirmer la disponibilité, les documents et les frais indiqués au lot.</span></div>
+          <div class="step"><b>03 · Participer</b><span>Le canal d'enchère sera précisé lorsque la fonction sera mise en service.</span></div>
+        </div>
+      </article>
+      <article class="side-panel price-note" id="conditions">
+        <h2>Prix affichés en TND</h2>
+        <p><strong>Un prix indicatif n'est pas un prix dédouané.</strong> Le régime FCR, les frais éventuels, le dédouanement et l'immatriculation en Tunisie doivent être confirmés selon le véhicule et la situation de l'acheteur.</p>
+        <div class="contact-actions"><a class="text-action" href="mailto:contact@myautoexport.com?subject=Conditions%20des%20ventes%20M%26Y">Demander les conditions</a><a class="text-action" href="mailto:contact@myautoexport.com?subject=Recherche%20de%20v%C3%A9hicule">Décrire ma recherche</a></div>
+      </article>
+    </section>
+
+    <section class="below-grid" id="contact">
+      <article class="side-panel">
+        <h2>Recevoir les prochaines ventes</h2>
+        <p>Prépare un message à l'équipe M&Y AUTO EXPORT. Ton application e-mail s'ouvrira; rien n'est envoyé automatiquement par ce site.</p>
+        <div class="contact-actions"><button class="primary-action" type="button" id="open-contact">Préparer une demande</button><a class="text-action" href="mailto:contact@myautoexport.com">contact@myautoexport.com</a></div>
+      </article>
+      <article class="side-panel">
+        <h2>Une question sur un véhicule ?</h2>
+        <p>Indique sa référence lorsqu'elle est disponible. Les prix et la disponibilité seront confirmés par l'équipe avant tout engagement.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Tunisie</span><span>Prix et disponibilités à confirmer · Aucune enchère n'est transmise depuis cette version</span></div>
+  </footer>
+
+  <dialog id="contact-dialog" aria-labelledby="dialog-title">
+    <form class="dialog-inner" id="contact-form">
+      <div class="dialog-head"><h2 id="dialog-title">Préparer une demande</h2><button class="close-dialog" type="button" id="close-contact" aria-label="Fermer">×</button></div>
+      <p class="dialog-copy">Complète les informations utiles. Le bouton préparera un e-mail dans ton application; vérifie-le puis envoie-le toi-même.</p>
+      <div class="form-grid">
+        <div class="form-field"><label for="customer-name">Nom</label><input id="customer-name" name="name" autocomplete="name" required></div>
+        <div class="form-field"><label for="customer-phone">Téléphone (facultatif)</label><input id="customer-phone" name="phone" autocomplete="tel" inputmode="tel"></div>
+        <div class="form-field full"><label for="request-reference">Référence du véhicule (facultatif)</label><input id="request-reference" name="reference" inputmode="text"></div>
+        <div class="form-field full"><label for="request-message">Demande</label><textarea id="request-message" name="message" required placeholder="Recherche, question sur une vente ou demande d'information…"></textarea></div>
+      </div>
+      <p class="form-footnote">Le formulaire ne sauvegarde ni ne transmet tes données sur un serveur.</p>
+      <button class="form-submit" type="submit">Ouvrir mon application e-mail</button>
+    </form>
+  </dialog>
+
+  <script>
+    let lots = [];
+    let catalogueEtat = "loading";
+    let watchlist = new Set();
+    try {
+      const savedWatchlist = JSON.parse(localStorage.getItem("my-auto-watchlist") || "[]");
+      if (Array.isArray(savedWatchlist)) watchlist = new Set(savedWatchlist.filter((item) => typeof item === "string"));
+    } catch {
+      localStorage.removeItem("my-auto-watchlist");
+    }
+    const tabButtons = [...document.querySelectorAll("[data-tab]")];
+    const filterInputs = [
+      document.getElementById("search"),
+      document.getElementById("make"),
+      document.getElementById("body-type"),
+      document.getElementById("sale-status"),
+      document.getElementById("sort")
+    ];
+    let activeTab = "all";
+
+    function updateView() {
+      const query = document.getElementById("search").value.trim().toLocaleLowerCase("fr");
+      const make = document.getElementById("make").value;
+      const bodyType = document.getElementById("body-type").value;
+      const saleStatus = document.getElementById("sale-status").value;
+      const watchOnly = activeTab === "watchlist";
+      let visibleLots = lots.filter((lot) => {
+        const searchable = `${lot.reference} ${lot.make} ${lot.model} ${lot.trim || ""}`.toLocaleLowerCase("fr");
+        return (!query || searchable.includes(query))
+          && (!make || lot.make === make)
+          && (!bodyType || lot.bodyType === bodyType)
+          && (!saleStatus || lot.status === saleStatus)
+          && (activeTab === "all" || watchOnly || lot.status === activeTab)
+          && (!watchOnly || watchlist.has(lot.reference));
+      });
+
+      const sort = document.getElementById("sort").value;
+      if (sort === "price-low") visibleLots.sort((a, b) => (a.indicativePriceTnd ?? Infinity) - (b.indicativePriceTnd ?? Infinity));
+      if (sort === "price-high") visibleLots.sort((a, b) => (b.indicativePriceTnd ?? -Infinity) - (a.indicativePriceTnd ?? -Infinity));
+      if (sort === "ending") visibleLots.sort((a, b) => (a.endsAt || "9999").localeCompare(b.endsAt || "9999"));
+      if (sort === "newest") visibleLots.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+      document.getElementById("open-count").textContent = lots.filter((lot) => lot.status === "open").length;
+      document.getElementById("upcoming-count").textContent = lots.filter((lot) => lot.status === "upcoming").length;
+      document.getElementById("watch-count").textContent = watchlist.size;
+      document.getElementById("result-count").innerHTML = `<strong>${visibleLots.length} lot${visibleLots.length === 1 ? "" : "s"}</strong>`;
+
+      const grid = document.getElementById("lot-grid");
+      const empty = document.getElementById("empty-state");
+      grid.innerHTML = visibleLots.map(renderLot).join("");
+      grid.classList.toggle("hidden", visibleLots.length === 0);
+      empty.classList.toggle("hidden", visibleLots.length > 0);
+
+      const title = document.getElementById("empty-title");
+      const copy = document.getElementById("empty-copy");
+      if (catalogueEtat === "loading") {
+        title.textContent = "Chargement des ventes…";
+        copy.textContent = "Le catalogue M&Y AUTO EXPORT est en cours de lecture.";
+      } else if (catalogueEtat === "error") {
+        title.textContent = "Catalogue momentanément indisponible";
+        copy.textContent = "Les lots n'ont pas pu être chargés. Réessaie plus tard ou contacte l'équipe.";
+      } else if (watchOnly) {
+        title.textContent = "Ta sélection est vide";
+        copy.textContent = "Les lots suivis apparaîtront ici dès que des ventes validées seront disponibles.";
+      } else if (query || make || bodyType || saleStatus || activeTab !== "all") {
+        title.textContent = "Aucun lot ne correspond à ces filtres";
+        copy.textContent = "Modifie les critères ou efface les filtres pour consulter l'ensemble des ventes publiées.";
+      } else {
+        title.textContent = "Aucun lot validé pour le moment";
+        copy.textContent = "Les véhicules en préparation ne sont pas affichés comme disponibles. Les lots seront présentés ici après contrôle des données, des photos autorisées et des conditions.";
+      }
+    }
+
+    function renderLot(lot) {
+      const isWatched = watchlist.has(lot.reference);
+      const photo = lot.photos?.find((item) => item?.authorized === true && item.url);
+      const price = lot.indicativePriceTnd == null
+        ? "Prix sur demande"
+        : `${new Intl.NumberFormat("fr-TN", { maximumFractionDigits: 2 }).format(lot.indicativePriceTnd)} TND`;
+      return `<article class="lot-card">
+        <div class="lot-photo">${photo ? `<img src="${escapeHtml(photo.url)}" alt="${escapeHtml(lot.make)} ${escapeHtml(lot.model)}">` : `<div class="photo-missing"><strong>Photo à confirmer</strong><span>Visuel autorisé non fourni</span></div>`}</div>
+        <div class="lot-body">
+          <div class="lot-meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="lot-status">${lot.status === "open" ? "En vente" : "À venir"}</span></div>
+          <h2 class="lot-title">${escapeHtml(`${lot.make} ${lot.model} ${lot.trim || ""}`.trim())}</h2>
+          <div class="lot-specs"><span>${escapeHtml(lot.year || "Année à confirmer")}</span><span>${escapeHtml(lot.mileageKm == null ? "Kilométrage à confirmer" : `${new Intl.NumberFormat("fr-TN").format(lot.mileageKm)} km`)}</span><span>${escapeHtml(lot.fuel || "Motorisation à confirmer")}</span></div>
+          <div class="lot-price"><span><small>${lot.indicativePriceTnd == null ? "Tarif" : "Prix indicatif export"}</small><strong>${escapeHtml(price)}</strong></span></div>
+          <div class="lot-actions"><a class="source-link" href="${escapeHtml(lot.sourceUrl)}" target="_blank" rel="noopener noreferrer">Fiche fournisseur ↗</a><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}">${isWatched ? "Suivie" : "Suivre"}</button></div>
+        </div>
+      </article>`;
+    }
+
+    function lotValide(lot) {
+      if (!lot || typeof lot !== "object") return false;
+      if (!lot.reference || !lot.make || !lot.model) return false;
+      if (!["open", "upcoming"].includes(lot.status)) return false;
+      if (typeof lot.sourceUrl !== "string" || !lot.sourceUrl.startsWith("https://")) return false;
+      if (lot.status === "open" && (!lot.endsAt || !Number.isFinite(Date.parse(lot.endsAt)))) return false;
+      return Array.isArray(lot.photos);
+    }
+
+    function remplirFiltre(selectId, valeurs, libelleInitial) {
+      const select = document.getElementById(selectId);
+      select.replaceChildren(new Option(libelleInitial, ""));
+      [...new Set(valeurs.filter((value) => typeof value === "string" && value.trim()))]
+        .sort((a, b) => a.localeCompare(b, "fr"))
+        .forEach((value) => select.add(new Option(value, value)));
+    }
+
+    async function chargerCatalogue() {
+      try {
+        const response = await fetch("./lots.json", { cache: "no-store" });
+        if (!response.ok) throw new Error("Catalogue inaccessible.");
+        const catalogue = await response.json();
+        if (!Array.isArray(catalogue) || catalogue.some((lot) => !lotValide(lot))) {
+          throw new Error("Format de catalogue invalide.");
+        }
+        lots = catalogue.filter((lot) => lot.status !== "open" || Date.parse(lot.endsAt) > Date.now());
+        remplirFiltre("make", lots.map((lot) => lot.make), "Toutes les marques");
+        remplirFiltre("body-type", lots.map((lot) => lot.bodyType), "Toutes les catégories");
+        catalogueEtat = "ready";
+      } catch {
+        lots = [];
+        catalogueEtat = "error";
+      }
+      updateView();
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      })[character]);
+    }
+
+    document.addEventListener("input", (event) => {
+      if (event.target.matches("#search")) updateView();
+    });
+    filterInputs.slice(1).forEach((input) => input.addEventListener("change", updateView));
+    document.getElementById("clear-filters").addEventListener("click", () => {
+      document.getElementById("search").value = "";
+      document.getElementById("make").value = "";
+      document.getElementById("body-type").value = "";
+      document.getElementById("sale-status").value = "";
+      document.getElementById("sort").value = "ending";
+      activeTab = "all";
+      tabButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.tab === "all")));
+      updateView();
+    });
+    tabButtons.forEach((button) => button.addEventListener("click", () => {
+      activeTab = button.dataset.tab;
+      tabButtons.forEach((tab) => tab.setAttribute("aria-pressed", String(tab === button)));
+      updateView();
+    }));
+    document.getElementById("lot-grid").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-watch]");
+      if (!button) return;
+      const reference = button.dataset.watch;
+      if (watchlist.has(reference)) watchlist.delete(reference);
+      else watchlist.add(reference);
+      localStorage.setItem("my-auto-watchlist", JSON.stringify([...watchlist]));
+      updateView();
+    });
+
+    const dialog = document.getElementById("contact-dialog");
+    document.getElementById("open-contact").addEventListener("click", () => dialog.showModal());
+    document.getElementById("close-contact").addEventListener("click", () => dialog.close());
+    document.getElementById("request-catalog").addEventListener("click", () => dialog.showModal());
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+    document.getElementById("contact-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(event.currentTarget);
+      const subject = encodeURIComponent("M&Y AUTO EXPORT — demande sur les ventes");
+      const body = encodeURIComponent([
+        `Nom : ${data.get("name")}`,
+        `Téléphone : ${data.get("phone") || "Non renseigné"}`,
+        `Référence : ${data.get("reference") || "Non renseignée"}`,
+        "",
+        `Demande : ${data.get("message")}`
+      ].join("\n"));
+      window.location.href = `mailto:contact@myautoexport.com?subject=${subject}&body=${body}`;
+      dialog.close();
+    });
+
+    updateView();
+    chargerCatalogue();
+  </script>
+</body>
+</html>
