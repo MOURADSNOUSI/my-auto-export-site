@@ -70,6 +70,8 @@ class AjouterLotTest(unittest.TestCase):
             "source http": [*base, "--source", "http://fournisseur.example"],
             "photo absente": [*base, str(self.root / "absente.jpg")],
             "détail sans valeur": [*base, "--detail", "Transmission"],
+            "réserve sous la mise à prix": [*base, "--mise-a-prix", "150000", "--reserve", "100000"],
+            "achat immédiat sous la réserve": [*base, "--reserve", "195000", "--achat-immediat", "180000"],
         }
         for nom, args in cas.items():
             with self.subTest(nom):

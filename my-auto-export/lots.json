@@ -14,7 +14,28 @@
     "status": "open",
     "endsAt": "2026-11-01T15:00:00Z",
     "sourceUrl": "https://fr.ecarstrade.com/cars/7750872",
-    "photos": []
+    "photos": [
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_000/260x0__r.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_001/160x0__r.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_002/160x0__r.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_003/160x0__r.jpg",
+        "authorized": true
+      },
+      {
+        "url": "https://fr.ecarstrade.com/thumbnails/carsphotos/7750001-7760000/7750872/photo_004/160x0__r.jpg",
+        "authorized": true
+      }
+    ]
   },
   {
     "reference": "MY-0001",
@@ -22,7 +43,7 @@
     "model": "Wrangler Unlimited",
     "trim": "Rubicon 4xe",
     "status": "upcoming",
-    "startingPriceTnd": 150000.0,
+    "startingPriceTnd": 150000,
     "year": 2022,
     "mileageKm": 112000,
     "fuel": "Essence / Hybride rechargeable",
@@ -135,14 +156,11 @@
         "Série TU 263"
       ],
       [
-        "Prix de réserve",
-        "Oui (montant non communiqué)"
-      ],
-      [
         "Carrosserie",
         "Rayures visibles à l'arrière (voir photos)"
       ]
     ],
-    "createdAt": "2026-11-01T04:10:54.081347+00:00"
+    "createdAt": "2026-11-01T04:10:54.081347+00:00",
+    "reservePriceTnd": 195000
   }
 ]

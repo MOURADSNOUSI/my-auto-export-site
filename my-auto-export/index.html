@@ -121,6 +121,12 @@
     .photo-count { position: absolute; right: 8px; bottom: 8px; padding: 3px 7px; border-radius: 3px; background: #101513c4; color: white; font-size: 10px; font-weight: 700; }
     .detail-link { margin-left: auto; min-height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 11px; font-weight: 700; cursor: pointer; }
     .detail-link:hover { border-color: var(--green); color: var(--green); }
+    .price-lines { display: grid; gap: 4px; margin: 10px 0 0; font-size: 11px; }
+    .price-lines div { display: flex; justify-content: space-between; gap: 12px; }
+    .price-lines dt { color: var(--muted); }
+    .price-lines dd { margin: 0; font-weight: 750; }
+    .buy-now { width: 100%; min-height: 38px; margin-top: 12px; padding: 0 11px; border: 1px solid var(--gold); border-radius: 4px; background: var(--gold-pale); color: #5c4720; font-size: 11px; font-weight: 750; cursor: pointer; }
+    .buy-now:hover { background: var(--gold); color: var(--dark); }
 
     .lot-dialog { width: min(880px, calc(100% - 28px)); }
     .lot-dialog .dialog-head { margin-bottom: 14px; }
@@ -461,12 +467,37 @@
       return lot.startingPriceTnd ?? lot.indicativePriceTnd ?? null;
     }
 
+    function formatTnd(value) {
+      return `${new Intl.NumberFormat("fr-TN", { maximumFractionDigits: 2 }).format(value)} TND`;
+    }
+
     function libellePrix(lot) {
       if (prixLot(lot) == null) return { label: "Tarif", value: "Prix sur demande" };
-      return {
-        label: lot.startingPriceTnd != null ? "Mise à prix" : "Prix indicatif export",
-        value: `${new Intl.NumberFormat("fr-TN", { maximumFractionDigits: 2 }).format(prixLot(lot))} TND`
-      };
+      return { label: lot.startingPriceTnd != null ? "Mise à prix" : "Prix indicatif export", value: formatTnd(prixLot(lot)) };
+    }
+
+    function prixEnchere(lot) {
+      const lignes = [["Prix de réserve", lot.reservePriceTnd], ["Achat immédiat", lot.buyNowPriceTnd]].filter(([, value]) => Number.isFinite(value));
+      if (!lignes.length) return "";
+      return `<dl class="price-lines">${lignes.map(([label, value]) => `<div><dt>${label}</dt><dd>${formatTnd(value)}</dd></div>`).join("")}</dl>`;
+    }
+
+    function boutonAchat(lot) {
+      return Number.isFinite(lot.buyNowPriceTnd)
+        ? `<button class="buy-now" type="button" data-buynow="${escapeHtml(lot.reference)}">Acheter maintenant · ${formatTnd(lot.buyNowPriceTnd)}</button>`
+        : "";
+    }
+
+    function ouvrirContact(reference, message) {
+      document.getElementById("request-reference").value = reference;
+      if (message) document.getElementById("request-message").value = message;
+      dialog.showModal();
+    }
+
+    function demanderAchat(reference) {
+      const lot = lots.find((item) => item.reference === reference);
+      if (!lot) return;
+      ouvrirContact(reference, `Je souhaite acheter le véhicule ${titreLot(lot)} (réf. ${reference}) au prix d'achat immédiat de ${formatTnd(lot.buyNowPriceTnd)}.`);
     }
 
     function photosLot(lot) {
@@ -494,6 +525,7 @@
           <h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2>
           <div class="lot-specs"><span>${escapeHtml(lot.year || "Année à confirmer")}</span><span>${escapeHtml(lot.mileageKm == null ? "Kilométrage à confirmer" : `${new Intl.NumberFormat("fr-TN").format(lot.mileageKm)} km`)}</span><span>${escapeHtml(lot.fuel || "Motorisation à confirmer")}</span></div>
           <div class="lot-price"><span><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></span></div>
+          ${prixEnchere(lot)}${boutonAchat(lot)}
           <div class="lot-actions">${lienLot(lot)}<button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}">${isWatched ? "Suivie" : "Suivre"}</button></div>
         </div>
       </article>`;
@@ -517,6 +549,7 @@
         ${photos.length > 1 ? `<div class="gallery-thumbs">${photos.map((photo, index) => `<button type="button" data-thumb="${index}" aria-label="Photo ${index + 1}" aria-pressed="${index === 0}"><img src="${escapeHtml(photo.url)}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}` : ""}
         <dl class="spec-list">${specs.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>
         <div class="lot-price"><span><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></span></div>
+        ${prixEnchere(lot)}${boutonAchat(lot)}
         <div class="lot-actions">${lienLot(lot)}</div>`;
       document.getElementById("lot-dialog-body").dataset.photos = JSON.stringify(photos.map((photo) => photo.url));
       lotDialog.showModal();
@@ -591,8 +624,12 @@
     document.getElementById("lot-grid").addEventListener("click", (event) => {
       const contact = event.target.closest("[data-contact]");
       if (contact) {
-        document.getElementById("request-reference").value = contact.dataset.contact;
-        dialog.showModal();
+        ouvrirContact(contact.dataset.contact);
+        return;
+      }
+      const achat = event.target.closest("[data-buynow]");
+      if (achat) {
+        demanderAchat(achat.dataset.buynow);
         return;
       }
       const detail = event.target.closest("[data-detail]");
@@ -623,8 +660,13 @@
       const contact = event.target.closest("[data-contact]");
       if (contact) {
         lotDialog.close();
-        document.getElementById("request-reference").value = contact.dataset.contact;
-        dialog.showModal();
+        ouvrirContact(contact.dataset.contact);
+        return;
+      }
+      const achat = event.target.closest("[data-buynow]");
+      if (achat) {
+        lotDialog.close();
+        demanderAchat(achat.dataset.buynow);
         return;
       }
       if (event.target === lotDialog || event.target.closest("[data-close]")) lotDialog.close();

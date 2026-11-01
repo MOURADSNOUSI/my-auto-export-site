@@ -38,6 +38,8 @@ def main(argv=None):
     parser.add_argument("--fin", type=parse_date, help="fin de la vente, ex. 2026-11-20T18:00 (obligatoire si open)")
     parser.add_argument("--prix", type=float, help="prix indicatif en TND")
     parser.add_argument("--mise-a-prix", type=float, help="prix de départ de l'enchère en TND")
+    parser.add_argument("--reserve", type=float, help="prix de réserve en TND (affiché sur le site)")
+    parser.add_argument("--achat-immediat", type=float, help="prix d'achat immédiat en TND")
     parser.add_argument("--detail", action="append", default=[], metavar="LIBELLÉ=VALEUR",
                         help="caractéristique affichée sur la fiche, ex. \"Transmission=4x4\" (répétable)")
     parser.add_argument("--annee", type=int)
@@ -55,6 +57,11 @@ def main(argv=None):
             parser.error("--fin est déjà passée : le lot ne serait pas affiché")
     if args.source and not args.source.startswith("https://"):
         parser.error("--source doit commencer par https://")
+    paliers = [("--mise-a-prix", args.mise_a_prix), ("--reserve", args.reserve), ("--achat-immediat", args.achat_immediat)]
+    paliers = [(nom, valeur) for nom, valeur in paliers if valeur is not None]
+    for (nom_bas, bas), (nom_haut, haut) in zip(paliers, paliers[1:]):
+        if haut < bas:
+            parser.error(f"{nom_haut} ({haut:.0f}) doit être supérieur ou égal à {nom_bas} ({bas:.0f})")
     specs = []
     for detail in args.detail:
         libelle, _, valeur = detail.partition("=")
@@ -89,6 +96,8 @@ def main(argv=None):
         "endsAt": args.fin.isoformat() if args.fin else None,
         "indicativePriceTnd": args.prix,
         "startingPriceTnd": args.mise_a_prix,
+        "reservePriceTnd": args.reserve,
+        "buyNowPriceTnd": args.achat_immediat,
         "year": args.annee,
         "mileageKm": args.km,
         "fuel": args.carburant,

@@ -137,6 +137,22 @@ class CatalogueTest(unittest.TestCase):
         self.assertIn("Mise à prix", page.text_content(".lot-price"))
         self.assertIn("150", page.text_content(".lot-price strong"))
 
+    def test_reserve_et_achat_immediat(self):
+        page = self.open_site([lot(reference="MY-9", startingPriceTnd=150000, reservePriceTnd=195000, buyNowPriceTnd=230000)])
+        lignes = page.text_content(".price-lines")
+        self.assertIn("Prix de réserve", lignes)
+        self.assertIn("195", lignes)
+        self.assertIn("Achat immédiat", lignes)
+        page.click(".buy-now")
+        self.assertTrue(page.is_visible("#contact-dialog"))
+        self.assertEqual(page.input_value("#request-reference"), "MY-9")
+        self.assertIn("achat immédiat", page.input_value("#request-message"))
+
+    def test_sans_achat_immediat_pas_de_bouton(self):
+        page = self.open_site([lot(startingPriceTnd=150000, reservePriceTnd=195000)])
+        self.assertEqual(page.locator(".buy-now").count(), 0)
+        self.assertNotIn("Achat immédiat", page.text_content(".price-lines"))
+
     def test_fiche_affiche_galerie_et_caracteristiques(self):
         photos = [{"url": f"photos/MY-1-{i}.jpg", "authorized": True} for i in (1, 2, 3)]
         page = self.open_site([lot(photos=photos, specs=[["Transmission", "4x4 Rock-Trac"]])])
