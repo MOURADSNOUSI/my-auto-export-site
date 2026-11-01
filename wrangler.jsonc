@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "my-auto-export",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "9481f2d4-698c-4f6f-90e2-9532f9e44bcf",
       "migrations_dir": "migrations"
     }
   ]
