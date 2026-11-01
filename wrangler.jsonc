@@ -15,12 +15,9 @@
       "database_id": "9481f2d4-698c-4f6f-90e2-9532f9e44bcf",
       "migrations_dir": "migrations"
     }
-  ],
-  // Photos envoyées depuis /admin.html : créer avec `npx wrangler r2 bucket create my-auto-export-photos`.
-  "r2_buckets": [
-    {
-      "binding": "PHOTOS",
-      "bucket_name": "my-auto-export-photos"
-    }
   ]
+  // Photos envoyées depuis /admin.html : après avoir activé R2 dans le tableau de bord Cloudflare et lancé
+  // `npx wrangler r2 bucket create my-auto-export-photos`, ajouter ici (après le crochet ci-dessus, avec une virgule) :
+  //   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "my-auto-export-photos" }]
+  // Sans ce bloc, l'administration fonctionne mais l'envoi de photos est désactivé.
 }

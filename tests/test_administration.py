@@ -22,6 +22,20 @@ LOGO = PROJET / "my-auto-export" / "logo.png"
 MOT_DE_PASSE = "motdepasse-solide"
 
 
+def config_de_test(dossier):
+    """wrangler.jsonc avec chemins absolus et un stockage R2 local, pour tester l'envoi de photos."""
+    texte = "\n".join(ligne for ligne in (PROJET / "wrangler.jsonc").read_text().splitlines() if not ligne.strip().startswith("//"))
+    config = json.loads(texte)
+    config["main"] = str(PROJET / config["main"])
+    config["assets"]["directory"] = str(PROJET / config["assets"]["directory"])
+    for base in config["d1_databases"]:
+        base["migrations_dir"] = str(PROJET / base["migrations_dir"])
+    config["r2_buckets"] = [{"binding": "PHOTOS", "bucket_name": "my-auto-export-photos"}]
+    chemin = Path(dossier) / "wrangler.test.json"
+    chemin.write_text(json.dumps(config))
+    return str(chemin)
+
+
 def port_libre():
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -34,11 +48,12 @@ class AdministrationTest(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.persist = cls.tmp.name
-        subprocess.run([WRANGLER, "d1", "migrations", "apply", "DB", "--local", "--persist-to", cls.persist],
+        cls.config = config_de_test(cls.tmp.name)
+        subprocess.run([WRANGLER, "d1", "migrations", "apply", "DB", "--local", "--persist-to", cls.persist, "-c", cls.config],
                        cwd=PROJET, check=True, capture_output=True)
         port = port_libre()
         cls.base = f"http://localhost:{port}"
-        cls.serveur = subprocess.Popen([WRANGLER, "dev", "--local", "--port", str(port), "--persist-to", cls.persist],
+        cls.serveur = subprocess.Popen([WRANGLER, "dev", "--local", "--port", str(port), "--persist-to", cls.persist, "-c", cls.config],
                                        cwd=PROJET, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(90):
             try:
@@ -65,7 +80,7 @@ class AdministrationTest(unittest.TestCase):
 
     @classmethod
     def sql(cls, commande):
-        subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", cls.persist, "--command", commande],
+        subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", cls.persist, "-c", cls.config, "--command", commande],
                        cwd=PROJET, check=True, capture_output=True)
 
     @classmethod
