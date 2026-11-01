@@ -62,6 +62,14 @@ class AjouterLotTest(unittest.TestCase):
         self.assertEqual(catalogue[0]["startingPriceTnd"], 150000)
         self.assertEqual(catalogue[0]["specs"], [["Transmission", "4x4 Rock-Trac"], ["Puissance", "380 ch"]])
 
+    def test_informations_enlevement(self):
+        catalogue = self.run_script(
+            "--reference", "MY-006", "--marque", "Jeep", "--modele", "Wrangler",
+            "--disponible", "2026-11-15", "--lieu", "Tunis", "--vendeur", "M&Y AUTO EXPORT",
+        )
+        lot = catalogue[0]
+        self.assertEqual((lot["availableFrom"], lot["pickupLocation"], lot["seller"]), ("2026-11-15", "Tunis", "M&Y AUTO EXPORT"))
+
     def test_refuse_les_saisies_invalides(self):
         base = ["--reference", "MY-003", "--marque", "Audi", "--modele", "A3"]
         cas = {

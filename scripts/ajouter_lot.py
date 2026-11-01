@@ -40,6 +40,9 @@ def main(argv=None):
     parser.add_argument("--mise-a-prix", type=float, help="prix de départ de l'enchère en TND")
     parser.add_argument("--reserve", type=float, help="prix de réserve en TND (affiché sur le site)")
     parser.add_argument("--achat-immediat", type=float, help="prix d'achat immédiat en TND")
+    parser.add_argument("--disponible", help="disponible à l'enlèvement : date (2026-11-15) ou texte (Immédiatement)")
+    parser.add_argument("--lieu", help="lieu d'enlèvement, ex. Tunis, La Marsa")
+    parser.add_argument("--vendeur", help="nom du vendeur")
     parser.add_argument("--detail", action="append", default=[], metavar="LIBELLÉ=VALEUR",
                         help="caractéristique affichée sur la fiche, ex. \"Transmission=4x4\" (répétable)")
     parser.add_argument("--annee", type=int)
@@ -103,6 +106,9 @@ def main(argv=None):
         "fuel": args.carburant,
         "bodyType": args.categorie,
         "sourceUrl": args.source,
+        "availableFrom": args.disponible,
+        "pickupLocation": args.lieu,
+        "seller": args.vendeur,
         "photos": photos,
         "specs": specs or None,
         "createdAt": datetime.now(timezone.utc).isoformat(),

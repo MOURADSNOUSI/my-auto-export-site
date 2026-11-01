@@ -121,10 +121,13 @@
     .photo-count { position: absolute; right: 8px; bottom: 8px; padding: 3px 7px; border-radius: 3px; background: #101513c4; color: white; font-size: 10px; font-weight: 700; }
     .detail-link { margin-left: auto; min-height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 11px; font-weight: 700; cursor: pointer; }
     .detail-link:hover { border-color: var(--green); color: var(--green); }
-    .price-lines { display: grid; gap: 4px; margin: 10px 0 0; font-size: 11px; }
-    .price-lines div { display: flex; justify-content: space-between; gap: 12px; }
-    .price-lines dt { color: var(--muted); }
-    .price-lines dd { margin: 0; font-weight: 750; }
+    .price-lines, .pickup-lines { display: grid; gap: 4px; margin: 10px 0 0; font-size: 11px; }
+    .price-lines div, .pickup-lines div { display: flex; justify-content: space-between; gap: 12px; }
+    .price-lines dt, .pickup-lines dt { color: var(--muted); }
+    .price-lines dd, .pickup-lines dd { margin: 0; font-weight: 750; text-align: right; }
+    .pickup-lines { padding: 9px 10px; border-radius: 4px; background: #f5f8f5; }
+    .pickup-lines dd.to-confirm { color: var(--muted); font-weight: 600; font-style: italic; }
+    .fiche-section { margin: 18px 0 0; font-size: 13px; }
     .buy-now { width: 100%; min-height: 38px; margin-top: 12px; padding: 0 11px; border: 1px solid var(--gold); border-radius: 4px; background: var(--gold-pale); color: #5c4720; font-size: 11px; font-weight: 750; cursor: pointer; }
     .buy-now:hover { background: var(--gold); color: var(--dark); }
 
@@ -482,6 +485,23 @@
       return `<dl class="price-lines">${lignes.map(([label, value]) => `<div><dt>${label}</dt><dd>${formatTnd(value)}</dd></div>`).join("")}</dl>`;
     }
 
+    // Date ISO (2026-11-15) formatée en toutes lettres, sinon texte libre (« Immédiatement »).
+    function formatDisponibilite(value) {
+      if (typeof value !== "string" || !value.trim()) return null;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      const date = new Date(`${value}T12:00:00`);
+      return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(date);
+    }
+
+    function enlevementLot(lot) {
+      const lignes = [
+        ["Disponible à l'enlèvement", formatDisponibilite(lot.availableFrom)],
+        ["Lieu d'enlèvement", lot.pickupLocation],
+        ["Vendeur", lot.seller]
+      ];
+      return `<dl class="pickup-lines">${lignes.map(([label, value]) => `<div><dt>${label}</dt><dd${value ? "" : ` class="to-confirm"`}>${escapeHtml(value || "À confirmer")}</dd></div>`).join("")}</dl>`;
+    }
+
     function boutonAchat(lot) {
       return Number.isFinite(lot.buyNowPriceTnd)
         ? `<button class="buy-now" type="button" data-buynow="${escapeHtml(lot.reference)}">Acheter maintenant · ${formatTnd(lot.buyNowPriceTnd)}</button>`
@@ -524,6 +544,7 @@
           <div class="lot-meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="lot-status">${lot.status === "open" ? "En vente" : "À venir"}</span></div>
           <h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2>
           <div class="lot-specs"><span>${escapeHtml(lot.year || "Année à confirmer")}</span><span>${escapeHtml(lot.mileageKm == null ? "Kilométrage à confirmer" : `${new Intl.NumberFormat("fr-TN").format(lot.mileageKm)} km`)}</span><span>${escapeHtml(lot.fuel || "Motorisation à confirmer")}</span></div>
+          ${enlevementLot(lot)}
           <div class="lot-price"><span><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></span></div>
           ${prixEnchere(lot)}${boutonAchat(lot)}
           <div class="lot-actions">${lienLot(lot)}<button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}">${isWatched ? "Suivie" : "Suivre"}</button></div>
@@ -548,6 +569,8 @@
         ${photos.length ? `<div class="gallery-main"><img id="gallery-image" src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(titreLot(lot))}, photo 1"></div>
         ${photos.length > 1 ? `<div class="gallery-thumbs">${photos.map((photo, index) => `<button type="button" data-thumb="${index}" aria-label="Photo ${index + 1}" aria-pressed="${index === 0}"><img src="${escapeHtml(photo.url)}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}` : ""}
         <dl class="spec-list">${specs.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>
+        <h3 class="fiche-section">Enlèvement</h3>
+        ${enlevementLot(lot)}
         <div class="lot-price"><span><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></span></div>
         ${prixEnchere(lot)}${boutonAchat(lot)}
         <div class="lot-actions">${lienLot(lot)}</div>`;

@@ -137,6 +137,22 @@ class CatalogueTest(unittest.TestCase):
         self.assertIn("Mise à prix", page.text_content(".lot-price"))
         self.assertIn("150", page.text_content(".lot-price strong"))
 
+    def test_enlevement_affiche_sur_chaque_annonce(self):
+        page = self.open_site([
+            lot(reference="MY-A", availableFrom="2026-11-15", pickupLocation="Tunis", seller="M&Y AUTO EXPORT"),
+            lot(reference="MY-B", availableFrom="Immédiatement"),
+        ])
+        cartes = page.locator(".lot-card")
+        complet = cartes.filter(has_text="MY-A").locator(".pickup-lines").text_content()
+        self.assertIn("15 novembre 2026", complet)
+        self.assertIn("Tunis", complet)
+        self.assertIn("M&Y AUTO EXPORT", complet)
+        partiel = cartes.filter(has_text="MY-B").locator(".pickup-lines").text_content()
+        self.assertIn("Immédiatement", partiel)
+        self.assertEqual(partiel.count("À confirmer"), 2)
+        cartes.filter(has_text="MY-A").get_by_text("Voir la fiche").click()
+        self.assertIn("Tunis", page.text_content("#lot-dialog .pickup-lines"))
+
     def test_reserve_et_achat_immediat(self):
         page = self.open_site([lot(reference="MY-9", startingPriceTnd=150000, reservePriceTnd=195000, buyNowPriceTnd=230000)])
         lignes = page.text_content(".price-lines")
