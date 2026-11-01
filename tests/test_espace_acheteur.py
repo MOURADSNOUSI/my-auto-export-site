@@ -94,6 +94,12 @@ class EspaceAcheteurTest(unittest.TestCase):
         self.assertIn("Amine #", page.text_content("#account-label"))
         page.click(".account-chip")
         self.assertIn("amine@example.com", page.text_content("#account-body"))
+        self.assertIn("Mes véhicules", page.text_content("#account-body"))
+        self.assertIn("Mes offres", page.text_content("#account-body"))
+        self.assertIn("Mes favoris", page.text_content("#account-body"))
+        self.assertIn("Factures", page.text_content("#account-body"))
+        self.assertIn("Aucune facture associée à ce compte", page.text_content("#account-body"))
+        self.assertEqual(page.evaluate("[compte.vehicles.length, compte.invoices.length]"), [0, 0])
         page.click("[data-logout]")
         page.wait_for_function("compte.user === null")
         self.assertIn("Se connecter", page.text_content("#account-label"))
@@ -111,6 +117,15 @@ class EspaceAcheteurTest(unittest.TestCase):
         page.click("#login-form [type=submit]")
         page.wait_for_function("compte.user !== null")
         page.wait_for_selector("#account-dialog[open]")
+        document_status = page.evaluate("async () => (await fetch('/api/invoices/1/document')).status")
+        self.assertEqual(document_status, 404)
+
+    def test_documents_facture_refuses_sans_session(self):
+        for path in ("/api/me", "/api/invoices/1/document"):
+            request = urllib.request.Request(self.base + path, method="GET")
+            with self.assertRaises(urllib.error.HTTPError) as response:
+                urllib.request.urlopen(request)
+            self.assertEqual(response.exception.code, 401)
 
     def test_email_deja_utilise(self):
         page = self.nouvelle_page()

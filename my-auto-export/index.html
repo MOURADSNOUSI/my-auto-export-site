@@ -162,6 +162,19 @@
     .offer-row input { flex: 1; min-width: 0; min-height: 40px; padding: 9px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; }
     .offer-row button { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 0; border-radius: 4px; background: var(--green); color: white; font-size: 12px; font-weight: 750; }
     .account-meta { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .account-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 18px 0; }
+    .account-nav button { display: grid; min-height: 58px; align-content: center; gap: 2px; padding: 8px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink-soft); text-align: left; font-size: 11px; font-weight: 700; }
+    .account-nav button[aria-pressed="true"] { border-color: #b7d4c5; background: var(--green-pale); color: #1d5e49; }
+    .account-nav span { font-size: 16px; }
+    .account-panel { min-height: 180px; padding: 15px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .account-panel h3 { margin: 0 0 5px; font-size: 15px; }
+    .account-panel > p { margin: 0 0 12px; color: var(--muted); font-size: 11px; }
+    .invoice-item { align-items: center !important; }
+    .invoice-details { display: grid; gap: 2px; }
+    .invoice-details strong { font-size: 12px; }
+    .invoice-details small { color: var(--muted); font-size: 10px; }
+    .invoice-download { padding: 6px 9px; border: 1px solid var(--green); border-radius: 4px; color: var(--green); font-size: 10px; font-weight: 750; }
+    .invoice-download:hover { background: var(--green-pale); }
     .account-list { display: grid; gap: 0; margin: 8px 0 0; padding: 0; list-style: none; }
     .account-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
     .account-list button { padding: 0; border: 0; background: none; color: var(--green); font-weight: 700; text-align: left; }
@@ -272,6 +285,7 @@
       .result-line { padding-inline: 14px; }
       .empty-state { min-height: 285px; padding: 24px 17px; }
       .steps { grid-template-columns: 1fr; gap: 10px; }
+      .account-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .footer-inner { align-items: start; flex-direction: column; gap: 5px; }
     }
     @media (max-width: 390px) {
@@ -683,7 +697,7 @@
 
     // --- Espace acheteur ---
 
-    const compte = { disponible: false, user: null, offers: [] };
+    const compte = { disponible: false, user: null, vehicles: [], offers: [], invoices: [] };
     let actionApresConnexion = null;
 
     async function api(chemin, { method = "GET", body } = {}) {
@@ -721,7 +735,9 @@
     // Au moment de la connexion, les favoris gardés dans le navigateur rejoignent ceux du compte.
     function appliquerCompte(data) {
       compte.user = data.user || null;
+      compte.vehicles = data.vehicles || [];
       compte.offers = data.offers || [];
+      compte.invoices = data.invoices || [];
       if (compte.user) {
         const favoris = data.favorites || [];
         const locaux = [...watchlist].filter((reference) => !favoris.includes(reference));
@@ -791,21 +807,53 @@
       const user = compte.user;
       const favoris = [...watchlist].map((reference) => lots.find((lot) => lot.reference === reference)).filter(Boolean);
       const statuts = { pending: "En attente de confirmation", accepted: "Acceptée", refused: "Refusée" };
-      const date = (iso) => new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
+      const statutsVehicule = { purchased: "Acheté", in_preparation: "En préparation", ready_for_pickup: "Prêt à enlever", picked_up: "Enlevé" };
+      const statutsFacture = { issued: "Émise", paid: "Payée", void: "Annulée" };
+      const date = (iso) => {
+        const value = new Date(iso);
+        return Number.isNaN(value.getTime()) ? "Date à confirmer" : new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" }).format(value);
+      };
+      const vues = [
+        ["vehicles", "Mes véhicules", compte.vehicles.length],
+        ["offers", "Mes offres", compte.offers.length],
+        ["favorites", "Mes favoris", favoris.length],
+        ["documents", "Documents · Factures", compte.invoices.length]
+      ];
       document.getElementById("account-body").innerHTML = `
         <div class="dialog-head"><div><span class="lot-meta">Page personnelle · Acheteur</span><h2 id="account-title">${escapeHtml(user.name)} ${numeroMembre(user)}</h2>
           <p class="account-meta">${escapeHtml(user.email)}${user.phone ? ` · ${escapeHtml(user.phone)}` : ""} · membre depuis le ${date(user.createdAt)}</p></div>
           <button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
-        <h3 class="fiche-section">Mes favoris (${favoris.length})</h3>
-        ${favoris.length ? `<ul class="account-list">${favoris.map((lot) => `<li><button type="button" data-detail="${escapeHtml(lot.reference)}">${escapeHtml(titreLot(lot))}</button><span class="muted">Réf. ${escapeHtml(lot.reference)} · ${statutLot(lot)} · ${escapeHtml(libellePrix(lot).value)}</span></li>`).join("")}</ul>` : `<p class="account-empty">Aucun favori. Clique sur « Suivre » sur une annonce pour la retrouver ici.</p>`}
-        <h3 class="fiche-section">Mes offres (${compte.offers.length})</h3>
-        ${compte.offers.length ? `<ul class="account-list">${compte.offers.map((offer) => {
-          const lot = lots.find((item) => item.reference === offer.reference);
-          return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
-            <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Offre"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
-            <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span></li>`;
-        }).join("")}</ul>` : `<p class="account-empty">Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères.</p>`}
+        <nav class="account-nav" aria-label="Rubriques de l'espace acheteur">${vues.map(([id, label, count], index) => `<button type="button" data-account-view="${id}" aria-pressed="${index === 0}"><span>${count}</span>${label}</button>`).join("")}</nav>
+        <section class="account-panel" data-account-panel="vehicles">
+          <h3>Mes véhicules (${compte.vehicles.length})</h3><p>Véhicules rattachés à ton compte acheteur.</p>
+          ${compte.vehicles.length ? `<ul class="account-list">${compte.vehicles.map((vehicle) => `<li><span><strong>${escapeHtml(`${vehicle.make} ${vehicle.model} ${vehicle.trim || ""}`.trim())}</strong><br><span class="muted">Réf. ${escapeHtml(vehicle.reference)} · ${statutsVehicule[vehicle.status] || "Statut à confirmer"}${vehicle.purchasedAt ? ` · ${date(vehicle.purchasedAt)}` : ""}</span></span></li>`).join("")}</ul>` : `<p class="account-empty">Aucun véhicule n'est encore associé à ce compte.</p>`}
+        </section>
+        <section class="account-panel hidden" data-account-panel="offers">
+          <h3>Mes offres (${compte.offers.length})</h3><p>Suivi des offres transmises à M&Y AUTO EXPORT.</p>
+          ${compte.offers.length ? `<ul class="account-list">${compte.offers.map((offer) => {
+            const lot = lots.find((item) => item.reference === offer.reference);
+            return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
+              <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Offre"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
+              <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span></li>`;
+          }).join("")}</ul>` : `<p class="account-empty">Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères.</p>`}
+        </section>
+        <section class="account-panel hidden" data-account-panel="favorites">
+          <h3>Mes favoris (${favoris.length})</h3><p>Lots suivis depuis le catalogue.</p>
+          ${favoris.length ? `<ul class="account-list">${favoris.map((lot) => `<li><button type="button" data-detail="${escapeHtml(lot.reference)}">${escapeHtml(titreLot(lot))}</button><span class="muted">Réf. ${escapeHtml(lot.reference)} · ${statutLot(lot)} · ${escapeHtml(libellePrix(lot).value)}</span></li>`).join("")}</ul>` : `<p class="account-empty">Aucun favori. Clique sur « Suivre » sur une annonce pour la retrouver ici.</p>`}
+        </section>
+        <section class="account-panel hidden" data-account-panel="documents">
+          <h3>Documents</h3><p>Factures liées aux achats enregistrées pour ce compte.</p>
+          <h4 class="fiche-section">Factures (${compte.invoices.length})</h4>
+          ${compte.invoices.length ? `<ul class="account-list">${compte.invoices.map((invoice) => `<li class="invoice-item"><span class="invoice-details"><strong>${escapeHtml(invoice.invoiceNumber)}</strong><small>${escapeHtml(date(invoice.issuedAt))} · ${formatTnd(invoice.totalTnd)} · ${statutsFacture[invoice.status] || "Statut à confirmer"}</small></span>${invoice.documentAvailable ? `<a class="invoice-download" href="/api/invoices/${encodeURIComponent(invoice.id)}/document">Télécharger PDF</a>` : `<span class="muted">PDF non disponible</span>`}</li>`).join("")}</ul>` : `<p class="account-empty">Aucune facture associée à ce compte.</p>`}
+          <p class="form-footnote">Les factures sont privées et accessibles uniquement après connexion au compte concerné.</p>
+        </section>
         <button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
+      document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((tab) => tab.setAttribute("aria-pressed", String(tab === button)));
+          document.getElementById("account-body").querySelectorAll("[data-account-panel]").forEach((panel) => panel.classList.toggle("hidden", panel.dataset.accountPanel !== button.dataset.accountView));
+        });
+      });
       if (!accountDialog.open) accountDialog.showModal();
     }
 
@@ -1065,7 +1113,9 @@
           await api("/api/logout", { method: "POST" });
         } catch {}
         compte.user = null;
+        compte.vehicles = [];
         compte.offers = [];
+        compte.invoices = [];
         accountDialog.close();
         updateView();
         afficherCompte();

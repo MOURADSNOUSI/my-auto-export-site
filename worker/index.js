@@ -32,6 +32,8 @@ async function routeApi(request, env, url) {
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
   if (path === "/api/me" && method === "GET") return me(request, env);
+  const invoiceDocument = path.match(/^\/api\/invoices\/(\d+)\/document$/);
+  if (invoiceDocument && method === "GET") return telechargerFacture(request, env, Number(invoiceDocument[1]));
   if (path === "/api/register" && method === "POST") return register(request, env);
   if (path === "/api/login" && method === "POST") return login(request, env);
   if (path === "/api/logout" && method === "POST") return logout(request, env);
@@ -144,16 +146,48 @@ function profil(user) {
 async function me(request, env) {
   const user = await utilisateurConnecte(request, env);
   if (!user) return json({ user: null }, 401);
-  const [favorites, offers] = await Promise.all([
+  const [favorites, offers, vehicles, invoices] = await Promise.all([
     env.DB.prepare("SELECT reference FROM favorites WHERE user_id = ? ORDER BY created_at DESC").bind(user.id).all(),
-    env.DB.prepare("SELECT id, reference, amount_tnd, kind, status, created_at FROM offers WHERE user_id = ? ORDER BY id DESC").bind(user.id).all()
+    env.DB.prepare("SELECT id, reference, amount_tnd, kind, status, created_at FROM offers WHERE user_id = ? ORDER BY id DESC").bind(user.id).all(),
+    env.DB.prepare("SELECT id, reference, make, model, trim, status, purchased_at FROM customer_vehicles WHERE user_id = ? ORDER BY purchased_at DESC, id DESC").bind(user.id).all(),
+    env.DB.prepare("SELECT id, vehicle_id, invoice_number, issued_at, total_tnd, status, document_key FROM invoices WHERE user_id = ? ORDER BY issued_at DESC, id DESC").bind(user.id).all()
   ]);
   return json({
     user: profil(user),
     favorites: favorites.results.map((row) => row.reference),
     offers: offers.results.map((row) => ({
       id: row.id, reference: row.reference, amountTnd: row.amount_tnd, kind: row.kind, status: row.status, createdAt: row.created_at
+    })),
+    vehicles: vehicles.results.map((row) => ({
+      id: row.id, reference: row.reference, make: row.make, model: row.model, trim: row.trim || "",
+      status: row.status, purchasedAt: row.purchased_at
+    })),
+    invoices: invoices.results.map((row) => ({
+      id: row.id, vehicleId: row.vehicle_id, invoiceNumber: row.invoice_number, issuedAt: row.issued_at,
+      totalTnd: row.total_tnd, status: row.status, documentAvailable: Boolean(row.document_key && env.DOCUMENTS)
     }))
+  });
+}
+
+async function telechargerFacture(request, env, invoiceId) {
+  const user = await exigerUtilisateur(request, env);
+  const invoice = await env.DB.prepare(
+    "SELECT invoice_number, document_key FROM invoices WHERE id = ? AND user_id = ?"
+  ).bind(invoiceId, user.id).first();
+  if (!invoice || !invoice.document_key) throw new ApiError(404, "Facture introuvable.");
+  if (!env.DOCUMENTS) throw new ApiError(503, "Le stockage sécurisé des factures n'est pas configuré.");
+
+  const object = await env.DOCUMENTS.get(invoice.document_key);
+  if (!object) throw new ApiError(404, "Fichier de facture introuvable.");
+  const filename = String(invoice.invoice_number).replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80) || `facture-${invoiceId}`;
+  return new Response(object.body, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}.pdf"`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox"
+    }
   });
 }
 
