@@ -4,7 +4,10 @@
 	"main": "worker/main.js",
 	"assets": {
 		"directory": "./my-auto-export",
-		"binding": "ASSETS"
+		"binding": "ASSETS",
+		// Ces fichiers passent par le Worker (worker/index.js, servirFichier) : liste des véhicules insérée dans
+		// l'accueil, en-tête X-Robots-Tag de l'administration. Les autres fichiers sont servis directement.
+		"run_worker_first": ["/", "/admin", "/admin.html"]
 	},
 	// Base de l'espace acheteur (production). Pour une nouvelle base : `npx wrangler d1 create my-auto-export`,
 	// puis remplacer database_id par l'identifiant affiché (voir README).
@@ -24,5 +27,10 @@
 			"binding": "PHOTOS",
 			"bucket_name": "my-auto-export-photos"
 		}
-	]
+	],
+	// Contrôle SEO quotidien à 07:00, heure de Paris (worker/seo.js). Le Cron est en UTC : 05:00 UTC en été,
+	// 06:00 UTC en hiver ; le Worker n'exécute que celui qui tombe à 07:00 à Paris. Inclus dans le plan gratuit.
+	"triggers": {
+		"crons": ["0 5 * * *", "0 6 * * *"]
+	}
 }

@@ -1,5 +1,7 @@
-// Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*) et le serveur MCP (worker/mcp.js).
+// Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*), le serveur MCP (worker/mcp.js)
+// et les pages de référencement (worker/seo.js).
 import { estRouteMcp, routeMcp } from "./mcp.js";
+import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, listeIndexable, page404, routeSeo } from "./seo.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -13,20 +15,55 @@ const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) return servirPhoto(env, url);
+    // Une seule version du site : http répondait aussi, ce qui dupliquait chaque page.
+    if (url.protocol === "http:" && /(^|\.)myautoexport\.com$/.test(url.hostname)) {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
+    const lecture = request.method === "GET" || request.method === "HEAD";
+    if (url.pathname.startsWith("/media/") && lecture) return servirPhoto(env, url);
     if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    if (estRouteSeo(url.pathname) && lecture) return routeSeo(request, env, url);
+    if (!url.pathname.startsWith("/api/")) return servirFichier(request, env, url);
     try {
-      return await routeApi(request, env, url);
+      return await routeApi(request, env, url, ctx);
     } catch (error) {
       if (error instanceof ApiError) return json({ error: error.message }, error.status);
       console.error(error);
       return json({ error: "Erreur interne, réessaie plus tard." }, 500);
     }
+  },
+
+  async scheduled(controller, env) {
+    await controleQuotidien(controller, env);
   }
 };
+
+async function servirFichier(request, env, url) {
+  const reponse = await env.ASSETS.fetch(request);
+  if (reponse.status === 404 && (request.headers.get("Accept") || "").includes("text/html")) return page404();
+  if (url.pathname === "/admin" || url.pathname === "/admin.html") {
+    const entetes = new Headers(reponse.headers);
+    entetes.set("X-Robots-Tag", "noindex, nofollow");
+    return new Response(reponse.body, { status: reponse.status, headers: entetes });
+  }
+  if (url.pathname !== "/" || !reponse.ok || request.method !== "GET") return reponse;
+  // Accueil : la liste des véhicules est insérée côté serveur, lisible par les moteurs qui n'exécutent pas JavaScript.
+  let liste;
+  try {
+    liste = await listeIndexable(request, env);
+  } catch (error) {
+    console.error(error);
+    return reponse;
+  }
+  if (!liste) return reponse;
+  return new HTMLRewriter()
+    .on("#tous-vehicules", { element: (element) => element.removeAttribute("hidden") })
+    .on("#liste-vehicules", { element: (element) => element.setInnerContent(liste, { html: true }) })
+    .transform(reponse);
+}
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -35,16 +72,18 @@ export class ApiError extends Error {
   }
 }
 
-async function routeApi(request, env, url) {
+async function routeApi(request, env, url, ctx) {
   const method = request.method;
   const path = url.pathname;
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
   if (path === "/api/me" && method === "GET") return me(request, env);
-  if (path === "/api/catalogue" && method === "GET") return json(await catalogue(request, env));
+  if (path === "/api/catalogue" && method === "GET") {
+    return json((await catalogue(request, env)).map((lot) => ({ ...lot, url: cheminVehicule(lot) })));
+  }
   const enchere = path.match(/^\/api\/auctions\/([^/]{1,64})$/);
   if (enchere && method === "GET") return detailEnchere(request, env, decodeURIComponent(enchere[1]));
-  if (path.startsWith("/api/admin/")) return routeAdmin(request, env, path, method);
+  if (path.startsWith("/api/admin/")) return routeAdmin(request, env, path, method, ctx);
   const invoiceDocument = path.match(/^\/api\/invoices\/(\d+)\/document$/);
   if (invoiceDocument && method === "GET") return telechargerFacture(request, env, Number(invoiceDocument[1]));
   if (path === "/api/register" && method === "POST") return register(request, env);
@@ -423,8 +462,12 @@ async function exigerAdmin(request, env) {
   return user;
 }
 
-async function routeAdmin(request, env, path, method) {
+async function routeAdmin(request, env, path, method, ctx) {
   const user = await exigerAdmin(request, env);
+  if (path === "/api/admin/seo" && method === "GET") {
+    const { results } = await env.DB.prepare("SELECT ran_at, declencheur, ok, resume FROM seo_journal ORDER BY id DESC LIMIT 30").all();
+    return json({ controles: results.map((row) => ({ ranAt: row.ran_at, declencheur: row.declencheur, ok: Boolean(row.ok), ...JSON.parse(row.resume) })) });
+  }
   if (path === "/api/admin/vehicles" && method === "GET") {
     const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
     const maintenant = Date.now();
@@ -451,8 +494,8 @@ async function routeAdmin(request, env, path, method) {
     });
   }
   const vehicule = path.match(/^\/api\/admin\/vehicles\/([^/]{1,64})$/);
-  if (vehicule && method === "PUT") return json(await enregistrerVehicule(env, user, decodeURIComponent(vehicule[1]), await lireJson(request)));
-  if (vehicule && method === "DELETE") return json(await retirerVehicule(request, env, user, decodeURIComponent(vehicule[1])));
+  if (vehicule && method === "PUT") return json(await enregistrerVehicule(env, user, decodeURIComponent(vehicule[1]), await lireJson(request), ctx));
+  if (vehicule && method === "DELETE") return json(await retirerVehicule(request, env, user, decodeURIComponent(vehicule[1]), ctx));
   if (path === "/api/admin/offers" && method === "GET") return json(await listerOffres(request, env, new URL(request.url).searchParams.get("reference")));
   const decision = path.match(/^\/api\/admin\/offers\/(\d+)\/(accept|refuse)$/);
   if (decision && method === "POST") {
@@ -631,23 +674,26 @@ function validerVehicule(body, reference) {
   return lot;
 }
 
-export async function enregistrerVehicule(env, user, reference, body) {
+// ctx absent (outil MCP) : le contrôle SEO est attendu avant la réponse au lieu de tourner en arrière-plan.
+export async function enregistrerVehicule(env, user, reference, body, ctx) {
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Référence invalide (lettres, chiffres, . _ - ; 40 caractères maximum).");
   const lot = validerVehicule(body, reference);
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 0, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET data = excluded.data, removed = 0, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
   ).bind(reference, JSON.stringify(lot), new Date().toISOString(), user.id).run();
-  return { vehicle: lot };
+  await controlerApresPublication(env, ctx, reference);
+  return { vehicle: lot, url: cheminVehicule(lot) };
 }
 
-export async function retirerVehicule(request, env, user, reference) {
+export async function retirerVehicule(request, env, user, reference, ctx) {
   const existant = (await catalogueComplet(request, env)).find((item) => item.lot.reference === reference);
   if (!existant) throw new ApiError(404, "Véhicule introuvable.");
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 1, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET removed = 1, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
   ).bind(reference, JSON.stringify(existant.lot), new Date().toISOString(), user.id).run();
+  await controlerApresPublication(env, ctx, reference);
   return { reference, removed: true };
 }
 

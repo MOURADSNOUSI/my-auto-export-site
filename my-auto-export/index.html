@@ -4,15 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101513">
-  <meta name="description" content="M&Y AUTO EXPORT — véhicules européens livrés en Tunisie : stock, enchères et prix fixes, prix affichés en dinars tunisiens.">
-  <title>M&Y AUTO EXPORT — Véhicules européens livrés en Tunisie</title>
+  <meta name="description" content="M&Y AUTO EXPORT : achat et import de véhicules d'occasion sélectionnés en Europe et livrés en Tunisie. Stock, enchères en ligne et achat direct, prix affichés en dinars tunisiens (TND).">
+  <title>M&Y AUTO EXPORT — Achat et import de véhicules européens en Tunisie</title>
   <link rel="canonical" href="https://www.myautoexport.com/">
   <link rel="icon" href="/logo.png" type="image/png">
+  <link rel="preload" as="image" href="/photos/web/MY-0001-1.webp" type="image/webp" fetchpriority="high">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="M&Y AUTO EXPORT">
   <meta property="og:locale" content="fr_TN">
   <meta property="og:url" content="https://www.myautoexport.com/">
-  <meta property="og:title" content="M&Y AUTO EXPORT — Véhicules européens livrés en Tunisie">
+  <meta property="og:title" content="M&Y AUTO EXPORT — Achat et import de véhicules européens en Tunisie">
   <meta property="og:description" content="Véhicules sélectionnés en Europe, en vente directe ou aux enchères, avec des prix affichés en dinars tunisiens.">
   <meta property="og:image" content="https://www.myautoexport.com/logo.png">
   <meta name="twitter:card" content="summary">
@@ -175,6 +176,11 @@
     .lot-status.open { background: #b8402f; }
     .lot-body { display: flex; min-width: 0; flex-direction: column; gap: 10px; padding: 14px 18px; }
     .lot-title { margin: 0; font-size: 17px; line-height: 1.3; }
+    .lot-title a { color: inherit; text-decoration: none; }
+    .lot-title a:hover, .lot-title a:focus-visible { text-decoration: underline; }
+    .liste-vehicules { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .liste-vehicules a { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); text-decoration: none; }
+    .liste-vehicules small { color: var(--muted); }
     .lot-meta { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
     .lot-specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; margin: 0; padding: 10px 0; border-block: 1px solid var(--line); list-style: none; }
     .lot-specs li { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 13px; }
@@ -490,7 +496,7 @@
   </header>
 
   <section class="hero" id="accueil" aria-labelledby="page-title">
-    <img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" onerror="this.remove()">
+    <picture><source srcset="/photos/web/MY-0001-1.webp" type="image/webp"><img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" width="960" height="1280" fetchpriority="high" decoding="async" onerror="this.remove()"></picture>
     <div class="shell hero-inner">
       <h1 id="page-title">Votre véhicule européen ou américain, livré en Tunisie</h1>
       <p class="hero-lead"><strong id="hero-total">Des véhicules</strong> sélectionnés en Europe, en vente directe ou aux enchères, avec des prix affichés en dinars tunisiens.</p>
@@ -595,10 +601,16 @@
         <p>Décrivez votre recherche : marque, budget, année. L'équipe vous prévient dès qu'un véhicule correspondant arrive.</p>
       </article>
     </section>
+
+    <section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title" hidden>
+      <div class="section-title"><h2 id="tous-vehicules-title">Tous nos véhicules</h2><a class="text-action" href="/vehicules">Voir la liste complète</a></div>
+      <!-- Rempli par le Worker (worker/seo.js) : liens vers chaque fiche, lisibles sans JavaScript. -->
+      <ul class="liste-vehicules" id="liste-vehicules"></ul>
+    </section>
   </main>
 
   <footer>
-    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · <a href="/conditions.html">Conditions générales de vente</a> · <a href="/conditions.html#donnees">Données personnelles</a></span></div>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span></div>
   </footer>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
@@ -623,7 +635,7 @@
           <div class="form-field"><label for="register-phone">Téléphone (facultatif)</label><input id="register-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30"></div>
           <div class="form-field full"><label for="register-password">Mot de passe (10 caractères minimum)</label><input id="register-password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="200" required></div>
         </div>
-        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter (<a href="/conditions.html#donnees" target="_blank" rel="noopener">données personnelles</a>).</p>
+        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter (<a href="/conditions#donnees" target="_blank" rel="noopener">données personnelles</a>).</p>
         <p class="form-error" role="alert" hidden></p>
         <button class="form-submit" type="submit">Créer mon compte</button>
       </form>
@@ -928,9 +940,9 @@
           <div class="step-bids" role="group" aria-label="Augmenter mon enchère">${[1, 2, 5].map((n) => `<button type="button" data-step="${n * a.incrementTnd}">+${formatTnd(n * a.incrementTnd)}</button>`).join("")}</div>
           <div class="offer-row"><label class="hidden" for="offer-amount">Votre enchère en TND</label><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${a.minNextBidTnd}" step="1" required value="${a.minNextBidTnd}"><button type="submit">Enchérir</button></div>
           <details class="bid-total"><summary><span>Votre enchère</span><strong id="bid-total">${formatTnd(a.minNextBidTnd)}</strong><span class="details-label">Détails</span></summary>
-            <p>Montant payé au vendeur en cas d'adjudication. Ne sont pas inclus : droits et taxes de douane (dont l'éventuel régime FCR), transport, dédouanement et immatriculation en Tunisie. <a href="/conditions.html#prix" target="_blank" rel="noopener">En savoir plus</a></p></details>
-          ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions.html" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
-          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions.html#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
+            <p>Montant payé au vendeur en cas d'adjudication. Ne sont pas inclus : droits et taxes de douane (dont l'éventuel régime FCR), transport, dédouanement et immatriculation en Tunisie. <a href="/conditions#prix" target="_blank" rel="noopener">En savoir plus</a></p></details>
+          ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
+          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
           <p class="form-error" role="alert" hidden></p>
         </form>`;
       }
@@ -1200,7 +1212,7 @@
           ${compte.invoices.length ? `<ul class="account-list">${compte.invoices.map((invoice) => `<li class="invoice-item"><span class="invoice-details"><strong>${escapeHtml(invoice.invoiceNumber)}</strong><small>${escapeHtml(date(invoice.issuedAt))} · ${formatTnd(invoice.totalTnd)} · ${statutsFacture[invoice.status] || "Statut à confirmer"}</small></span>${invoice.documentAvailable ? `<a class="invoice-download" href="/api/invoices/${encodeURIComponent(invoice.id)}/document">Télécharger PDF</a>` : `<span class="muted">PDF non disponible</span>`}</li>`).join("")}</ul>` : `<p class="account-empty">Aucune facture associée à ce compte.</p>`}
           <p class="form-footnote">Les factures sont privées et accessibles uniquement après connexion au compte concerné.</p>
         </section>
-        ${user.role === "admin" ? `<a class="logout-button admin-link" href="/admin.html">Administration du catalogue</a>` : ""}
+        ${user.role === "admin" ? `<a class="logout-button admin-link" href="/admin">Administration du catalogue</a>` : ""}
         <button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
       document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -1246,7 +1258,7 @@
       return `<article class="lot-card">
         <div class="lot-photo"><span class="lot-status ${escapeHtml(lot.status)}">${statutLot(lot)}</span>${photos.length ? `<button class="photo-open" type="button" data-detail="${escapeHtml(lot.reference)}" aria-label="Voir les photos de ${escapeHtml(titreLot(lot))}"><img src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(lot.make)} ${escapeHtml(lot.model)}" loading="lazy">${photos.length > 1 ? `<span class="photo-count">${photos.length} photos</span>` : ""}</button>` : `<div class="photo-missing"><strong>Photo à confirmer</strong><span>Visuel autorisé non fourni</span></div>`}</div>
         <div class="lot-body">
-          <div><h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
+          <div><h2 class="lot-title">${lot.url ? `<a href="${escapeHtml(lot.url)}">${escapeHtml(titreLot(lot))}</a>` : escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
           <ul class="lot-specs">${caracteristiques.map(([nom, texte]) => `<li>${icone(nom === "gear" ? "sliders" : nom)}<span title="${escapeHtml(texte)}">${escapeHtml(texte)}</span></li>`).join("")}</ul>
           ${resumeEnchere(lot)}
           ${enlevementLot(lot)}
@@ -1616,7 +1628,11 @@
     });
 
     updateView();
-    chargerCatalogue().then(chargerCompte);
+    chargerCatalogue().then(chargerCompte).finally(() => {
+      // Lien depuis une page véhicule (/?lot=REF) : ouvre directement sa fiche, avec enchère et achat.
+      const reference = new URLSearchParams(location.search).get("lot");
+      if (reference) ouvrirFiche(reference);
+    });
   </script>
 </body>
 </html>

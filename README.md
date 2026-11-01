@@ -7,6 +7,14 @@ pip install playwright && playwright install chromium
 python3 -m unittest discover tests
 ```
 
+Les tests du Worker (espace acheteur, enchères, administration, MCP, pages véhicules) sont ignorés sans
+`WRANGLER=/chemin/vers/wrangler`.
+
+## Référencement
+
+Pages véhicules `/vehicules/…`, sitemap dynamique, contrôle SEO quotidien et journal : voir [docs/SEO.md](docs/SEO.md).
+Contrôler le site en production (lecture seule) : `python3 scripts/controle_seo.py`.
+
 ## Ajouter un lot
 
 ```
@@ -20,6 +28,7 @@ Les photos sont copiées dans `my-auto-export/photos/` et le lot est ajouté à
 `--source` (lien https vers la fiche fournisseur) est facultatif : sans lien, la carte affiche
 « Se renseigner », qui ouvre le formulaire de contact. `python3 scripts/ajouter_lot.py -h` liste
 toutes les options. Pour retirer un lot, supprime son entrée dans `lots.json` et ses photos.
+Après l'ajout de photos, lance `python3 scripts/optimiser_photos.py` : il crée leurs versions WebP allégées.
 
 ## Importer le catalogue Wix
 
