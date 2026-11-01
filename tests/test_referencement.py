@@ -22,9 +22,10 @@ class ReferencementTest(unittest.TestCase):
     def test_sitemap_liste_des_pages_existantes(self):
         racine = ET.parse(SITE / "sitemap.xml").getroot()
         adresses = [loc.text for loc in racine.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
-        self.assertEqual(adresses, [f"{DOMAINE}/", f"{DOMAINE}/conditions.html"])
+        # Adresses sans .html : Cloudflare redirige /conditions.html vers /conditions, et Google n'indexe pas une adresse qui redirige.
+        self.assertEqual(adresses, [f"{DOMAINE}/", f"{DOMAINE}/conditions"])
         for adresse in adresses:
-            fichier = SITE / (adresse.removeprefix(DOMAINE + "/") or "index.html")
+            fichier = SITE / ((adresse.removeprefix(DOMAINE + "/") or "index") + ".html")
             self.assertTrue(fichier.exists(), adresse)
             self.assertNotIn("noindex", fichier.read_text(), adresse)
 
@@ -37,7 +38,11 @@ class ReferencementTest(unittest.TestCase):
 
     def test_administration_non_indexee(self):
         self.assertIn('<meta name="robots" content="noindex, nofollow">', (SITE / "admin.html").read_text())
-        self.assertIn(f'<link rel="canonical" href="{DOMAINE}/conditions.html">', (SITE / "conditions.html").read_text())
+        self.assertIn(f'<link rel="canonical" href="{DOMAINE}/conditions">', (SITE / "conditions.html").read_text())
+
+    def test_liens_internes_sans_redirection(self):
+        for page in ("index.html", "conditions.html"):
+            self.assertNotRegex((SITE / page).read_text(), r'href="/[a-z]+\.html', page)
 
 
 if __name__ == "__main__":

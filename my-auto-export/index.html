@@ -598,7 +598,7 @@
   </main>
 
   <footer>
-    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · <a href="/conditions.html">Conditions générales de vente</a> · <a href="/conditions.html#donnees">Données personnelles</a></span></div>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span></div>
   </footer>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
@@ -623,7 +623,7 @@
           <div class="form-field"><label for="register-phone">Téléphone (facultatif)</label><input id="register-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30"></div>
           <div class="form-field full"><label for="register-password">Mot de passe (10 caractères minimum)</label><input id="register-password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="200" required></div>
         </div>
-        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter (<a href="/conditions.html#donnees" target="_blank" rel="noopener">données personnelles</a>).</p>
+        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter (<a href="/conditions#donnees" target="_blank" rel="noopener">données personnelles</a>).</p>
         <p class="form-error" role="alert" hidden></p>
         <button class="form-submit" type="submit">Créer mon compte</button>
       </form>
@@ -928,9 +928,9 @@
           <div class="step-bids" role="group" aria-label="Augmenter mon enchère">${[1, 2, 5].map((n) => `<button type="button" data-step="${n * a.incrementTnd}">+${formatTnd(n * a.incrementTnd)}</button>`).join("")}</div>
           <div class="offer-row"><label class="hidden" for="offer-amount">Votre enchère en TND</label><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${a.minNextBidTnd}" step="1" required value="${a.minNextBidTnd}"><button type="submit">Enchérir</button></div>
           <details class="bid-total"><summary><span>Votre enchère</span><strong id="bid-total">${formatTnd(a.minNextBidTnd)}</strong><span class="details-label">Détails</span></summary>
-            <p>Montant payé au vendeur en cas d'adjudication. Ne sont pas inclus : droits et taxes de douane (dont l'éventuel régime FCR), transport, dédouanement et immatriculation en Tunisie. <a href="/conditions.html#prix" target="_blank" rel="noopener">En savoir plus</a></p></details>
-          ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions.html" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
-          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions.html#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
+            <p>Montant payé au vendeur en cas d'adjudication. Ne sont pas inclus : droits et taxes de douane (dont l'éventuel régime FCR), transport, dédouanement et immatriculation en Tunisie. <a href="/conditions#prix" target="_blank" rel="noopener">En savoir plus</a></p></details>
+          ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
+          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
           <p class="form-error" role="alert" hidden></p>
         </form>`;
       }
@@ -1200,7 +1200,7 @@
           ${compte.invoices.length ? `<ul class="account-list">${compte.invoices.map((invoice) => `<li class="invoice-item"><span class="invoice-details"><strong>${escapeHtml(invoice.invoiceNumber)}</strong><small>${escapeHtml(date(invoice.issuedAt))} · ${formatTnd(invoice.totalTnd)} · ${statutsFacture[invoice.status] || "Statut à confirmer"}</small></span>${invoice.documentAvailable ? `<a class="invoice-download" href="/api/invoices/${encodeURIComponent(invoice.id)}/document">Télécharger PDF</a>` : `<span class="muted">PDF non disponible</span>`}</li>`).join("")}</ul>` : `<p class="account-empty">Aucune facture associée à ce compte.</p>`}
           <p class="form-footnote">Les factures sont privées et accessibles uniquement après connexion au compte concerné.</p>
         </section>
-        ${user.role === "admin" ? `<a class="logout-button admin-link" href="/admin.html">Administration du catalogue</a>` : ""}
+        ${user.role === "admin" ? `<a class="logout-button admin-link" href="/admin">Administration du catalogue</a>` : ""}
         <button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
       document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((button) => {
         button.addEventListener("click", () => {

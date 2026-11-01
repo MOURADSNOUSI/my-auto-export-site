@@ -201,7 +201,7 @@ class EncheresTest(unittest.TestCase):
         page.keyboard.press("Escape")
         page.locator(".lot-card", has_text="ENC-11").get_by_text("Voir la fiche").click()
         page.wait_for_selector("#auction-panel .terms-check")
-        self.assertEqual(page.get_attribute(".terms-check a", "href"), "/conditions.html")
+        self.assertEqual(page.get_attribute(".terms-check a", "href"), "/conditions")
         page.click("#auction-panel [type=submit]")
         self.assertTrue(page.evaluate("!document.querySelector('.terms-check input').checkValidity()"), "case obligatoire")
         self.assertEqual(self.enchere("ENC-11")["auction"]["bidCount"], 0)
@@ -212,7 +212,7 @@ class EncheresTest(unittest.TestCase):
         self.assertEqual(self.enchere("ENC-11")["auction"]["bidCount"], 1)
 
     def test_page_des_conditions(self):
-        with urllib.request.urlopen(self.base + "/conditions.html") as reponse:
+        with urllib.request.urlopen(self.base + "/conditions") as reponse:
             page = reponse.read().decode()
         self.assertIn(CGV_VERSION, page)
         for texte in ("loi n° 2000-83", "loi organique n° 2004-63", "Code des obligations et des contrats", "droit tunisien"):
