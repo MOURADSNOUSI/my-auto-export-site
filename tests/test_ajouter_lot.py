@@ -54,6 +54,14 @@ class AjouterLotTest(unittest.TestCase):
         self.assertEqual(catalogue[0]["status"], "upcoming")
         self.assertEqual(catalogue[0]["photos"], [])
 
+    def test_mise_a_prix_et_caracteristiques(self):
+        catalogue = self.run_script(
+            "--reference", "MY-005", "--marque", "Jeep", "--modele", "Wrangler", "--mise-a-prix", "150000",
+            "--detail", "Transmission=4x4 Rock-Trac", "--detail", "Puissance = 380 ch",
+        )
+        self.assertEqual(catalogue[0]["startingPriceTnd"], 150000)
+        self.assertEqual(catalogue[0]["specs"], [["Transmission", "4x4 Rock-Trac"], ["Puissance", "380 ch"]])
+
     def test_refuse_les_saisies_invalides(self):
         base = ["--reference", "MY-003", "--marque", "Audi", "--modele", "A3"]
         cas = {
@@ -61,6 +69,7 @@ class AjouterLotTest(unittest.TestCase):
             "fin passée": [*base, "--statut", "open", "--fin", "2000-01-01"],
             "source http": [*base, "--source", "http://fournisseur.example"],
             "photo absente": [*base, str(self.root / "absente.jpg")],
+            "détail sans valeur": [*base, "--detail", "Transmission"],
         }
         for nom, args in cas.items():
             with self.subTest(nom):

@@ -37,6 +37,9 @@ def main(argv=None):
                         help="open = en vente, upcoming = à venir (défaut)")
     parser.add_argument("--fin", type=parse_date, help="fin de la vente, ex. 2026-11-20T18:00 (obligatoire si open)")
     parser.add_argument("--prix", type=float, help="prix indicatif en TND")
+    parser.add_argument("--mise-a-prix", type=float, help="prix de départ de l'enchère en TND")
+    parser.add_argument("--detail", action="append", default=[], metavar="LIBELLÉ=VALEUR",
+                        help="caractéristique affichée sur la fiche, ex. \"Transmission=4x4\" (répétable)")
     parser.add_argument("--annee", type=int)
     parser.add_argument("--km", type=int)
     parser.add_argument("--carburant")
@@ -52,6 +55,12 @@ def main(argv=None):
             parser.error("--fin est déjà passée : le lot ne serait pas affiché")
     if args.source and not args.source.startswith("https://"):
         parser.error("--source doit commencer par https://")
+    specs = []
+    for detail in args.detail:
+        libelle, _, valeur = detail.partition("=")
+        if not libelle.strip() or not valeur.strip():
+            parser.error(f"--detail attend LIBELLÉ=VALEUR : {detail}")
+        specs.append([libelle.strip(), valeur.strip()])
     for photo in args.photos:
         if not photo.is_file():
             parser.error(f"photo introuvable : {photo}")
@@ -79,12 +88,14 @@ def main(argv=None):
         "status": args.statut,
         "endsAt": args.fin.isoformat() if args.fin else None,
         "indicativePriceTnd": args.prix,
+        "startingPriceTnd": args.mise_a_prix,
         "year": args.annee,
         "mileageKm": args.km,
         "fuel": args.carburant,
         "bodyType": args.categorie,
         "sourceUrl": args.source,
         "photos": photos,
+        "specs": specs or None,
         "createdAt": datetime.now(timezone.utc).isoformat(),
     }
     catalogue.append({key: value for key, value in lot.items() if value is not None})

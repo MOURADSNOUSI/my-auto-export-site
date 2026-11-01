@@ -132,6 +132,24 @@ class CatalogueTest(unittest.TestCase):
         self.assertTrue(page.is_visible("#contact-dialog"))
         self.assertEqual(page.input_value("#request-reference"), "MY-LOCAL")
 
+    def test_mise_a_prix_prime_sur_le_prix_indicatif(self):
+        page = self.open_site([lot(startingPriceTnd=150000, indicativePriceTnd=999)])
+        self.assertIn("Mise à prix", page.text_content(".lot-price"))
+        self.assertIn("150", page.text_content(".lot-price strong"))
+
+    def test_fiche_affiche_galerie_et_caracteristiques(self):
+        photos = [{"url": f"photos/MY-1-{i}.jpg", "authorized": True} for i in (1, 2, 3)]
+        page = self.open_site([lot(photos=photos, specs=[["Transmission", "4x4 Rock-Trac"]])])
+        self.assertEqual(page.text_content(".photo-count"), "3 photos")
+        page.click("text=Voir la fiche")
+        self.assertTrue(page.is_visible("#lot-dialog"))
+        self.assertEqual(page.locator("[data-thumb]").count(), 3)
+        page.click("[data-thumb='2']")
+        self.assertEqual(page.get_attribute("#gallery-image", "src"), "photos/MY-1-3.jpg")
+        self.assertIn("4x4 Rock-Trac", page.text_content(".spec-list"))
+        page.click("#lot-dialog [data-close]")
+        self.assertFalse(page.is_visible("#lot-dialog"))
+
     def test_photo_hors_du_dossier_photos_est_ignoree(self):
         page = self.open_site([lot(photos=[{"url": "../secret.jpg", "authorized": True}])])
         self.assertEqual(page.locator(".lot-photo img").count(), 0)
