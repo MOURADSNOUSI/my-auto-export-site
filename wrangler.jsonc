@@ -1,23 +1,27 @@
 {
-  "name": "my-auto-export-site",
-  "compatibility_date": "2026-10-01",
-  "main": "worker/index.js",
-  "assets": {
-    "directory": "./my-auto-export",
-    "binding": "ASSETS"
-  },
-  // Base de l'espace acheteur : créer avec `npx wrangler d1 create my-auto-export`
-  // puis remplacer database_id par l'identifiant affiché (voir README).
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "my-auto-export",
-      "database_id": "9481f2d4-698c-4f6f-90e2-9532f9e44bcf",
-      "migrations_dir": "migrations"
-    }
-  ]
-  // Photos envoyées depuis /admin.html : après avoir activé R2 dans le tableau de bord Cloudflare et lancé
-  // `npx wrangler r2 bucket create my-auto-export-photos`, ajouter ici (après le crochet ci-dessus, avec une virgule) :
-  //   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "my-auto-export-photos" }]
-  // Sans ce bloc, l'administration fonctionne mais l'envoi de photos est désactivé.
+	"name": "my-auto-export-site",
+	"compatibility_date": "2026-10-01",
+	"main": "worker/index.js",
+	"assets": {
+		"directory": "./my-auto-export",
+		"binding": "ASSETS"
+	},
+	// Base de l'espace acheteur : créer avec `npx wrangler d1 create my-auto-export`
+	// puis remplacer database_id par l'identifiant affiché (voir README).
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "my-auto-export",
+			"database_id": "9481f2d4-698c-4f6f-90e2-9532f9e44bcf",
+			"migrations_dir": "migrations"
+		}
+	],
+	// Photos envoyées depuis /admin.html (créé avec `npx wrangler r2 bucket create my-auto-export-photos`).
+	// Le Worker lit env.PHOTOS ; en local, `wrangler dev` utilise un stockage local, pas celui de production.
+	"r2_buckets": [
+		{
+			"binding": "PHOTOS",
+			"bucket_name": "my-auto-export-photos"
+		}
+	]
 }
