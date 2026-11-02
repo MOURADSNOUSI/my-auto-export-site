@@ -194,6 +194,7 @@ class AdministrationTest(unittest.TestCase):
         self.assertEqual(statut, 200)
         acheteur = self.cookie("acheteur@example.com")
         self.assertEqual(self.requete("/api/terms", {"version": "2026-11-01"}, "POST", acheteur)[0], 200)
+        self.sql("UPDATE users SET deposit_tnd = 1000000 WHERE email = 'acheteur@example.com'")
         statut, data, _ = self.requete("/api/offers", {"reference": "MY-ADM-2", "amount": 120000}, "POST", acheteur)
         self.assertEqual(statut, 201, data)
 

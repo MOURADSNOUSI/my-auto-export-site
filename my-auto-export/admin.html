@@ -183,6 +183,10 @@
       <h1 id="list-title">Catalogue</h1>
       <p class="lead" id="counts"></p>
       <p class="message info hidden" id="photos-off">Le stockage des photos n'est pas encore configuré : tu peux enregistrer des véhicules, mais pas envoyer de photos (voir le README).</p>
+      <section class="todo hidden" id="transfers" aria-labelledby="transfers-title">
+        <h2 id="transfers-title">Virements de caution à valider</h2>
+        <ul class="todo-list" id="transfers-list"></ul>
+      </section>
       <section class="todo hidden" id="todo" aria-labelledby="todo-title">
         <h2 id="todo-title">À traiter</h2>
         <ul class="todo-list" id="todo-list"></ul>
@@ -340,6 +344,7 @@
       etat.offres = offres.offers;
       etat.lotsOffres = offres.lots;
       renderAFaire();
+      await chargerVirements();
       etat.photosEnabled = data.photosEnabled;
       $("photos-off").classList.toggle("hidden", etat.photosEnabled);
       $("makes").innerHTML = [...new Set(etat.vehicles.map((item) => item.lot.make))].sort().map((m) => `<option value="${escapeHtml(m)}">`).join("");
@@ -440,12 +445,46 @@
             <span class="badge offer-${escapeHtml(offre.status)}">${STATUTS_OFFRE[offre.status] || escapeHtml(offre.status)}</span>
             ${offre.best ? `<span class="badge open">Meilleure enchère</span>` : ""}</div>
           <span>${offre.bidder ? `${escapeHtml(offre.bidder)} · ` : ""}${escapeHtml(offre.name)} · <a href="mailto:${escapeHtml(offre.email)}">${escapeHtml(offre.email)}</a>${offre.phone ? ` · <a href="tel:${escapeHtml(offre.phone)}">${escapeHtml(offre.phone)}</a>` : ""} · ${dateHeure(offre.createdAt)}</span>
-          ${decidable ? `<div class="decision">${acceptable ? `<button class="button small primary" type="button" data-accept="${offre.id}">Accepter</button>` : ""}<button class="button small danger" type="button" data-refuse="${offre.id}">Refuser</button></div>` : ""}
+          <div class="decision"><span class="badge ${offre.depositTnd >= 500 ? "open" : "upcoming"}">Caution : ${tnd(offre.depositTnd)}</span><button class="button small" type="button" data-deposit="${offre.userId}" data-amount="${offre.depositTnd}">Modifier la caution</button></div>
+                    ${decidable ? `<div class="decision">${acceptable ? `<button class="button small primary" type="button" data-accept="${offre.id}">Accepter</button>` : ""}<button class="button small danger" type="button" data-refuse="${offre.id}">Refuser</button></div>` : ""}
           ${offre.status === "accepted" ? `<div class="decision"><a class="button small primary" href="${lienConfirmation(offre, lot?.title || reference)}">Envoyer la confirmation écrite</a></div>` : ""}
         </li>`;
       }).join("")}</ol>` : "<p>Aucune offre.</p>";
       $("bids-dialog").dataset.reference = reference;
       if (!$("bids-dialog").open) $("bids-dialog").showModal();
+    }
+
+    async function chargerVirements() {
+      const { transfers } = await api("/api/admin/deposits");
+      $("transfers").classList.toggle("hidden", !transfers.length);
+      $("transfers-list").innerHTML = transfers.map((t) => `<li><span><strong>${escapeHtml(t.name)}</strong> · ${escapeHtml(t.email)}${t.phone ? ` · ${escapeHtml(t.phone)}` : ""} · ${tnd(t.amountTnd)} · libellé ${escapeHtml(t.reference)}</span>
+        <button class="button small primary" type="button" data-transfer="${t.id}" data-ok="1">Virement reçu</button>
+        <button class="button small danger" type="button" data-transfer="${t.id}">Annuler</button></li>`).join("");
+    }
+
+    $("transfers-list").addEventListener("click", async (event) => {
+      const bouton = event.target.closest("[data-transfer]");
+      if (!bouton) return;
+      const confirmer = Boolean(bouton.dataset.ok);
+      if (!confirm(confirmer ? "Confirmer la réception du virement ? L'acheteur pourra enchérir immédiatement." : "Annuler cette demande de virement ?")) return;
+      try {
+        await api(`/api/admin/deposits/${bouton.dataset.transfer}/${confirmer ? "confirm" : "cancel"}`, { method: "POST", body: {} });
+        await chargerVirements();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    async function modifierCaution(userId, actuel) {
+      const saisie = prompt("Montant de la caution reçue (TND) :", actuel);
+      if (saisie === null) return;
+      try {
+        await api(`/api/admin/users/${userId}/deposit`, { method: "POST", body: { amountTnd: Number(saisie) } });
+        await afficherEncheres($("bids-dialog").dataset.reference);
+      } catch (error) {
+        $("decision-error").textContent = error.message;
+        $("decision-error").classList.remove("hidden");
+      }
     }
 
     async function decider(id, accepter) {
@@ -679,6 +718,8 @@
       if (bouton) afficherEncheres(bouton.dataset.bids).catch((error) => alert(error.message));
     });
     $("bids-dialog").addEventListener("click", (event) => {
+      const caution = event.target.closest("[data-deposit]");
+      if (caution) modifierCaution(Number(caution.dataset.deposit), Number(caution.dataset.amount));
       const accepter = event.target.closest("[data-accept]");
       const refuser = event.target.closest("[data-refuse]");
       if (accepter || refuser) decider(Number((accepter || refuser).dataset.accept || (accepter || refuser).dataset.refuse), Boolean(accepter));

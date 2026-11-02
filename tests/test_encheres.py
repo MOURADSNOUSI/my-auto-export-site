@@ -3,6 +3,8 @@
 Lancement : WRANGLER=/chemin/vers/wrangler python3 -m unittest tests.test_encheres
 Ignorés si la variable WRANGLER n'est pas définie.
 """
+import hashlib
+import hmac
 import json
 import os
 import subprocess
@@ -43,7 +45,8 @@ class EncheresTest(unittest.TestCase):
                        cwd=PROJET, check=True, capture_output=True)
         port = port_libre()
         cls.base = f"http://localhost:{port}"
-        cls.serveur = subprocess.Popen([WRANGLER, "dev", "--local", "--port", str(port), "--persist-to", cls.persist, "-c", cls.config],
+        cls.serveur = subprocess.Popen([WRANGLER, "dev", "--local", "--port", str(port), "--persist-to", cls.persist, "-c", cls.config,
+                                        "--var", "STRIPE_WEBHOOK_SECRET:whsec_test", "--var", "BANK_IBAN:TN59TEST", "--var", "BANK_BENEFICIARY:Test SARL"],
                                        cwd=PROJET, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(90):
             try:
@@ -60,6 +63,8 @@ class EncheresTest(unittest.TestCase):
             assert cls.requete("/api/register", {"name": email.split("@")[0].title() + " Test", "email": email, "password": MOT_DE_PASSE}, "POST")[0] == 201
         subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", cls.persist, "-c", cls.config,
                         "--command", "UPDATE users SET role = 'admin' WHERE email = 'admin@ex.com'"], cwd=PROJET, check=True, capture_output=True)
+        subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", cls.persist, "-c", cls.config,
+                        "--command", "UPDATE users SET deposit_tnd = 1000000 WHERE email IN ('alice@ex.com', 'bob@ex.com')"], cwd=PROJET, check=True, capture_output=True)
         cls.cookies = {email: cls.connexion(email) for email in ("admin@ex.com", "alice@ex.com", "bob@ex.com")}
         for email in ("alice@ex.com", "bob@ex.com"):
             assert cls.requete("/api/terms", {"version": CGV_VERSION}, "POST", cls.cookies[email])[0] == 200
@@ -171,6 +176,71 @@ class EncheresTest(unittest.TestCase):
         self.assertIn(min(set(resultats) - {201}), (400, 409))
         self.assertEqual(self.enchere("ENC-8")["auction"]["bidCount"], 1)
 
+    def sql(self, commande):
+        subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", self.persist, "-c", self.config, "--command", commande],
+                       cwd=PROJET, check=True, capture_output=True)
+
+    def webhook(self, evenement, secret="whsec_test"):
+        corps = json.dumps(evenement).encode()
+        t = str(int(time.time()))
+        signature = hmac.new(secret.encode(), t.encode() + b"." + corps, hashlib.sha256).hexdigest()
+        requete = urllib.request.Request(self.base + "/api/stripe/webhook", data=corps, method="POST",
+                                         headers={"Stripe-Signature": f"t={t},v1={signature}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(requete) as reponse:
+                return reponse.status
+        except urllib.error.HTTPError as erreur:
+            erreur.close()
+            return erreur.code
+
+    def nouvel_acheteur(self, email):
+        self.assertEqual(self.requete("/api/register", {"name": "Test", "email": email, "password": MOT_DE_PASSE}, "POST")[0], 201)
+        cookie = self.connexion(email)
+        self.assertEqual(self.requete("/api/terms", {"version": CGV_VERSION}, "POST", cookie)[0], 200)
+        return cookie, self.requete("/api/me", cookie=cookie)[1]["user"]["id"]
+
+    def test_bareme_caution(self):
+        from_js = {29_000: 500, 30_000: 500, 30_001: 1000, 50_000: 1000, 60_000: 1500, 90_000: 2000, 100_000: 2000, 150_000: 2500, 199_999: 2500, 200_000: 3000}
+        for valeur, attendu in from_js.items():
+            self.creer_lot(f"BAR-{valeur}", startingPriceTnd=valeur)
+            self.assertEqual(self.requete(f"/api/auctions/BAR-{valeur}", cookie=self.cookies["alice@ex.com"])[1]["auction"]["depositRequiredTnd"], attendu, valeur)
+        self.creer_lot("BAR-R", startingPriceTnd=20000, reservePriceTnd=250000)
+        self.assertEqual(self.requete("/api/auctions/BAR-R", cookie=self.cookies["alice@ex.com"])[1]["auction"]["depositRequiredTnd"], 3000, "la réserve prime")
+
+    def test_caution_par_virement_validee_par_l_admin(self):
+        self.creer_lot("ENC-V")
+        cookie, user_id = self.nouvel_acheteur("virement@ex.com")
+        self.assertEqual(self.requete("/api/offers", {"reference": "ENC-V", "amount": 100000}, "POST", cookie)[0], 403)
+        statut, data, _ = self.requete("/api/deposit/transfer", {"reference": "ENC-V"}, "POST", cookie)
+        self.assertEqual((statut, data["transfer"]["amountTnd"], data["transfer"]["reference"]), (201, 2000, f"CAUTION-{user_id}"), "barème : 100 000 TND → 2 000")
+        self.assertEqual(self.requete("/api/offers", {"reference": "ENC-V", "amount": 100000}, "POST", cookie)[0], 403, "pas avant validation")
+        admin = self.cookies["admin@ex.com"]
+        attente = self.requete("/api/admin/deposits", cookie=admin)[1]["transfers"]
+        depot = next(t for t in attente if t["userId"] == user_id)
+        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {}, "POST", cookie)[0], 403, "réservé à l'admin")
+        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {}, "POST", admin)[0], 200)
+        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {}, "POST", admin)[0], 404, "pas de double crédit")
+        self.assertEqual(self.requete("/api/me", cookie=cookie)[1]["user"]["depositTnd"], 2000)
+        self.assertEqual(self.requete("/api/offers", {"reference": "ENC-V", "amount": 100000}, "POST", cookie)[0], 201)
+        self.creer_lot("ENC-V2", reservePriceTnd=300000)
+        self.assertEqual(self.requete("/api/offers", {"reference": "ENC-V2", "amount": 100000}, "POST", cookie)[0], 403, "lot plus cher : caution insuffisante")
+        statut, data, _ = self.requete("/api/deposit/transfer", {"reference": "ENC-V2"}, "POST", cookie)
+        self.assertEqual((statut, data["transfer"]["amountTnd"]), (201, 1000), "réserve 300 000 → 3 000, seul le complément est demandé")
+        self.assertEqual(self.requete("/api/deposit/transfer", {"reference": "ENC-INCONNU"}, "POST", cookie)[0], 404)
+
+    def test_caution_par_carte_webhook_stripe(self):
+        cookie, user_id = self.nouvel_acheteur("carte@ex.com")
+        self.assertEqual(self.requete("/api/deposit/card", {"reference": "ENC-10"}, "POST", cookie)[0], 503, "Stripe non configuré")
+        self.sql(f"INSERT INTO deposits (id, user_id, method, amount_tnd, charge_amount, charge_currency, stripe_session_id) VALUES (9001, {user_id}, 'card', 500, 14706, 'eur', 'cs_test_1')")
+        session = {"id": "cs_test_1", "object": "checkout.session", "payment_status": "paid", "amount_total": 14706, "currency": "eur"}
+        evenement = {"type": "checkout.session.completed", "data": {"object": session}}
+        self.assertEqual(self.webhook(evenement, "mauvais-secret"), 400)
+        self.assertEqual(self.requete("/api/me", cookie=cookie)[1]["user"]["depositTnd"], 0)
+        self.assertEqual(self.webhook(evenement), 200)
+        self.assertEqual(self.webhook(evenement), 200)
+        user = self.requete("/api/me", cookie=cookie)[1]["user"]
+        self.assertEqual(user["depositTnd"], 500, "crédité une seule fois")
+
     def test_conditions_obligatoires_avant_d_encherir(self):
         self.creer_lot("ENC-10")
         self.assertEqual(self.requete("/api/register", {"name": "Carla Test", "email": "carla@ex.com", "password": MOT_DE_PASSE}, "POST")[0], 201)
@@ -181,12 +251,23 @@ class EncheresTest(unittest.TestCase):
         self.assertEqual(self.requete("/api/terms", {"version": "2020-01-01"}, "POST", cookie)[0], 409, "ancienne version refusée")
         self.assertEqual(self.requete("/api/terms", {"version": CGV_VERSION}, "POST", cookie)[0], 200)
         self.assertTrue(self.requete("/api/me", cookie=cookie)[1]["user"]["termsAccepted"])
+        statut, data, _ = self.requete("/api/offers", {"reference": "ENC-10", "amount": 100000}, "POST", cookie)
+        self.assertEqual(statut, 403, data)
+        user_id = self.requete("/api/me", cookie=cookie)[1]["user"]["id"]
+        admin = self.cookies["admin@ex.com"]
+        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 1999}, "POST", admin)[0], 200)
+        self.assertEqual(self.requete("/api/offers", {"reference": "ENC-10", "amount": 100000}, "POST", cookie)[0], 403)
+        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": -1}, "POST", admin)[0], 400)
+        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 2000}, "POST", cookie)[0], 403)
+        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 2000}, "POST", admin)[0], 200)
         self.assertEqual(self.requete("/api/offers", {"reference": "ENC-10", "amount": 100000}, "POST", cookie)[0], 201)
         self.assertEqual(self.requete("/api/terms", {"version": CGV_VERSION}, "POST")[0], 401)
 
     def test_case_conditions_dans_le_navigateur(self):
         self.creer_lot("ENC-11", make="Volvo", model="XC90")
         self.assertEqual(self.requete("/api/register", {"name": "Dora Test", "email": "dora@ex.com", "password": MOT_DE_PASSE}, "POST")[0], 201)
+        subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", self.persist, "-c", self.config,
+                        "--command", "UPDATE users SET deposit_tnd = 1000000 WHERE email = 'dora@ex.com'"], cwd=PROJET, check=True, capture_output=True)
         context = self.browser.new_context(viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()

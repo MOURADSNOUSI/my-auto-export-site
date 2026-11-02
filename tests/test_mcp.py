@@ -76,6 +76,7 @@ class McpTest(unittest.TestCase):
         for email in ("admin@ex.com", "alice@ex.com", "bob@ex.com"):
             assert cls.api("/api/register", {"name": email.split("@")[0].title() + " Test", "email": email, "password": MOT_DE_PASSE})[0] == 201
         cls.sql("UPDATE users SET role = 'admin' WHERE email = 'admin@ex.com'")
+        cls.sql("UPDATE users SET deposit_tnd = 1000000 WHERE email IN ('alice@ex.com', 'bob@ex.com')")
         cls.cookies = {email: cls.api("/api/login", {"email": email, "password": MOT_DE_PASSE})[2].split(";")[0] for email in ("alice@ex.com", "bob@ex.com")}
         for cookie in cls.cookies.values():
             assert cls.api("/api/terms", {"version": CGV_VERSION}, cookie=cookie)[0] == 200

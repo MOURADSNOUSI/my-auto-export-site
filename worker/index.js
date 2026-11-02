@@ -1,4 +1,5 @@
 // Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*) et le serveur MCP (worker/mcp.js).
+import Stripe from "stripe";
 import { estRouteMcp, routeMcp } from "./mcp.js";
 
 const SESSION_COOKIE = "my_session";
@@ -8,6 +9,16 @@ export const MAX_LOGIN_FAILURES = 5; // par adresse e-mail sur 15 minutes
 const MAX_OFFER_TND = 10_000_000;
 // Version des conditions générales (conditions.html). La changer redemande l'acceptation à tous les acheteurs.
 const CGV_VERSION = "2026-11-01";
+// Barème de la caution selon la valeur du lot (prix de réserve, à défaut mise à prix) : [plafond inclus, caution] en TND.
+const DEPOSIT_TIERS = [[30_000, 500], [50_000, 1000], [70_000, 1500], [100_000, 2000], [199_999, 2500]];
+const DEPOSIT_TOP_TND = 3000; // à partir de 200 000 TND
+
+// Le solde de caution du compte est global : il couvre tous les lots dont la caution exigée est inférieure ou égale.
+export function depotRequis(lot) {
+  const valeur = [lot.reservePriceTnd, lot.startingPriceTnd].find((v) => Number.isFinite(v) && v > 0) || 0;
+  return DEPOSIT_TIERS.find(([plafond]) => valeur <= plafond)?.[1] ?? DEPOSIT_TOP_TND;
+}
+const DEFAULT_TND_PER_EUR = 3.4;
 const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes repousse la fin de 2 minutes
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -38,6 +49,7 @@ export class ApiError extends Error {
 async function routeApi(request, env, url) {
   const method = request.method;
   const path = url.pathname;
+  if (path === "/api/stripe/webhook" && method === "POST") return webhookStripe(request, env);
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
   if (path === "/api/me" && method === "GET") return me(request, env);
@@ -52,6 +64,8 @@ async function routeApi(request, env, url) {
   if (path === "/api/logout" && method === "POST") return logout(request, env);
   if (path === "/api/offers" && method === "POST") return createOffer(request, env);
   if (path === "/api/terms" && method === "POST") return accepterConditions(request, env);
+  if (path === "/api/deposit/card" && method === "POST") return caution_carte(request, env, url);
+  if (path === "/api/deposit/transfer" && method === "POST") return caution_virement(request, env);
   const favorite = path.match(/^\/api\/favorites\/([^/]{1,64})$/);
   if (favorite && (method === "PUT" || method === "DELETE")) {
     return toggleFavorite(request, env, decodeURIComponent(favorite[1]), method === "PUT");
@@ -139,7 +153,7 @@ async function utilisateurConnecte(request, env) {
   const token = lireCookie(request, SESSION_COOKIE);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   return env.DB.prepare(
-    `SELECT users.id, users.email, users.name, users.phone, users.role, users.terms_version, users.created_at FROM sessions
+    `SELECT users.id, users.email, users.name, users.phone, users.role, users.terms_version, users.deposit_tnd, users.created_at FROM sessions
      JOIN users ON users.id = sessions.user_id
      WHERE sessions.token_hash = ? AND sessions.expires_at > ?`
   ).bind(await sha256(token), new Date().toISOString()).first();
@@ -154,7 +168,8 @@ async function exigerUtilisateur(request, env) {
 function profil(user) {
   return {
     id: user.id, email: user.email, name: user.name, phone: user.phone || "", role: user.role || "buyer", createdAt: user.created_at,
-    termsAccepted: user.terms_version === CGV_VERSION, termsVersion: CGV_VERSION
+    termsAccepted: user.terms_version === CGV_VERSION, termsVersion: CGV_VERSION,
+    depositTnd: user.deposit_tnd || 0
   };
 }
 
@@ -165,6 +180,141 @@ async function accepterConditions(request, env) {
   await env.DB.prepare("UPDATE users SET terms_version = ?, terms_accepted_at = ? WHERE id = ?")
     .bind(CGV_VERSION, new Date().toISOString(), user.id).run();
   return json({ termsAccepted: true, termsVersion: CGV_VERSION });
+}
+
+// --- Dépôt de garantie : carte (Stripe) ou virement ---
+
+// Complément à verser pour pouvoir enchérir sur le lot demandé.
+async function montantARegler(request, env, user, body) {
+  const lot = await chargerLot(request, env, texte(body.reference, 64));
+  if (!lot) throw new ApiError(404, "Lot introuvable.");
+  return Math.max(depotRequis(lot) - (user.deposit_tnd || 0), 0);
+}
+
+// Crédite la caution et clôt la demande dans une même transaction ; ne fait rien si la demande n'est plus en attente.
+async function crediterDepot(env, depositId, methode) {
+  const [, clos] = await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE users SET deposit_tnd = deposit_tnd + (SELECT amount_tnd FROM deposits WHERE id = ?1 AND status = 'pending' AND method = ?2)
+       WHERE id = (SELECT user_id FROM deposits WHERE id = ?1 AND status = 'pending' AND method = ?2)`
+    ).bind(depositId, methode),
+    env.DB.prepare("UPDATE deposits SET status = 'paid', confirmed_at = ? WHERE id = ? AND status = 'pending' AND method = ?")
+      .bind(new Date().toISOString(), depositId, methode)
+  ]);
+  return clos.meta.changes === 1;
+}
+
+async function caution_carte(request, env, url) {
+  const user = await exigerUtilisateur(request, env);
+  if (!env.STRIPE_SECRET_KEY) throw new ApiError(503, "Le paiement par carte n'est pas encore disponible. Utilise le virement bancaire.");
+  const montant = await montantARegler(request, env, user, await lireJson(request));
+  if (!montant) throw new ApiError(409, "Ton dépôt de garantie couvre déjà ce véhicule.");
+  // Stripe n'encaisse pas le dinar : la carte est débitée en euros au taux TND_PER_EUR (dinars pour 1 €).
+  const taux = Number(env.TND_PER_EUR) > 0 ? Number(env.TND_PER_EUR) : DEFAULT_TND_PER_EUR;
+  const centimes = Math.ceil((montant / taux) * 100);
+  const depot = await env.DB.prepare("INSERT INTO deposits (user_id, method, amount_tnd, charge_amount, charge_currency) VALUES (?, 'card', ?, ?, 'eur') RETURNING id")
+    .bind(user.id, montant, centimes).first();
+  let session;
+  try {
+    session = await new Stripe(env.STRIPE_SECRET_KEY).checkout.sessions.create({
+      mode: "payment",
+      success_url: `${url.origin}/?caution=ok`,
+      cancel_url: `${url.origin}/?caution=annule`,
+      client_reference_id: String(depot.id),
+      customer_email: user.email,
+      metadata: { deposit_id: String(depot.id) },
+      integration_identifier: "deposit-checkout-kqzvmwtr",
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: "eur",
+          unit_amount: centimes,
+          product_data: { name: `Dépôt de garantie M&Y AUTO EXPORT (${montant} TND)` }
+        }
+      }]
+    });
+  } catch (error) {
+    console.error("Stripe", error?.message);
+    await env.DB.prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ?").bind(depot.id).run();
+    throw new ApiError(502, "Le paiement par carte est momentanément indisponible. Réessaie ou utilise le virement.");
+  }
+  await env.DB.prepare("UPDATE deposits SET stripe_session_id = ? WHERE id = ?").bind(session.id, depot.id).run();
+  return json({ url: session.url });
+}
+
+async function signatureStripeValide(corps, entete, secret) {
+  const parties = Object.fromEntries((entete || "").split(",").map((p) => p.trim().split("=")).filter((p) => p.length === 2));
+  const horodatage = Number(parties.t);
+  if (!Number.isFinite(horodatage) || Math.abs(Date.now() / 1000 - horodatage) > 300 || !/^[0-9a-f]{64}$/.test(parties.v1 || "")) return false;
+  const cle = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+  const attendue = Uint8Array.from(parties.v1.match(/../g).map((o) => parseInt(o, 16)));
+  return crypto.subtle.verify("HMAC", cle, attendue, new TextEncoder().encode(`${parties.t}.${corps}`));
+}
+
+async function webhookStripe(request, env) {
+  if (!env.STRIPE_WEBHOOK_SECRET) throw new ApiError(503, "Webhook non configuré.");
+  const corps = await request.text();
+  if (!(await signatureStripeValide(corps, request.headers.get("Stripe-Signature"), env.STRIPE_WEBHOOK_SECRET))) {
+    throw new ApiError(400, "Signature invalide.");
+  }
+  const evenement = JSON.parse(corps);
+  const session = evenement.data?.object;
+  if (session?.object === "checkout.session" && session.id) {
+    const depot = await env.DB.prepare("SELECT id, amount_tnd, charge_amount, charge_currency, status FROM deposits WHERE stripe_session_id = ? AND method = 'card'").bind(session.id).first();
+    if (depot && depot.status === "pending") {
+      const paye = ["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(evenement.type)
+        && session.payment_status === "paid" && session.amount_total === depot.charge_amount && String(session.currency).toLowerCase() === depot.charge_currency;
+      if (paye) await crediterDepot(env, depot.id, "card");
+      else if (["checkout.session.expired", "checkout.session.async_payment_failed"].includes(evenement.type)) {
+        await env.DB.prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ? AND status = 'pending'").bind(depot.id).run();
+      }
+    }
+  }
+  return json({ received: true });
+}
+
+async function caution_virement(request, env) {
+  const user = await exigerUtilisateur(request, env);
+  if (!env.BANK_IBAN || !env.BANK_BENEFICIARY) throw new ApiError(503, "Le virement bancaire n'est pas encore disponible. Contacte M&Y AUTO EXPORT.");
+  const montant = await montantARegler(request, env, user, await lireJson(request));
+  if (!montant) throw new ApiError(409, "Ton dépôt de garantie couvre déjà ce véhicule.");
+  let depot = await env.DB.prepare("SELECT id FROM deposits WHERE user_id = ? AND method = 'transfer' AND status = 'pending'").bind(user.id).first();
+  if (depot) {
+    depot = await env.DB.prepare("UPDATE deposits SET amount_tnd = ? WHERE id = ? RETURNING id, amount_tnd").bind(montant, depot.id).first();
+  } else {
+    depot = await env.DB.prepare("INSERT INTO deposits (user_id, method, amount_tnd) VALUES (?, 'transfer', ?) RETURNING id, amount_tnd")
+      .bind(user.id, montant).first();
+  }
+  return json({
+    transfer: {
+      amountTnd: depot.amount_tnd, reference: `CAUTION-${user.id}`,
+      beneficiary: env.BANK_BENEFICIARY, iban: env.BANK_IBAN
+    }
+  }, 201);
+}
+
+async function listerVirements(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT deposits.id, deposits.user_id, deposits.amount_tnd, deposits.created_at, users.name, users.email, users.phone
+     FROM deposits JOIN users ON users.id = deposits.user_id
+     WHERE deposits.method = 'transfer' AND deposits.status = 'pending' ORDER BY deposits.created_at`
+  ).all();
+  return {
+    transfers: results.map((row) => ({
+      id: row.id, userId: row.user_id, amountTnd: row.amount_tnd, createdAt: row.created_at,
+      reference: `CAUTION-${row.user_id}`, name: row.name, email: row.email, phone: row.phone || ""
+    }))
+  };
+}
+
+async function deciderVirement(env, id, confirmer) {
+  if (confirmer) {
+    if (!(await crediterDepot(env, id, "transfer"))) throw new ApiError(404, "Virement introuvable ou déjà traité.");
+    return { id, status: "paid" };
+  }
+  const res = await env.DB.prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ? AND method = 'transfer' AND status = 'pending'").bind(id).run();
+  if (res.meta.changes !== 1) throw new ApiError(404, "Virement introuvable ou déjà traité.");
+  return { id, status: "cancelled" };
 }
 
 // --- Routes ---
@@ -251,7 +401,7 @@ async function register(request, env) {
   let created;
   try {
     created = await env.DB.prepare(
-      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, terms_version, created_at"
+      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, terms_version, deposit_tnd, created_at"
     ).bind(email, name, phone || null, hash, salt).first();
   } catch (error) {
     if (String(error).includes("UNIQUE")) throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail.");
@@ -372,7 +522,8 @@ export function etatEnchere(lot, resume, maintenant) {
     bidCount: resume?.n ?? 0,
     incrementTnd: pas,
     minNextBidTnd: top == null ? Math.max(depart, 1) : top + pas,
-    reserveMet: Number.isFinite(lot.reservePriceTnd) ? top != null && top >= lot.reservePriceTnd : null
+    reserveMet: Number.isFinite(lot.reservePriceTnd) ? top != null && top >= lot.reservePriceTnd : null,
+    depositRequiredTnd: depotRequis(lot)
   };
 }
 
@@ -459,6 +610,17 @@ async function routeAdmin(request, env, path, method) {
     const body = await lireJson(request).catch(() => ({}));
     return json(await deciderOffre(request, env, user, Number(decision[1]), decision[2] === "accept", body.removeFromSite !== false));
   }
+  const caution = path.match(/^\/api\/admin\/users\/(\d+)\/deposit$/);
+  if (caution && method === "POST") {
+    const amount = Number((await lireJson(request)).amountTnd);
+    if (!Number.isInteger(amount) || amount < 0 || amount > MAX_OFFER_TND) throw new ApiError(400, "Montant invalide (nombre entier de dinars).");
+    const row = await env.DB.prepare("UPDATE users SET deposit_tnd = ? WHERE id = ? RETURNING id, deposit_tnd").bind(amount, Number(caution[1])).first();
+    if (!row) throw new ApiError(404, "Acheteur introuvable.");
+    return json({ userId: row.id, depositTnd: row.deposit_tnd });
+  }
+  if (path === "/api/admin/deposits" && method === "GET") return json(await listerVirements(env));
+  const virement = path.match(/^\/api\/admin\/deposits\/(\d+)\/(confirm|cancel)$/);
+  if (virement && method === "POST") return json(await deciderVirement(env, Number(virement[1]), virement[2] === "confirm"));
   if (path === "/api/admin/photos" && method === "POST") return envoyerPhoto(request, env);
   const photo = path.match(/^\/api\/admin\/photos\/(vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp))$/);
   if (photo && method === "DELETE") {
@@ -477,7 +639,7 @@ export async function listerOffres(request, env, reference) {
     reference ? etiquettesEncherisseurs(env, reference) : Promise.resolve(null),
     env.DB.prepare(
       `SELECT offers.id, offers.reference, offers.kind, offers.amount_tnd, offers.status, offers.created_at, offers.user_id,
-              users.name, users.email, users.phone FROM offers JOIN users ON users.id = offers.user_id
+              users.name, users.email, users.phone, users.deposit_tnd FROM offers JOIN users ON users.id = offers.user_id
        ${reference ? "WHERE offers.reference = ?" : ""} ORDER BY offers.reference, offers.kind, offers.amount_tnd DESC, offers.created_at ASC LIMIT 1000`
     ).bind(...(reference ? [reference] : [])).all()
   ]);
@@ -500,7 +662,7 @@ export async function listerOffres(request, env, reference) {
     offers: results.map((row) => ({
       id: row.id, reference: row.reference, kind: row.kind, amountTnd: row.amount_tnd, status: row.status, createdAt: row.created_at,
       best: meilleures.get(row.reference) === row.id, bidder: etiquettes?.get(row.user_id) || null,
-      name: row.name, email: row.email, phone: row.phone || ""
+      name: row.name, email: row.email, phone: row.phone || "", userId: row.user_id, depositTnd: row.deposit_tnd || 0
     }))
   };
 }
@@ -726,6 +888,9 @@ async function placerEnchere(request, env, user, lot, body) {
   if (etat.status !== "live") throw new ApiError(400, "La vente de ce lot est terminée.");
   const amount = Number(body.amount);
   if (!Number.isInteger(amount) || amount <= 0 || amount > MAX_OFFER_TND) throw new ApiError(400, "Montant invalide (nombre entier de dinars).");
+  if ((user.deposit_tnd || 0) < etat.depositRequiredTnd) {
+    throw new ApiError(403, `Un dépôt de garantie de ${etat.depositRequiredTnd} TND est nécessaire pour enchérir sur ce véhicule.`);
+  }
   if (amount < etat.minNextBidTnd) throw new ApiError(400, `L'enchère minimale est de ${etat.minNextBidTnd} TND.`);
 
   // Vérification et insertion en une seule requête : deux enchères simultanées ne peuvent pas passer toutes les deux.

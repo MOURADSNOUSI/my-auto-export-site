@@ -229,7 +229,10 @@
     .side-panel { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     .side-panel h2 { margin: 0 0 10px; font-size: 18px; }
     .side-panel p { margin: 0; color: var(--muted); font-size: 14px; }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 20px; margin-top: 18px; }
+    .deposit-faq { margin-top: 18px; font-size: 13px; color: var(--ink-soft); }
+    .deposit-faq summary { cursor: pointer; color: var(--green); font-weight: 700; }
+    .deposit-faq p { margin: 8px 0 0; }
     .step { padding-top: 11px; border-top: 2px solid var(--gold); }
     .step b { display: block; margin-bottom: 5px; color: var(--green); font-size: 14px; }
     .step span { color: var(--ink-soft); font-size: 13px; }
@@ -248,6 +251,8 @@
     .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 16px 0; }
     .auth-tabs button { min-height: 38px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--muted); font-size: 12px; font-weight: 700; }
     .auth-tabs button[aria-pressed="true"] { border-color: #b7d4c5; background: var(--green-pale); color: #1d5e49; }
+    .deposit-box { display: grid; gap: 8px; }
+    .form-submit.secondary { background: transparent; color: var(--ink); border: 1px solid currentColor; }
     .form-error { margin: 12px 0 0; padding: 8px 10px; border-radius: 4px; background: #fbeaea; color: #8f2a2a; font-size: 12px; }
     .form-success { margin: 12px 0 0; padding: 8px 10px; border-radius: 4px; background: var(--green-pale); color: #1d5e49; font-size: 12px; }
     .auth-form .form-submit { margin-top: 14px; }
@@ -497,7 +502,7 @@
   <section class="hero" id="accueil" aria-labelledby="page-title">
     <img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" onerror="this.remove()">
     <div class="shell hero-inner">
-      <h1 id="page-title">Votre prochaine voiture, au meilleur prix, livrée en Tunisie !</h1>
+      <h1 id="page-title">Votre prochaine voiture, au meilleur prix, livrée chez vous !</h1>
       <p class="hero-lead">Avec <strong>M&amp;Y AUTO EXPORT</strong>, découvrez une sélection de véhicules européens et américains à prix compétitifs, disponibles en <strong>achat direct ou aux enchères</strong>.</p>
       <div class="hero-actions">
         <a class="hero-cta" href="#ventes">Voir les véhicules</a>
@@ -579,12 +584,22 @@
     <section class="block below-grid" id="fonctionnement">
       <article class="side-panel">
         <h2>Comment acheter</h2>
-        <p>Chaque vente précise ses propres conditions. Les étapes ci-dessous décrivent le parcours habituel.</p>
+        <p>Chaque vente précise ses propres conditions. Voici le parcours habituel, de la fiche du véhicule à la livraison.</p>
         <div class="steps">
-          <div class="step"><b>01 · Consulter</b><span>Lire la fiche, les photos, l'état du véhicule et les conditions de la vente.</span></div>
-          <div class="step"><b>02 · Créer son espace</b><span>Un compte acheteur gratuit pour suivre vos favoris, vos offres et vos documents.</span></div>
-          <div class="step"><b>03 · Faire une offre</b><span>Depuis la fiche du véhicule. L'équipe vous recontacte pour confirmer chaque offre.</span></div>
+          <div class="step"><b>01 · Consulter</b><span>Lire la fiche, les photos, l'état du véhicule et les conditions de la vente : mise à prix, réserve, date de fin.</span></div>
+          <div class="step"><b>02 · Créer son espace</b><span>Un compte acheteur gratuit pour suivre vos favoris, vos enchères et vos documents. Acceptez les conditions générales de vente.</span></div>
+          <div class="step"><b>03 · Verser le dépôt de garantie</b><span>de 500 à 3 000 TND selon la valeur du véhicule (voir le barème ci-dessous), par carte bancaire (enchères ouvertes dès le paiement accepté) ou par virement (ouvertes dès réception des fonds).</span></div>
+          <div class="step"><b>04 · Enchérir</b><span>Placez votre enchère depuis la fiche. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes.</span></div>
+          <div class="step"><b>05 · Adjudication</b><span>Le meilleur enchérisseur, réserve atteinte, est confirmé par écrit par l'équipe M&amp;Y AUTO EXPORT.</span></div>
+          <div class="step"><b>06 · Paiement et livraison</b><span>Règlement du véhicule, dédouanement et immatriculation en Tunisie. Retrouvez vos véhicules et factures dans votre espace.</span></div>
         </div>
+        <details class="deposit-faq">
+          <summary>Questions sur le dépôt de garantie</summary>
+          <p><strong>À quoi sert-il ?</strong> Il garantit le sérieux des enchères : une enchère est une offre d'achat ferme.</p>
+          <p><strong>Barème (valeur du véhicule → dépôt) :</strong> jusqu'à 30 000 TND : 500 TND · jusqu'à 50 000 : 1 000 · jusqu'à 70 000 : 1 500 · jusqu'à 100 000 : 2 000 · jusqu'à 200 000 : 2 500 · à partir de 200 000 : 3 000 TND. La valeur retenue est le prix de réserve, à défaut la mise à prix.</p>
+          <p><strong>Est-il à verser pour chaque véhicule ?</strong> Non : il est cumulatif. Votre dépôt vous donne accès à tous les véhicules dont la caution est inférieure ou égale ; pour un véhicule plus cher, vous versez seulement le complément.</p>
+          <p><strong>Une question sur la restitution ?</strong> Écrivez à <a href="mailto:contact@myautoexport.com?subject=D%C3%A9p%C3%B4t%20de%20garantie">contact@myautoexport.com</a>.</p>
+        </details>
       </article>
       <article class="side-panel price-note" id="conditions">
         <h2>Prix affichés en TND</h2>
@@ -914,6 +929,26 @@
       return `<p class="auction-line">${icone("gavel")}<span>Fin dans ${compteARebours(a.endsAt)}</span><span>${pluriel(a.bidCount, "enchère")}</span>${badgeReserve(a)}</p>`;
     }
 
+    document.addEventListener("click", async (event) => {
+      const carte = event.target.closest("[data-deposit-card]");
+      const virement = event.target.closest("[data-deposit-transfer]");
+      if (!carte && !virement) return;
+      const info = event.target.closest(".deposit-box").querySelector("[data-deposit-info]");
+      try {
+        if (carte) {
+          carte.disabled = true;
+          const { url } = await api("/api/deposit/card", { method: "POST", body: { reference: carte.dataset.ref } });
+          location.href = url;
+        } else {
+          const { transfer } = await api("/api/deposit/transfer", { method: "POST", body: { reference: virement.dataset.ref } });
+          info.innerHTML = `<p class="form-success">Virez <strong>${formatTnd(transfer.amountTnd)}</strong> à <strong>${escapeHtml(transfer.beneficiary)}</strong><br>IBAN : <strong>${escapeHtml(transfer.iban)}</strong><br>Libellé : <strong>${escapeHtml(transfer.reference)}</strong><br>Vous pourrez enchérir dès réception du virement.</p>`;
+        }
+      } catch (error) {
+        if (carte) carte.disabled = false;
+        info.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+      }
+    });
+
     function panneauEnchere(lot, encheres = null) {
       const a = lot.auction;
       if (!a || !compte.disponible) return "";
@@ -929,6 +964,15 @@
         action = `<p class="auction-note">Vente terminée. ${resultat}</p>`;
       } else if (!compte.user) {
         action = `<button class="form-submit" type="button" data-offer-login="${escapeHtml(lot.reference)}">Se connecter pour enchérir</button>`;
+      } else if (compte.user.depositTnd < a.depositRequiredTnd) {
+        const reste = a.depositRequiredTnd - compte.user.depositTnd;
+        action = `<div class="deposit-box">
+          <p class="auction-note">Un dépôt de garantie de ${formatTnd(a.depositRequiredTnd)} (selon la valeur du véhicule) est nécessaire pour enchérir sur ce véhicule${compte.user.depositTnd ? ` (reçu : ${formatTnd(compte.user.depositTnd)}, reste ${formatTnd(reste)})` : ""}.</p>
+          <button class="form-submit" type="button" data-deposit-card data-ref="${escapeHtml(lot.reference)}">Payer ${formatTnd(reste)} par carte bancaire</button>
+          <button class="form-submit secondary" type="button" data-deposit-transfer data-ref="${escapeHtml(lot.reference)}">Payer par virement bancaire</button>
+          <div data-deposit-info aria-live="polite"></div>
+          <p class="form-footnote">Carte : enchères ouvertes dès que le paiement est accepté. Virement : ouvertes dès que M&Y AUTO EXPORT a reçu les fonds.</p>
+        </div>`;
       } else {
         const meneur = encheres?.[0]?.you;
         action = `<form class="offer-form bid-form" data-offer="${escapeHtml(lot.reference)}">
