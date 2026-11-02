@@ -221,6 +221,14 @@
             <div class="field"><label for="f-fuel">Énergie</label><input id="f-fuel" name="fuel" maxlength="120" list="fuels"></div>
             <div class="field"><label for="f-bodyType">Catégorie</label><input id="f-bodyType" name="bodyType" maxlength="120" list="bodies"></div>
             <div class="field"><label for="f-country">Pays d'origine</label><input id="f-country" name="country" maxlength="120"></div>
+            <div class="field"><label for="f-condition">État du véhicule</label>
+              <select id="f-condition" name="condition"><option value="">Non précisé</option><option value="new">Neuf</option><option value="used">Occasion</option><option value="accident">Accidenté</option><option value="damaged">Endommagé</option></select></div>
+            <div class="field"><label for="f-transmission">Boîte de vitesses</label><input id="f-transmission" name="transmission" maxlength="120" list="gearboxes"></div>
+            <div class="field"><label for="f-color">Couleur</label><input id="f-color" name="color" maxlength="120"></div>
+            <div class="field"><label for="f-powerHp">Puissance (ch)</label><input id="f-powerHp" name="powerHp" type="number" inputmode="numeric" min="1" max="5000"></div>
+            <div class="field"><label for="f-engineCc">Cylindrée (cm³)</label><input id="f-engineCc" name="engineCc" type="number" inputmode="numeric" min="1" max="20000"></div>
+            <div class="field"><label for="f-doors">Nombre de portes</label><input id="f-doors" name="doors" type="number" inputmode="numeric" min="1" max="9"></div>
+            <div class="field"><label for="f-seats">Nombre de sièges</label><input id="f-seats" name="seats" type="number" inputmode="numeric" min="1" max="99"></div>
           </div>
         </fieldset>
 
@@ -285,13 +293,14 @@
   </dialog>
 
   <datalist id="makes"></datalist>
+  <datalist id="gearboxes"><option value="Manuelle"><option value="Automatique"><option value="Semi-automatique"></datalist>
   <datalist id="fuels"><option value="Essence"><option value="Diesel"><option value="Hybride"><option value="Hybride rechargeable"><option value="Électrique"></datalist>
   <datalist id="bodies"><option value="SUV"><option value="4x4"><option value="Berline"><option value="Break"><option value="Citadine"><option value="Coupé"><option value="Pick-up"><option value="Utilitaire"></datalist>
 
   <script>
     const STATUTS = { stock: "En stock", upcoming: "Enchère à venir", open: "Enchère en cours" };
-    const CHAMPS_TEXTE = ["make", "model", "trim", "fuel", "bodyType", "country", "availableFrom", "pickupLocation", "seller", "sourceUrl"];
-    const CHAMPS_NOMBRE = ["year", "mileageKm", "indicativePriceTnd", "startingPriceTnd", "reservePriceTnd", "buyNowPriceTnd", "bidIncrementTnd"];
+    const CHAMPS_TEXTE = ["make", "model", "trim", "fuel", "bodyType", "country", "transmission", "color", "condition", "availableFrom", "pickupLocation", "seller", "sourceUrl"];
+    const CHAMPS_NOMBRE = ["year", "mileageKm", "powerHp", "engineCc", "doors", "seats", "indicativePriceTnd", "startingPriceTnd", "reservePriceTnd", "buyNowPriceTnd", "bidIncrementTnd"];
     const TAILLE_MAX = 1600; // côté le plus long des photos envoyées, en pixels
 
     const etat = { user: null, vehicles: [], photosEnabled: false, edition: null, photos: [], envois: 0, aSupprimer: new Set() };

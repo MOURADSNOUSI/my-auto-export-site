@@ -854,6 +854,7 @@ export async function deciderOffre(request, env, user, offreId, accepter, retire
 const MEILLEURE_ENCHERE = "SELECT id FROM offers WHERE reference = ? AND kind = 'bid' AND status <> 'refused' ORDER BY amount_tnd DESC, created_at ASC, id ASC LIMIT 1";
 
 const STATUTS = ["open", "upcoming", "stock"];
+const ETATS_VEHICULE = ["new", "used", "accident", "damaged"];
 
 function nombre(value, nom) {
   if (value === null || value === undefined || value === "") return null;
@@ -870,11 +871,15 @@ function photoValide(url) {
 // Ne garde que les champs connus, vérifiés comme le fait la page publique (lotValide).
 function validerVehicule(body, reference) {
   const lot = { reference };
-  const champs = { make: "Marque", model: "Modèle", trim: null, fuel: null, bodyType: null, country: null, pickupLocation: null, seller: null, availableFrom: null };
+  const champs = { make: "Marque", model: "Modèle", trim: null, fuel: null, bodyType: null, country: null, transmission: null, color: null, pickupLocation: null, seller: null, availableFrom: null };
   for (const [cle, obligatoire] of Object.entries(champs)) {
     const valeur = texte(body[cle], 120);
     if (obligatoire && !valeur) throw new ApiError(400, `${obligatoire} obligatoire.`);
     if (valeur) lot[cle] = valeur;
+  }
+  if (body.condition !== undefined && body.condition !== null && body.condition !== "") {
+    if (!ETATS_VEHICULE.includes(body.condition)) throw new ApiError(400, "État du véhicule invalide.");
+    lot.condition = body.condition;
   }
   if (!STATUTS.includes(body.status)) throw new ApiError(400, "Statut invalide.");
   lot.status = body.status;
@@ -891,6 +896,12 @@ function validerVehicule(body, reference) {
   for (const [cle, nom] of [["mileageKm", "Kilométrage"], ["indicativePriceTnd", "Prix"], ["startingPriceTnd", "Mise à prix"], ["reservePriceTnd", "Prix de réserve"], ["buyNowPriceTnd", "Achat immédiat"], ["bidIncrementTnd", "Pas d'enchère"]]) {
     const valeur = nombre(body[cle], nom);
     if (valeur !== null) lot[cle] = valeur;
+  }
+  for (const [cle, nom, max] of [["powerHp", "Puissance", 5000], ["engineCc", "Cylindrée", 20000], ["doors", "Nombre de portes", 9], ["seats", "Nombre de sièges", 99]]) {
+    const valeur = nombre(body[cle], nom);
+    if (valeur === null) continue;
+    if (!Number.isInteger(valeur) || valeur < 1 || valeur > max) throw new ApiError(400, `${nom} : valeur invalide.`);
+    lot[cle] = valeur;
   }
   const sourceUrl = texte(body.sourceUrl, 500);
   if (sourceUrl) {
