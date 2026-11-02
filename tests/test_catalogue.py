@@ -65,6 +65,10 @@ class CatalogueTest(unittest.TestCase):
         page.wait_for_function("catalogueEtat !== 'loading'")
         return page
 
+    def test_badge_diagnostic_ne_vient_pas_du_fichier_statique(self):
+        page = self.open_site([lot(diagnosticVerified=True)])
+        self.assertEqual(page.get_by_text("Diagnostic vérifié par M&Y AUTO EXPORT", exact=True).count(), 0)
+
     def test_catalogue_vide_affiche_aucun_lot_valide(self):
         page = self.open_site([])
         self.assertEqual(page.text_content("#empty-title"), "Aucun véhicule publié pour le moment")

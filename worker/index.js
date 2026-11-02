@@ -1,3 +1,4 @@
+import { sellerRoutes, routeSeller, sellerMedia, verifiedSellerLots, purgeSeller } from "./seller.js";
 // Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*), le serveur MCP (worker/mcp.js)
 // et les pages de référencement (worker/seo.js).
 import Stripe from "stripe";
@@ -52,7 +53,8 @@ export default {
   },
 
   async scheduled(controller, env) {
-    await controleQuotidien(controller, env);
+    if (controller.cron === "30 2 * * *") await purgeSeller(env, env.SELLER_RETENTION_DAYS || 180);
+    else await controleQuotidien(controller, env);
   }
 };
 
@@ -69,6 +71,9 @@ async function repondre(request, env, ctx) {
     return Response.redirect(url.toString(), 301);
   }
   const lecture = request.method === "GET" || request.method === "HEAD";
+  if (/^\/seller-media\/[a-f0-9]{32}$/.test(url.pathname) && lecture) {
+    try { return await sellerMedia(env, url.pathname.split("/")[2]); } catch { return new Response("Indisponible", {status:503}); }
+  }
   if (url.pathname.startsWith("/media/") && lecture) return servirPhoto(env, url);
   if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
   if (estRouteSeo(url.pathname) && lecture) return routeSeo(request, env, url);
@@ -85,7 +90,7 @@ async function repondre(request, env, ctx) {
 async function servirFichier(request, env, url) {
   const reponse = await env.ASSETS.fetch(request);
   if (reponse.status === 404 && (request.headers.get("Accept") || "").includes("text/html")) return page404();
-  if (url.pathname === "/admin" || url.pathname === "/admin.html") {
+  if (["/admin", "/admin.html", "/vendre", "/vendre.html", "/admin-vendeurs", "/admin-vendeurs.html"].includes(url.pathname)) {
     const entetes = new Headers(reponse.headers);
     entetes.set("X-Robots-Tag", "noindex, nofollow");
     return new Response(reponse.body, { status: reponse.status, headers: entetes });
@@ -119,6 +124,7 @@ async function routeApi(request, env, url, ctx) {
   if (path === "/api/stripe/webhook" && method === "POST") return webhookStripe(request, env);
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
+  if (sellerRoutes(path)) return routeSeller(request, env, url, {json, ApiError, exigerUtilisateur, lireJson, sha256, CGV_VERSION});
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/catalogue" && method === "GET") {
     return json((await catalogue(request, env)).map((lot) => ({ ...lot, url: cheminVehicule(lot) })));
@@ -581,7 +587,7 @@ export async function catalogueComplet(request, env) {
   for (const row of lignes.values()) {
     resultat.push({ lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at });
   }
-  return resultat;
+  return verifiedSellerLots(env, resultat);
 }
 
 // Lots publics, avec l'état de leur enchère (prix actuel, fin effective…) pour les lots open et upcoming.
@@ -865,7 +871,7 @@ function nombre(value, nom) {
 
 function photoValide(url) {
   return typeof url === "string" && url.length <= 500
-    && (/^https:\/\/[^\s"'<>]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url) || /^photos\/[^/]+$/.test(url));
+    && (/^https:\/\/[^\s"'<>]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url) || /^\/seller-media\/[a-f0-9]{32}$/.test(url) || /^photos\/[^/]+$/.test(url));
 }
 
 // Ne garde que les champs connus, vérifiés comme le fait la page publique (lotValide).

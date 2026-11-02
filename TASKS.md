@@ -24,6 +24,7 @@ et le nom de sa branche dédiée. L'issue reste la référence si un statut dive
 
 | Issue | Tâche | Agent | Statut | Branche |
 |---|---|---|---|---|
+| [#5](https://github.com/MOURADSNOUSI/my-auto-export-site/issues/5) | Vendre mon véhicule : dossier vendeur et diagnostic validé | OpenAI Codex | Prêt pour revue locale, 88 tests réussis, non déployé | `feature/5-vendre-vehicule` |
 | — | Aucune issue ouverte | — | — | — |
 
 Après chaque intervention, commenter l'issue et actualiser la ligne correspondante avec le statut,
@@ -42,3 +43,61 @@ qu'une issue n'existe pas. Vérifier leur pertinence et leur périmètre avant d
 ## Historique
 
 - Configuration initiale de GitHub (entrée historique marquée terminée dans le suivi précédent).
+
+
+Compte rendu #5 (2026-11-02) — développement isolé dans `/home/yoyo/projets/my-auto-export-vendeur`,
+à partir de `fd3b0c9`, sans incorporer les changements locaux non committés de `config/agents-ia`.
+Fichiers : `worker/seller.js`, `worker/index.js`, `migrations/0011_dossiers_vendeurs.sql`,
+`my-auto-export/vendre.html`, `admin-vendeurs.html`, `vendeur.js`, `vendeur.css`, `index.html`,
+`admin.html`, `wrangler.jsonc`, `tests/test_vendeur.py`, `tests/test_catalogue.py`, `README.md`, `TASKS.md`.
+Tests : suite complète Python `unittest` avec Wrangler 4.156.0 et Chromium : **88 tests réussis**
+en 94,240 s, dont 9 tests vendeur et un test supplémentaire contre les faux badges statiques.
+Le parcours navigateur couvre création du compte, coordonnées, dépôt des sept catégories de pièces,
+soumission, revue administrateur et publication du badge. Syntaxe JS et `git diff --check` valides.
+Une première suite (87 tests) avait signalé le lien `/vendre.html` ; corrigé en `/vendre`, puis
+suite complète relancée avec succès. Les tests acheteur existants émettent des ResourceWarning
+sur des réponses HTTPError non fermées, sans échec. Aucun déploiement, commit, branche distante ni PR.
+Mise en service restante : création du bucket R2 privé, migration D1, déploiement autorisé et
+saisie des vrais garages partenaires. Attention à l'ordre des migrations lors de l'intégration
+avec les travaux caution/SEO menés sur d'autres branches.
+
+Prévisualisation locale #5 (2026-11-02), demandée par l'utilisateur : version vendeur démarrée
+sur `http://127.0.0.1:8787/` depuis le worktree dédié. L'ancien serveur local a été arrêté,
+sans supprimer ses données. Configuration, base D1, buckets R2 simulés et journal isolés dans
+`.wrangler/vendeur-preview/` (ignoré par Git) ; 8 migrations appliquées en local uniquement.
+Contrôles : accueil avec lien vendeur, `/vendre`, `/admin-vendeurs`, JS/CSS et catalogue API répondent
+200 ; API privée répond 401 sans session ; écran vendeur vérifié dans Chromium à 390 px.
+Le contrôle initial attendait à tort 200 sur `/api/me` sans session ; corrigé pour vérifier 401.
+Aucun nouveau test métier nécessaire, aucun changement métier depuis les 88 tests réussis.
+Aucune ressource ni donnée de production modifiée. Base locale neuve : comptes et garages à renseigner.
+
+Extension #5 (2026-11-02), demandée et située par l'utilisateur dans l'espace vendeur :
+menu « Tous les véhicules / Véhicules actifs / Vendu / Archivé », compteurs dynamiques et filtres
+avec état sélectionné accessible. Actifs : dossiers en cours et annonces non retirées/non vendues ;
+vendus : offre acceptée (prioritaire sur le retrait) ; archivés : annonce approuvée retirée sans vente.
+Fichiers : `worker/seller.js`, `my-auto-export/vendre.html`, `vendeur.js`, `vendeur.css`,
+`tests/test_vendeur.py`, `README.md`, `TASKS.md`. Branche : `feature/5-vendre-vehicule`, responsable Codex.
+Tests : **11 tests vendeur réussis en 18,268 s**, dont deux nouveaux tests des états réels et du menu
+(compteurs 7/6/1/0, filtrage, état vide, réactualisation et largeur mobile 390 px). Syntaxe JS et
+`git diff --check` valides. Suite globale non relancée : modifications limitées au parcours vendeur.
+Serveur local 8787 rechargé automatiquement. Aucun changement de production ni nouvelle migration.
+
+Ajustement visuel #5 (2026-11-02), Codex, branche `feature/5-vendre-vehicule` : bouton vendeur
+renommé « Ajouter un véhicule », contour et texte bleus, forme arrondie et fond transparent selon
+la capture. Fichiers : `my-auto-export/vendre.html`, `vendeur.css`, `tests/test_vendeur.py`, `TASKS.md`.
+Vérifications : 3 tests navigateur existants réussis en 12,532 s (création du brouillon, parcours
+complet et filtres/mobile), libellé servi sur le port 8787 confirmé et `git diff --check` valide.
+Suite globale non relancée pour ce changement visuel. Aucun déploiement en production.
+
+Identification du véhicule #5 (2026-11-02), Codex, branche `feature/5-vendre-vehicule` :
+étape initiale conforme aux champs de la capture (châssis, plaque, première immatriculation,
+lieu, pays d'origine), « Poursuivre » désactivé tant que les champs obligatoires sont invalides,
+étape modèle masquée jusqu'à validation, retour et annulation avec conservation du brouillon.
+Lieu : gouvernorats tunisiens ou autre lieu à préciser ; pays ISO ; dates non futures.
+Stockage privé JSON, contrôles serveur à la soumission et présentation à l'administrateur.
+Fichiers : `worker/seller.js`, `my-auto-export/vendeur.js`, `vendeur.css`, `tests/test_vendeur.py`,
+`README.md`, `TASKS.md`. Tests : **13 tests vendeur réussis en 32,379 s**, dont deux nouveaux tests
+sur la persistance, les champs obligatoires, les dates, le retour et l'annulation/mobile.
+Les tests de publication vérifient aussi l'absence des nouveaux champs privés dans le catalogue.
+Syntaxe JS et `git diff --check` valides. Suite globale non relancée pour cet ajout au parcours vendeur.
+Serveur local 8787 rechargé ; aucune nouvelle migration ni modification de production.

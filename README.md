@@ -186,3 +186,83 @@ renvoyés qu'à Claude (claude.ai, claude.com) ou à une adresse locale (`localh
 Claude est invité à demander confirmation avant toute modification, mais c'est le réglage d'autorisation des outils
 dans Claude (« Toujours demander ») qui l'impose : à garder pour `accepter_offre`, `refuser_offre`, `retirer_vehicule`
 et `enregistrer_vehicule`.
+
+## Vendre mon véhicule (issue #5)
+
+`/vendre.html` permet de créer un compte ou de réutiliser son compte, de compléter ses coordonnées
+vendeur, puis de préparer plusieurs dossiers. Les brouillons ne sont jamais inclus dans le catalogue.
+Les champs VIN (17 caractères), prix en TND, année, kilométrage, motorisation, type de vente,
+garage agréé actif, date non future et six observations techniques sont contrôlés à la soumission.
+Sept catégories de pièces sont obligatoires : extérieur, intérieur, tableau de bord, défauts,
+carte grise, justificatif du droit de vente et diagnostic PDF. Un diagnostic « sans défaut »
+doit aussi documenter les points contrôlés. Limite : 40 pièces, 10 Mo par pièce.
+
+Dans `/admin-vendeurs.html` (lien depuis l'administration), un administrateur ajoute les vrais garages
+partenaires, active ou désactive leur agrément et examine les dossiers soumis. Aucun garage fictif
+n'est ajouté à la base. La désactivation empêche les nouvelles soumissions et approbations ; elle
+ne révoque pas les diagnostics déjà approuvés. Un refus ou une demande de corrections exige un motif.
+Le vendeur peut alors corriger son dossier et le soumettre à nouveau. Pendant la vérification et après
+approbation, le vendeur ne peut modifier ni les données ni les pièces.
+
+L'approbation demande de confirmer explicitement la vérification de l'authenticité auprès du garage
+et celle du dossier. Ces cases consignent une vérification humaine : le logiciel ne vérifie pas
+l'authenticité d'un PDF à lui seul. L'identifiant de l'administrateur et la date sont enregistrés.
+La décision et la publication sont atomiques. Une vente directe paraît « En stock » ; une enchère
+paraît « À venir » et l'administrateur fixe ensuite son ouverture et sa date de fin dans le catalogue.
+Le prix demandé est utilisé comme mise à prix pour les enchères.
+
+Le badge « Diagnostic vérifié par M&Y AUTO EXPORT » est calculé côté serveur à partir d'une approbation
+réelle et du contenu publié, jamais depuis un champ fourni par le vendeur. Une modification ultérieure
+des caractéristiques techniques ou des photos dans le catalogue enlève ce badge par prudence :
+l'attestation porte sur le véhicule approuvé. La programmation d'une enchère ou un changement de prix
+conserve le badge.
+
+Les pièces sont conservées dans un bucket R2 distinct, **privé** (`SELLER_DOCUMENTS`). Ne lui associer
+ni domaine public ni accès `r2.dev`. Les téléchargements de pièces sont authentifiés, limités au propriétaire
+ou aux administrateurs, forcés en pièces jointes et non mis en cache. Seules les quatre catégories de photos
+du véhicule deviennent accessibles sans session après approbation via `/seller-media/<id>`.
+Le VIN, les coordonnées, la carte grise, le justificatif et le PDF du diagnostic ne sont pas publiés.
+Le retrait d'une annonce du catalogue n'efface pas automatiquement ses photos déjà publiées ni les pièces.
+
+Préparation de mise en service, **à exécuter uniquement après autorisation de déploiement** :
+
+```
+npx wrangler r2 bucket create my-auto-export-seller-private
+npx wrangler r2 bucket create my-auto-export-seller-private-preview
+npx wrangler d1 migrations apply DB --remote
+```
+
+Le binding est préparé dans `wrangler.jsonc`, mais aucun bucket distant n'est créé par le code ni par les tests.
+Appliquer `0011_dossiers_vendeurs.sql` avant de déployer le Worker ; les autres migrations de branches en cours
+ne font pas partie de cette fonctionnalité. Vérifier leur ordre à la fusion. Les garages réels doivent ensuite
+être renseignés par l'administrateur avant que les vendeurs puissent soumettre.
+
+Tests isolés, sans base ni bucket de production :
+
+```
+WRANGLER=/chemin/vers/wrangler python3 -m unittest discover -s tests -p 'test_vendeur.py' -v
+```
+
+Ils utilisent une base D1 et un bucket R2 éphémères, et Playwright/Chromium pour les écrans vendeur.
+
+### Rubriques de l'espace vendeur
+
+Après connexion, le menu de `/vendre` filtre les dossiers du vendeur avec des compteurs calculés :
+« Tous les véhicules », « Véhicules actifs », « Vendu », « Archivé ». Les actifs comprennent les
+brouillons, les dossiers en vérification ou à corriger et les annonces publiées non vendues/non retirées.
+Une offre acceptée classe le véhicule dans « Vendu », même si l'administration a retiré son annonce.
+Une annonce approuvée retirée sans vente acceptée apparaît dans « Archivé ». Ces rubriques sont
+exclusives et ne modifient pas les données : le retrait reste géré dans l'administration.
+
+### Première étape : identifier le véhicule
+
+« Ajouter un véhicule » ouvre l'identification : numéro de châssis (17 caractères), lieu et pays
+d'origine obligatoires ; plaque d'immatriculation et date de première immatriculation facultatives.
+Le lieu propose les gouvernorats tunisiens ou « Autre lieu / à l'étranger » avec saisie libre.
+La liste des pays utilise les codes ISO. Une date renseignée doit être valide et non future.
+« Poursuivre » ne s'active que lorsque l'identification est valide et enregistre le brouillon avant
+d'ouvrir « Sélectionner le modèle ». Le retour permet de modifier l'identification ; « Annuler »
+conserve le brouillon dans les dossiers sans le soumettre. Les nouveaux champs sont également
+contrôlés à la soumission et présentés à l'administrateur. Ils restent privés, comme le VIN.
+Les anciens brouillons doivent être complétés avant soumission ; aucune migration SQL supplémentaire
+n'est nécessaire car ces champs sont conservés dans les données JSON du dossier.
