@@ -4,15 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101513">
-  <meta name="description" content="M&Y AUTO EXPORT — véhicules européens livrés en Tunisie : stock, enchères et prix fixes, prix affichés en dinars tunisiens.">
-  <title>M&Y AUTO EXPORT — Véhicules européens livrés en Tunisie</title>
+  <meta name="description" content="M&Y AUTO EXPORT : achat et import de véhicules d'occasion sélectionnés en Europe et livrés en Tunisie. Stock, enchères en ligne et achat direct, prix affichés en dinars tunisiens (TND).">
+  <title>M&Y AUTO EXPORT — Achat et import de véhicules européens en Tunisie</title>
   <link rel="canonical" href="https://www.myautoexport.com/">
   <link rel="icon" href="/logo.png" type="image/png">
+  <link rel="preload" as="image" href="/photos/web/MY-0001-1.webp" type="image/webp" fetchpriority="high">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="M&Y AUTO EXPORT">
   <meta property="og:locale" content="fr_TN">
   <meta property="og:url" content="https://www.myautoexport.com/">
-  <meta property="og:title" content="M&Y AUTO EXPORT — Véhicules européens livrés en Tunisie">
+  <meta property="og:title" content="M&Y AUTO EXPORT — Achat et import de véhicules européens en Tunisie">
   <meta property="og:description" content="Véhicules sélectionnés en Europe, en vente directe ou aux enchères, avec des prix affichés en dinars tunisiens.">
   <meta property="og:image" content="https://www.myautoexport.com/logo.png">
   <meta name="twitter:card" content="summary">
@@ -180,6 +181,11 @@
     .lot-status.open { background: #b8402f; }
     .lot-body { display: flex; min-width: 0; flex-direction: column; gap: 10px; padding: 14px 18px; }
     .lot-title { margin: 0; font-size: 17px; line-height: 1.3; }
+    .lot-title a { color: inherit; text-decoration: none; }
+    .lot-title a:hover, .lot-title a:focus-visible { text-decoration: underline; }
+    .liste-vehicules { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .liste-vehicules a { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); text-decoration: none; }
+    .liste-vehicules small { color: var(--muted); }
     .lot-meta { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
     .lot-specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; margin: 0; padding: 10px 0; border-block: 1px solid var(--line); list-style: none; }
     .lot-specs li { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 13px; }
@@ -500,7 +506,7 @@
   </header>
 
   <section class="hero" id="accueil" aria-labelledby="page-title">
-    <img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" onerror="this.remove()">
+    <picture><source srcset="/photos/web/MY-0001-1.webp" type="image/webp"><img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" width="960" height="1280" fetchpriority="high" decoding="async" onerror="this.remove()"></picture>
     <div class="shell hero-inner">
       <h1 id="page-title">Votre prochaine voiture, au meilleur prix, livrée chez vous !</h1>
       <p class="hero-lead">Avec <strong>M&amp;Y AUTO EXPORT</strong>, découvrez une sélection de véhicules européens et américains à prix compétitifs, disponibles en <strong>achat direct ou aux enchères</strong>.</p>
@@ -618,6 +624,12 @@
         <h2>Vous cherchez un modèle précis ?</h2>
         <p>Décrivez votre recherche : marque, budget, année. L'équipe vous prévient dès qu'un véhicule correspondant arrive.</p>
       </article>
+    </section>
+
+    <section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title" hidden>
+      <div class="section-title"><h2 id="tous-vehicules-title">Tous nos véhicules</h2><a class="text-action" href="/vehicules">Voir la liste complète</a></div>
+      <!-- Rempli par le Worker (worker/seo.js) : liens vers chaque fiche, lisibles sans JavaScript. -->
+      <ul class="liste-vehicules" id="liste-vehicules"></ul>
     </section>
   </main>
 
@@ -1298,7 +1310,7 @@
       return `<article class="lot-card">
         <div class="lot-photo"><span class="lot-status ${escapeHtml(lot.status)}">${statutLot(lot)}</span>${photos.length ? `<button class="photo-open" type="button" data-detail="${escapeHtml(lot.reference)}" aria-label="Voir les photos de ${escapeHtml(titreLot(lot))}"><img src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(lot.make)} ${escapeHtml(lot.model)}" loading="lazy">${photos.length > 1 ? `<span class="photo-count">${photos.length} photos</span>` : ""}</button>` : `<div class="photo-missing"><strong>Photo à confirmer</strong><span>Visuel autorisé non fourni</span></div>`}</div>
         <div class="lot-body">
-          <div><h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
+          <div><h2 class="lot-title">${lot.url ? `<a href="${escapeHtml(lot.url)}">${escapeHtml(titreLot(lot))}</a>` : escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
           <ul class="lot-specs">${caracteristiques.map(([nom, texte]) => `<li>${icone(nom === "gear" ? "sliders" : nom)}<span title="${escapeHtml(texte)}">${escapeHtml(texte)}</span></li>`).join("")}</ul>
           ${resumeEnchere(lot)}
           ${enlevementLot(lot)}
@@ -1668,7 +1680,11 @@
     });
 
     updateView();
-    chargerCatalogue().then(chargerCompte);
+    chargerCatalogue().then(chargerCompte).finally(() => {
+      // Lien depuis une page véhicule (/?lot=REF) : ouvre directement sa fiche, avec enchère et achat.
+      const reference = new URLSearchParams(location.search).get("lot");
+      if (reference) ouvrirFiche(reference);
+    });
   </script>
 </body>
 </html>
