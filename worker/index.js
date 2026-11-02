@@ -1,4 +1,4 @@
-import { sellerRoutes, routeSeller, sellerMedia, verifiedSellerLots, purgeSeller } from "./seller.js";
+import { sellerRoutes, routeSeller, sellerMedia, verifiedSellerLots, purgeSeller, preserveSellerPublicFields } from "./seller.js";
 // Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*), le serveur MCP (worker/mcp.js)
 // et les pages de référencement (worker/seo.js).
 import Stripe from "stripe";
@@ -933,6 +933,7 @@ function validerVehicule(body, reference) {
 export async function enregistrerVehicule(env, user, reference, body, ctx) {
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Référence invalide (lettres, chiffres, . _ - ; 40 caractères maximum).");
   const lot = validerVehicule(body, reference);
+  await preserveSellerPublicFields(env, lot, (message) => { throw new ApiError(409, message); });
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 0, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET data = excluded.data, removed = 0, updated_at = excluded.updated_at, updated_by = excluded.updated_by`

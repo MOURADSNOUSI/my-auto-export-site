@@ -528,3 +528,85 @@ class VendeurTest(unittest.TestCase):
         self.assertEqual(self.call('POST','/api/seller/offers',body)[0],403)
         self.assertEqual(self.call('POST','/api/seller/offers',body,'other')[0],201)
         self.assertEqual(self.call('POST','/api/seller/offers',body,'other')[0],409)
+
+    def test_document_rules_are_country_and_seller_specific(self):
+        rule={'countryCode':'FR','sellerType':'individual','kind':'invoice','required':True}
+        self.assertEqual(self.call('POST','/api/seller/document-rules',rule)[0],405)
+        self.assertEqual(self.call('POST','/api/admin/seller/document-rules',rule,'admin')[0],200)
+        try:
+            s=self.draft(True);path=f"/api/seller/submissions/{s['id']}"
+            code,p,_=self.call('POST',path+'/submit',{'revision':s['revision']});self.assertEqual(code,400)
+            self.assertTrue(any('Facture' in m for m in p['missing']))
+            s=self.call('POST',path+'/files?kind=invoice',PDF)[1]['submission']
+            self.assertEqual(self.submit(s)['status'],'submitted')
+        finally:self.call('POST','/api/admin/seller/document-rules',{**rule,'required':False},'admin')
+
+    def test_photo_order_and_damage_details_are_published_without_private_data(self):
+        s=self.draft(True);photos=[f for f in s['files'] if f['kind'] in PHOTO_KINDS]
+        ids=[f['id'] for f in photos][::-1];path=f"/api/seller/submissions/{s['id']}"
+        self.assertEqual(self.call('PUT',path+'/photos',{'revision':s['revision'],'order':ids,'main':uuid.uuid4().hex})[0],400)
+        code,p,_=self.call('PUT',path+'/photos',{'revision':s['revision'],'order':ids,'main':ids[0]});self.assertEqual(code,200);s=p['submission']
+        d={**s['data'],'powerKw':88,'equipment':['Apple CarPlay'],'damages':[{'zone':'hood','type':'rayure','severity':'léger','description':'Rayure constatée','photoIds':[ids[0]]}]}
+        s=self.call('PUT',path,{'revision':s['revision'],'data':d})[1]['submission'];s=self.submit(s)
+        self.assertEqual(self.review(s)[0],200)
+        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']=='SV-'+s['id'])
+        self.assertEqual(lot['photos'][0]['url'],'/seller-media/'+ids[0])
+        self.assertEqual(lot['damages'][0]['description'],'Rayure constatée')
+        self.assertEqual(lot['equipment'],['Apple CarPlay']);self.assertEqual(lot['diagnostic']['garage'],'Garage partenaire')
+        self.assertEqual(lot['diagnostic']['date'],s['data']['diagnosticDate'])
+        for secret in [s['data']['vin'],s['data']['licensePlate'],s['data']['diagnosticReference']]:self.assertNotIn(secret,json.dumps(lot))
+
+    def test_large_json_is_rejected_before_mutation(self):
+        s=self.draft();path=f"/api/seller/submissions/{s['id']}"
+        self.assertEqual(self.call('PUT',path,{'revision':s['revision'],'data':{'description':'x'*300000}})[0],413)
+        after=self.call('GET',path)[1]['submission'];self.assertEqual(after['revision'],s['revision']);self.assertEqual(after['data'],{})
+
+    def test_private_identifiers_in_free_text_block_publication(self):
+        s=self.draft(True);d={**s['data'],'description':'Identifiant du véhicule : '+s['data']['vin'].lower()}
+        path=f"/api/seller/submissions/{s['id']}"
+        s=self.call('PUT',path,{'revision':s['revision'],'data':d})[1]['submission'];s=self.submit(s)
+        self.assertEqual(self.review(s)[0],400)
+        self.assertFalse(any(x['reference']=='SV-'+s['id'] for x in self.call('GET','/api/catalogue',who=None)[1]))
+
+    def test_browser_partial_upload_failure_preserves_successful_photos(self):
+        import re
+        from playwright.sync_api import sync_playwright,expect
+        with sync_playwright() as p:
+            browser=p.chromium.launch();context=browser.new_context()
+            context.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}])
+            page=context.new_page();page.goto(self.base+'/vendre')
+            page.get_by_role('button',name='Ajouter un véhicule',exact=True).click();self.identify_in_browser(page)
+            page.locator('[data-step="4"]').click();expect(page.locator('#photos-step')).to_be_visible()
+            attempts=[]
+            def intercept(route):
+                attempts.append(1)
+                if len(attempts)==2:route.fulfill(status=429,json={'error':'Limite simulée : réessayez plus tard.'})
+                else:route.continue_()
+            page.route(re.compile(r'/api/seller/submissions/[a-f0-9]{32}/files\?kind=front$'),intercept)
+            page.locator('[data-upload=front]').set_input_files([{'name':f'photo-{i}.png','mimeType':'image/png','buffer':PNG} for i in range(2)])
+            expect(page.locator('#message')).to_have_text('Limite simulée : réessayez plus tard.')
+            expect(page.locator('[data-photo]')).to_have_count(1)
+            expect(page.locator('[data-upload=front]')).to_be_enabled()
+            self.assertEqual(len(attempts),2)
+            browser.close()
+
+    def test_catalogue_edit_preserves_verified_metadata_and_blocks_offers_on_auction(self):
+        s=self.draft(True);d={**s['data'],'allowOffers':True}
+        s=self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':s['revision'],'data':d})[1]['submission']
+        s=self.submit(s);self.assertEqual(self.review(s)[0],200);ref='SV-'+s['id']
+        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']==ref)
+        code,p,_=self.call('PUT','/api/admin/vehicles/'+ref,{**lot,'indicativePriceTnd':67000},'admin');self.assertEqual(code,200,p)
+        updated=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']==ref)
+        self.assertTrue(updated['diagnosticVerified']);self.assertTrue(updated['allowSellerOffers']);self.assertEqual(updated['diagnostic'],lot['diagnostic'])
+        # Un changement du mode de vente par l'administration est immédiatement pris en compte.
+        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+ref,{**updated,'status':'open','endsAt':(datetime.now(timezone.utc)+timedelta(days=2)).isoformat()},'admin')[0],200)
+        self.sql("UPDATE users SET terms_version='2026-11-01' WHERE id=2")
+        self.assertEqual(self.call('POST','/api/seller/offers',{'reference':ref,'amountTnd':60000},'other')[0],409)
+
+    def test_generic_admin_cannot_bypass_seller_validation(self):
+        s=self.draft(True);ref='SV-'+s['id'];payload={'make':'Peugeot','model':'208','year':2021,'mileageKm':50000,'fuel':'Essence','status':'stock','photos':[]}
+        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+ref,payload,'admin')[0],409)
+        s=self.submit(s);self.assertEqual(self.review(s)[0],200)
+        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']==ref)
+        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+ref,{**lot,'mileageKm':1},'admin')[0],409)
+        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+ref,{**lot,'photos':[]},'admin')[0],409)

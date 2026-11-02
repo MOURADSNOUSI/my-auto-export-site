@@ -3,8 +3,17 @@ export {purgeSeller};
 const LIMIT=10*1024*1024;
 export function sellerRoutes(path){return path.startsWith('/api/seller/')||path.startsWith('/api/admin/seller/');}
 export async function routeSeller(request,env,url,h){
- const {json,ApiError,exigerUtilisateur,lireJson,sha256,CGV_VERSION}=h;
+ const {json,ApiError,exigerUtilisateur,sha256,CGV_VERSION}=h;
  const fail=(status,message)=>{throw new ApiError(status,message);};
+ const lireJson=async req=>{
+  if(!(req.headers.get('Content-Type')||'').startsWith('application/json'))fail(415,'Format attendu : JSON.');
+  const reader=req.body?.getReader();if(!reader)fail(400,'Corps JSON requis.');
+  const chunks=[];let size=0;
+  while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>256*1024){await reader.cancel();fail(413,'Dossier JSON trop volumineux (256 Ko maximum).');}chunks.push(value);}
+  const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length;}
+  let body;try{body=JSON.parse(new TextDecoder().decode(bytes));}catch{fail(400,'JSON illisible.');}
+  if(!body||typeof body!=='object'||Array.isArray(body))fail(400,'Objet JSON attendu.');return body;
+ };
  const user=await exigerUtilisateur(request,env),admin=url.pathname.startsWith('/api/admin/seller/');
  if(admin&&user.role!=='admin')fail(403,'Accès administrateur requis.');
  const path=url.pathname.replace(admin?'/api/admin/seller/':'/api/seller/',''),method=request.method;
@@ -26,7 +35,7 @@ export async function routeSeller(request,env,url,h){
  const transition=async(row,stage,b,extra={})=>{
   const token=uuid(),date=now();
   const statements=[query(`UPDATE seller_submissions SET stage=?,status=?,revision=revision+1,feedback=?,updated_at=?,mutation_actor=?,mutation_token=?,
-   reviewed_by=?,reviewed_at=?,diagnostic_verified_at=?,public_summary=?,public_data=? WHERE id=? AND revision=? AND stage=?`,
+   reviewed_by=?,reviewed_at=?,diagnostic_verified_at=?,public_summary=?,public_data=? WHERE id=? AND revision=? AND stage=? ${['approved','published'].includes(stage)?"AND EXISTS(SELECT 1 FROM partner_garages g WHERE g.id=json_extract(seller_submissions.data,'$.garageId') AND g.active=1 AND g.valid_until>=date('now') AND g.professional_number<>'')":''}`,
    stage,legacy(stage),text(b.feedback,2000),date,user.id,token,admin?user.id:row.reviewed_by,admin?date:row.reviewed_at,
    extra.verifiedAt??row.diagnostic_verified_at,extra.summary??row.public_summary,extra.publicData??row.public_data,row.id,revision(b),row.stage)];
   if(stage==='submitted')statements.push(query('UPDATE seller_submissions SET submitted_at=? WHERE id=? AND mutation_token=?',date,row.id,token));
@@ -66,15 +75,16 @@ export async function routeSeller(request,env,url,h){
    await query('INSERT INTO seller_document_rules(country_code,seller_type,kind,required,updated_by,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(country_code,seller_type,kind) DO UPDATE SET required=excluded.required,updated_by=excluded.updated_by,updated_at=excluded.updated_at',country,type,kind,b.required?1:0,user.id,now()).run();
    return json({ok:true});
   }
+  fail(405,'Méthode non autorisée.');
  }
  if(path==='cleanup'&&method==='POST'&&admin)return json({deleted:await purgeSeller(env,env.SELLER_RETENTION_DAYS||180)});
  if(path==='offers'&&method==='POST'&&!admin){
   const b=await lireJson(request),amount=Number(b.amountTnd);
   if(user.terms_version!==CGV_VERSION)fail(409,'Accepte les conditions générales avant de proposer un prix.');
   if(!/^SV-[a-f0-9]{32}$/.test(b.reference||'')||!Number.isInteger(amount)||amount<=0||amount>10000000)fail(400,'Référence ou montant invalide.');
-  const row=await query("SELECT s.*,v.removed FROM seller_submissions s JOIN vehicles v ON v.reference=? WHERE s.id=? AND s.stage='published'",b.reference,b.reference.slice(3)).first();
+  const row=await query("SELECT s.*,v.removed,v.data AS current_vehicle_data FROM seller_submissions s JOIN vehicles v ON v.reference=? WHERE s.id=? AND s.stage='published'",b.reference,b.reference.slice(3)).first();
   if(!row||row.removed||row.user_id===user.id)fail(403,'Offre indisponible pour ce véhicule.');
-  const lot=JSON.parse(row.public_data);
+  const lot=JSON.parse(row.current_vehicle_data);
   if(lot.status!=='stock'||!lot.allowSellerOffers)fail(409,'Ce véhicule ne reçoit pas de propositions de prix.');
   const inserted=await query(`INSERT INTO offers(user_id,reference,amount_tnd,kind) SELECT ?,?,?,'buy_now'
     WHERE NOT EXISTS(SELECT 1 FROM offers WHERE reference=? AND status='accepted')
@@ -197,7 +207,7 @@ export async function routeSeller(request,env,url,h){
  if(action==='publish'&&method==='POST'&&admin){
   const b=await lireJson(request);if(row.stage!=='approved'||!row.diagnostic_verified_at)fail(409,'Approbation préalable requise.');
   const errors=await missing(env,row,await files(row.id));if(errors.length)return json({error:'Dossier à revalider.',missing:errors},400);
-  let lot;try{lot=await publicLot(env,row,await files(row.id),Number(b.priceTnd));}catch(e){if(e.message==='publication-price')fail(400,'Valide un prix de publication en TND pour un prix vendeur en EUR.');throw e;}
+  let lot;try{lot=await publicLot(env,row,await files(row.id),Number(b.priceTnd));}catch(e){if(e.message==='publication-price')fail(400,'Valide un prix de publication en TND pour un prix vendeur en EUR.');if(e.message==='private-identifiers')fail(400,'Retire le VIN et la plaque du contenu destiné au public avant publication.');throw e;}
   return transition(row,'published',b,{publicData:JSON.stringify(lot)});
  }
  if(action==='archive'&&method==='POST'){
@@ -224,4 +234,15 @@ export async function verifiedSellerLots(env,items){
  const signature=lot=>JSON.stringify(['make','model','trim','year','mileageKm','fuel','bodyType','photos','specs','equipment','damages','diagnostic'].map(k=>lot[k]??null));
  const verified=new Map(rows.results.filter(r=>r.public_data).map(r=>[reference(r.id),signature(JSON.parse(r.public_data))]));
  return items.map(item=>{const lot={...item.lot};delete lot.diagnosticVerified;if(verified.get(lot.reference)===signature(lot))lot.diagnosticVerified=true;return {...item,lot};});
+}
+
+// L'éditeur de catalogue ne propose pas les champs marketplace : conserver ceux déjà validés.
+export async function preserveSellerPublicFields(env,lot,fail){
+ if(!/^SV-[a-f0-9]{32}$/.test(lot.reference))return;
+ const row=await env.DB.prepare("SELECT v.data,s.stage FROM seller_submissions s LEFT JOIN vehicles v ON v.reference='SV-'||s.id WHERE s.id=?").bind(lot.reference.slice(3)).first();
+ if(!row||row.stage!=='published'||!row.data)fail('Cette référence est réservée au circuit de validation vendeur.');
+ const previous=JSON.parse(row.data);
+ const signature=value=>JSON.stringify(['make','model','trim','year','mileageKm','fuel','bodyType','photos','specs'].map(k=>['photos','specs'].includes(k)?value[k]||[]:value[k]??null));
+ if(signature(lot)!==signature(previous))fail('Les caractéristiques et photos d’une annonce vendeur publiée nécessitent un nouveau dossier validé. Archive cette annonce avant de la redéposer.');
+ for(const key of ['diagnostic','equipment','damages','description','allowSellerOffers'])if(Object.hasOwn(previous,key))lot[key]=previous[key];
 }

@@ -10,7 +10,7 @@ export const text=(v,max=120)=>typeof v==='string'?v.trim().slice(0,max):'';
 export function normalize(src,fail) {
  const data=sanitizeExtra(src,fail);
  for(const key of ['make','model','vin','licensePlate','firstRegistrationDate','location','originCountry','diagnosticDate']) data[key]=text(src[key]);
- data.vin=data.vin.toUpperCase();data.originCountry=data.originCountry.toUpperCase();
+ data.vin=data.vin.toUpperCase();data.originCountry=data.originCountry.toUpperCase();data.firstRegistrationCountry=data.firstRegistrationCountry.toUpperCase();
  for(const key of ['year','mileageKm','priceTnd','garageId']) {
   data[key]=src[key]==null||src[key]===''?null:Number(src[key]);
   if(data[key]!==null && (!Number.isInteger(data[key]) || data[key]<0 || data[key]>100000000)) fail(400,`Nombre invalide : ${key}`);
@@ -72,6 +72,8 @@ export async function publicLot(env,row,files,priceTnd) {
  if(d.trim)lot.trim=d.trim;if(d.bodyType)lot.bodyType=d.bodyType;
  lot.specs=[...TECH_FIELDS,...HISTORY_FIELDS.filter(f=>['mechanicalCondition','runningCondition','knownAccidents','majorRepairs','serviceHistory'].includes(f[0]))].filter(([k])=>d[k]!==null&&d[k]!==undefined&&d[k]!=='').map(([k,l])=>[l,String(d[k])]);
  if(d.saleType==='auction'){lot.startingPriceTnd=price;if(d.reservePriceTnd)lot.reservePriceTnd=d.reservePriceTnd;lot.endsAt=d.auctionEnd;}
+ const visible=JSON.stringify(lot).toUpperCase();
+ if([d.vin,d.licensePlate].filter(v=>v&&v.length>=4).some(v=>visible.includes(v.toUpperCase())))throw new Error('private-identifiers');
  return lot;
 }
 export async function drainDeletions(env) {
@@ -92,7 +94,7 @@ export async function purgeSeller(env,days=180) {
   // Un changement concurrent de statut protège les pièces contre une purge pendant la soumission.
   const token=uuid();
   await env.DB.batch([
-   env.DB.prepare("UPDATE seller_submissions SET mutation_token=?,mutation_actor=NULL,stage='archived',status='approved',purged_at=?,data='{}',feedback='',public_summary='',revision=revision+1 WHERE id=? AND updated_at<? AND stage IN ('draft','rejected','archived') AND purged_at IS NULL").bind(token,now(),id,cutoff),
+   env.DB.prepare("UPDATE seller_submissions SET mutation_token=?,mutation_actor=NULL,stage='archived',status='approved',purged_at=?,data='{}',feedback='',public_summary='',updated_at=?,revision=revision+1 WHERE id=? AND updated_at<? AND stage IN ('draft','rejected','archived') AND purged_at IS NULL").bind(token,now(),now(),id,cutoff),
    env.DB.prepare("UPDATE seller_validation_events SET message='',actor_id=NULL WHERE submission_id=? AND EXISTS(SELECT 1 FROM seller_submissions WHERE id=? AND mutation_token=?)").bind(id,id,token),
    ...['seller_files','seller_diagnostics','seller_damages','seller_vin_claims'].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE submission_id=? AND EXISTS(SELECT 1 FROM seller_submissions WHERE id=? AND mutation_token=?)`).bind(id,id,token)),
   ]);

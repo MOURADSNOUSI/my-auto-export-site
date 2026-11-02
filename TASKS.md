@@ -24,7 +24,7 @@ et le nom de sa branche dédiée. L'issue reste la référence si un statut dive
 
 | Issue | Tâche | Agent | Statut | Branche |
 |---|---|---|---|---|
-| [#5](https://github.com/MOURADSNOUSI/my-auto-export-site/issues/5) | Vendre mon véhicule : dossier vendeur et diagnostic validé | OpenAI Codex | Prêt pour revue locale, 88 tests réussis, non déployé | `feature/5-vendre-vehicule` |
+| [#5](https://github.com/MOURADSNOUSI/my-auto-export-site/issues/5) | Vendre mon véhicule : dossier vendeur et diagnostic validé | OpenAI Codex | Extension marketplace, vérification finale en cours, non déployé | `feature/marketplace-vendeurs-diagnostic` |
 | — | Aucune issue ouverte | — | — | — |
 
 Après chaque intervention, commenter l'issue et actualiser la ligne correspondante avec le statut,
@@ -101,3 +101,31 @@ sur la persistance, les champs obligatoires, les dates, le retour et l'annulatio
 Les tests de publication vérifient aussi l'absence des nouveaux champs privés dans le catalogue.
 Syntaxe JS et `git diff --check` valides. Suite globale non relancée pour cet ajout au parcours vendeur.
 Serveur local 8787 rechargé ; aucune nouvelle migration ni modification de production.
+
+
+Extension complète du cahier des charges #5 (2026-11-02), responsable OpenAI Codex.
+Branche demandée : `feature/marketplace-vendeurs-diagnostic`, worktree vendeur conservé.
+Le travail local du dépôt d'origine n'est pas incorporé. La branche vendeur a été replacée
+sur `origin/config/agents-ia` (5bc617c) pour préserver le dépôt de garantie et les règles existantes.
+La future PR dépend de #1 et ne fusionne pas main. Autorisation explicite reçue pour commits et PR ;
+production, migrations distantes, annonces réelles et fusion principale toujours interdits.
+
+Livré : formulaire huit étapes, équipements, galerie compressée/ordonnée avec couverture, SVG de
+dommages original, diagnostic complet, agrément daté, documents conditionnels pays/type, accès
+privés temporaires, audit, conservation/purge, devises et propositions de prix directes.
+Approbation et publication sont distinctes ; les enchères restent à venir jusqu'à activation par
+l'administration existante. Les références SV sont réservées au circuit vendeur ; l'éditeur générique
+ne peut ni publier un dossier non validé ni en modifier les caractéristiques/photos sans revalidation.
+Un changement de prix conserve les métadonnées vérifiées, et les propositions de prix prennent en
+compte le mode de vente actuel pour empêcher un contournement des enchères.
+
+Fichiers : `worker/seller.js`, `seller-domain.js`, `index.js`,
+`my-auto-export/vendeur.js`, `vendeur.css`, `seller-schema.js`, `vendre.html`, `admin-vendeurs.html`,
+`index.html`, `admin.html`, migrations 0011/0012/0013, `wrangler.jsonc`, tests vendeur/catalogue,
+README et docs d'audit, cahier des charges et guide fonctionnel/technique.
+Les nouvelles migrations ont été appliquées seulement à la prévisualisation locale 8787.
+Validation finale en cours ; les premières suites ont détecté et permis de corriger le comptage
+des changements D1 avec triggers, une assertion du marqueur de couverture et le code HTTP d'une
+écriture documentaire interdite. Les règles métier, les enchères et la caution passent dans la
+première suite globale de 105 tests (1 échec de code HTTP corrigé).
+Le PDF OPENLANE n'était pas présent ; aucun audit PDF ni antivirus complet n'est revendiqué.
