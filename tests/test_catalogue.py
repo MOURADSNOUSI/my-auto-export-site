@@ -47,7 +47,7 @@ class CatalogueTest(unittest.TestCase):
 
     def open_site(self, body, status=200):
         """Ouvre la page avec un lots.json simulé et attend la fin du chargement."""
-        page = self.browser.new_page()
+        page = self.browser.new_page(bypass_csp=True)
         self.addCleanup(page.close)
 
         def serve(route):

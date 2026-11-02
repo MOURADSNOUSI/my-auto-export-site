@@ -268,7 +268,7 @@ class EncheresTest(unittest.TestCase):
         self.assertEqual(self.requete("/api/register", {"name": "Dora Test", "email": "dora@ex.com", "password": MOT_DE_PASSE}, "POST")[0], 201)
         subprocess.run([WRANGLER, "d1", "execute", "DB", "--local", "--persist-to", self.persist, "-c", self.config,
                         "--command", "UPDATE users SET deposit_tnd = 1000000 WHERE email = 'dora@ex.com'"], cwd=PROJET, check=True, capture_output=True)
-        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        context = self.browser.new_context(bypass_csp=True, viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
         page.on("dialog", lambda dialog: dialog.accept())
@@ -358,7 +358,7 @@ class EncheresTest(unittest.TestCase):
         self.assertIn("ACC-5", [lot["reference"] for lot in self.requete("/api/catalogue")[1]], "toujours en ligne")
 
         # Dans la page : l'enchère perdante peut être refusée, pas acceptée.
-        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        context = self.browser.new_context(bypass_csp=True, viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
         page.goto(self.base + "/admin.html")
@@ -430,7 +430,7 @@ class EncheresTest(unittest.TestCase):
         self.encherir("alice", "ACC-4", 100000)
         self.encherir("bob", "ACC-4", 101000)
         self.terminer("ACC-4")
-        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        context = self.browser.new_context(bypass_csp=True, viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
         page.on("dialog", lambda dialog: dialog.accept())
@@ -457,7 +457,7 @@ class EncheresTest(unittest.TestCase):
 
     def test_parcours_dans_le_navigateur(self):
         self.creer_lot("ENC-9", make="Audi", model="Q7", reservePriceTnd=101000)
-        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        context = self.browser.new_context(bypass_csp=True, viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
         page.on("dialog", lambda dialog: dialog.accept())

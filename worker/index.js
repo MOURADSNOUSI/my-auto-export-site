@@ -5,7 +5,10 @@ import { estRouteMcp, routeMcp } from "./mcp.js";
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100000; // maximum accepté par Cloudflare Workers
-export const MAX_LOGIN_FAILURES = 5; // par adresse e-mail sur 15 minutes
+export const MAX_LOGIN_FAILURES = 5; // par adresse e-mail et par IP sur 15 minutes
+const MAX_ECHECS_PAR_IP = 30; // toutes adresses e-mail confondues, sur 15 minutes
+const MAX_ECHECS_PAR_COMPTE = 100; // toutes IP confondues, sur 15 minutes : freine une attaque répartie
+const MAX_INSCRIPTIONS_PAR_IP = 10; // par heure
 const MAX_OFFER_TND = 10_000_000;
 // Version des conditions générales (conditions.html). La changer redemande l'acceptation à tous les acheteurs.
 const CGV_VERSION = "2026-11-01";
@@ -23,21 +26,48 @@ const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
+// En-têtes de sécurité de toutes les réponses. Les mêmes sont déclarés dans my-auto-export/_headers pour les fichiers
+// que Cloudflare sert sans passer par le Worker (tests/test_securite.py vérifie qu'ils restent identiques).
+// Une réponse qui fixe déjà l'un d'eux le garde (page d'autorisation MCP : CSP sans form-action).
+export const ENTETES_SECURITE = {
+  "Strict-Transport-Security": "max-age=31536000",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+    + "img-src 'self' https: data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; "
+    + "form-action 'self'; frame-ancestors 'none'"
+};
+
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-    if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) return servirPhoto(env, url);
-    if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
-    try {
-      return await routeApi(request, env, url);
-    } catch (error) {
-      if (error instanceof ApiError) return json({ error: error.message }, error.status);
-      console.error(error);
-      return json({ error: "Erreur interne, réessaie plus tard." }, 500);
+    const reponse = new Response(...corps(await repondre(request, env)));
+    for (const [cle, valeur] of Object.entries(ENTETES_SECURITE)) {
+      if (!reponse.headers.has(cle)) reponse.headers.set(cle, valeur);
     }
+    return reponse;
   }
 };
+
+// Corps et options d'une réponse, pour en refaire une copie aux en-têtes modifiables.
+function corps(response) {
+  return [response.body, { status: response.status, statusText: response.statusText, headers: response.headers }];
+}
+
+async function repondre(request, env) {
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) return servirPhoto(env, url);
+  if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
+  if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+  try {
+    return await routeApi(request, env, url);
+  } catch (error) {
+    if (error instanceof ApiError) return json({ error: error.message }, error.status);
+    console.error(error);
+    return json({ error: "Erreur interne, réessaie plus tard." }, 500);
+  }
+}
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -95,6 +125,18 @@ async function lireJson(request) {
     if (body && typeof body === "object") return body;
   } catch {}
   throw new ApiError(400, "Requête illisible.");
+}
+
+// Adresse IP du visiteur, fournie par Cloudflare. Une adresse IPv6 est ramenée à son /64 : un abonné en dispose souvent
+// d'un entier, qu'il pourrait parcourir pour contourner les limites.
+export function adresseIp(request) {
+  const ip = request.headers.get("CF-Connecting-IP") || "inconnue";
+  if (!ip.includes(":") || ip.includes(".")) return ip;
+  const [tete, queue] = ip.toLowerCase().split("::");
+  const debut = tete ? tete.split(":") : [];
+  const fin = queue ? queue.split(":") : [];
+  const groupes = queue === undefined ? debut : [...debut, ...Array(8 - debut.length - fin.length).fill("0"), ...fin];
+  return `${groupes.slice(0, 4).map((groupe) => groupe.replace(/^0+(?=.)/, "")).join(":")}::/64`;
 }
 
 export function texte(value, max) {
@@ -334,7 +376,7 @@ async function me(request, env) {
     const [lots, meilleures] = await Promise.all([
       catalogue(request, env),
       env.DB.prepare(
-        `SELECT reference, id, MAX(amount_tnd) AS top FROM offers WHERE kind = 'bid'
+        `SELECT reference, id, MAX(amount_tnd) AS top FROM offers WHERE kind = 'bid' AND status <> 'refused'
          AND reference IN (${references.map(() => "?").join(",")}) GROUP BY reference`
       ).bind(...references).all()
     ]);
@@ -395,6 +437,17 @@ async function register(request, env) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Adresse e-mail invalide.");
   if (phone && !/^[+0-9 ().-]{6,30}$/.test(phone)) throw new ApiError(400, "Numéro de téléphone invalide.");
   if (password.length < 10 || password.length > 200) throw new ApiError(400, "Le mot de passe doit contenir au moins 10 caractères.");
+  // Place réservée en une requête (pas de course entre comptage et enregistrement) et gardée même si l'adresse e-mail
+  // est déjà prise : les essais d'adresses pour savoir qui est client comptent aussi.
+  const ip = adresseIp(request);
+  const maintenant = new Date();
+  const [, place] = await env.DB.batch([
+    env.DB.prepare("DELETE FROM registrations WHERE at < ?").bind(new Date(maintenant.getTime() - 86400_000).toISOString()),
+    env.DB.prepare(
+      "INSERT INTO registrations (ip, at) SELECT ?, ? WHERE (SELECT COUNT(*) FROM registrations WHERE ip = ? AND at > ?) < ? RETURNING rowid"
+    ).bind(ip, maintenant.toISOString(), ip, new Date(maintenant.getTime() - 3600_000).toISOString(), MAX_INSCRIPTIONS_PAR_IP)
+  ]);
+  if (!place.results.length) throw new ApiError(429, "Trop d'inscriptions depuis cette connexion. Réessaie dans une heure.");
 
   const salt = hex(octetsAleatoires(16));
   const hash = await hacherMotDePasse(password, salt);
@@ -413,7 +466,7 @@ async function register(request, env) {
 async function login(request, env) {
   const body = await lireJson(request);
   const email = texte(body.email, 254).toLowerCase();
-  const user = await verifierMotDePasse(env, email, body.password);
+  const user = await verifierMotDePasse(env, email, body.password, adresseIp(request));
   await env.DB.batch([
     env.DB.prepare("DELETE FROM login_failures WHERE email = ?").bind(email),
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?").bind(user.id, new Date().toISOString())
@@ -424,19 +477,38 @@ async function login(request, env) {
 }
 
 // Vérifie e-mail et mot de passe (connexion au site, autorisation d'une application MCP), avec limite d'essais.
-export async function verifierMotDePasse(env, email, motDePasse) {
+// Limites par IP : de faux mots de passe tapés ailleurs ne bloquent pas le titulaire du compte. La limite globale du
+// compte (attaque répartie) ne s'applique pas aux adresses d'où il s'est déjà connecté.
+// L'essai est compté avant le calcul du mot de passe, en une requête : des essais simultanés ne passent pas tous.
+export async function verifierMotDePasse(env, email, motDePasse, ip = "inconnue") {
   const password = typeof motDePasse === "string" ? motDePasse.slice(0, 200) : "";
-  const depuis = new Date(Date.now() - 15 * 60_000).toISOString();
-  const echecs = await env.DB.prepare("SELECT COUNT(*) AS n FROM login_failures WHERE email = ? AND at > ?").bind(email, depuis).first();
-  if (echecs.n >= MAX_LOGIN_FAILURES) throw new ApiError(429, "Trop de tentatives. Réessaie dans 15 minutes.");
+  const maintenant = new Date();
+  const depuis = new Date(maintenant.getTime() - 15 * 60_000).toISOString();
+  const essai = await env.DB.prepare(
+    `INSERT INTO login_failures (email, ip, at) SELECT ?, ?, ?
+     WHERE (SELECT COUNT(*) FROM login_failures WHERE at > ? AND email = ? AND ip = ?) < ?
+       AND (SELECT COUNT(*) FROM login_failures WHERE at > ? AND ip = ?) < ?
+       AND ((SELECT COUNT(*) FROM login_failures WHERE at > ? AND email = ?) < ?
+         OR EXISTS (SELECT 1 FROM login_known_ips WHERE email = ? AND ip = ?))
+     RETURNING rowid`
+  ).bind(email, ip, maintenant.toISOString(), depuis, email, ip, MAX_LOGIN_FAILURES, depuis, ip, MAX_ECHECS_PAR_IP,
+    depuis, email, MAX_ECHECS_PAR_COMPTE, email, ip).first();
+  if (!essai) throw new ApiError(429, "Trop de tentatives. Réessaie dans 15 minutes.");
 
   const user = await env.DB.prepare("SELECT id, role, password_hash, password_salt FROM users WHERE email = ?").bind(email).first();
   // Même calcul que l'adresse existe ou non, pour ne pas révéler les comptes par le temps de réponse.
   const hash = await hacherMotDePasse(password, user ? user.password_salt : "00".repeat(16));
   if (!user || !egaliteConstante(hash, user.password_hash)) {
-    await env.DB.prepare("INSERT INTO login_failures (email, at) VALUES (?, ?)").bind(email, new Date().toISOString()).run();
+    await env.DB.prepare("DELETE FROM login_failures WHERE at < ?").bind(new Date(maintenant.getTime() - 86400_000).toISOString()).run();
     throw new ApiError(401, "E-mail ou mot de passe incorrect.");
   }
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM login_failures WHERE rowid = ?").bind(essai.rowid),
+    env.DB.prepare(
+      "INSERT INTO login_known_ips (email, ip, at) VALUES (?, ?, ?) ON CONFLICT(email, ip) DO UPDATE SET at = excluded.at"
+    ).bind(email, ip, maintenant.toISOString()),
+    env.DB.prepare("DELETE FROM login_known_ips WHERE at < ?").bind(new Date(maintenant.getTime() - 180 * 86400_000).toISOString())
+  ]);
   return { id: user.id, role: user.role };
 }
 
@@ -498,12 +570,15 @@ function pasEnchere(lot, montant) {
 
 export async function resumesEncheres(env) {
   const { results } = await env.DB.prepare(
-    "SELECT reference, COUNT(*) AS n, MAX(amount_tnd) AS top, MAX(created_at) AS last FROM offers WHERE kind = 'bid' GROUP BY reference"
+    `SELECT reference, SUM(status <> 'refused') AS n, MAX(CASE WHEN status <> 'refused' THEN amount_tnd END) AS top,
+            MAX(created_at) AS last FROM offers WHERE kind = 'bid' GROUP BY reference`
   ).all();
   return new Map(results.map((row) => [row.reference, row]));
 }
 
 // Fin effective : la date prévue, repoussée à 2 minutes après la dernière enchère si celle-ci est arrivée tard.
+// La dernière enchère compte même refusée : refuser une enchère fantaisiste de dernière minute laisse aux autres
+// acheteurs le temps de surenchérir au prix réel.
 // Chaque enchère acceptée l'a été avant la fin effective du moment, d'où ce calcul à partir de la seule dernière.
 export function etatEnchere(lot, resume, maintenant) {
   if (lot.status !== "open" && lot.status !== "upcoming") return null;
@@ -540,7 +615,7 @@ async function detailEnchere(request, env, reference) {
   const [user, etiquettes, { results }] = await Promise.all([
     utilisateurConnecte(request, env),
     etiquettesEncherisseurs(env, reference),
-    env.DB.prepare("SELECT user_id, amount_tnd, created_at FROM offers WHERE reference = ? AND kind = 'bid' ORDER BY amount_tnd DESC, created_at ASC LIMIT 30")
+    env.DB.prepare("SELECT user_id, amount_tnd, created_at FROM offers WHERE reference = ? AND kind = 'bid' AND status <> 'refused' ORDER BY amount_tnd DESC, created_at ASC LIMIT 30")
       .bind(reference).all()
   ]);
   return json({
@@ -655,7 +730,7 @@ export async function listerOffres(request, env, reference) {
   }
   const meilleures = new Map();
   for (const row of results) {
-    if (row.kind === "bid" && !meilleures.has(row.reference)) meilleures.set(row.reference, row.id);
+    if (row.kind === "bid" && row.status !== "refused" && !meilleures.has(row.reference)) meilleures.set(row.reference, row.id);
   }
   return {
     lots,
@@ -732,7 +807,8 @@ export async function deciderOffre(request, env, user, offreId, accepter, retire
 }
 
 // Meilleure enchère d'un véhicule : la plus haute, la plus ancienne à montant égal (même ordre que listerOffres).
-const MEILLEURE_ENCHERE = "SELECT id FROM offers WHERE reference = ? AND kind = 'bid' ORDER BY amount_tnd DESC, created_at ASC, id ASC LIMIT 1";
+// Une enchère refusée ne compte plus : refuser une enchère fantaisiste rend la vente à la suivante.
+const MEILLEURE_ENCHERE = "SELECT id FROM offers WHERE reference = ? AND kind = 'bid' AND status <> 'refused' ORDER BY amount_tnd DESC, created_at ASC, id ASC LIMIT 1";
 
 const STATUTS = ["open", "upcoming", "stock"];
 
@@ -897,7 +973,7 @@ async function placerEnchere(request, env, user, lot, body) {
   const offer = await env.DB.prepare(
     `INSERT INTO offers (user_id, reference, amount_tnd, kind, created_at)
      SELECT ?, ?, ?, 'bid', ?
-     WHERE ? >= COALESCE((SELECT MAX(amount_tnd) FROM offers WHERE reference = ? AND kind = 'bid') + ?, ?)
+     WHERE ? >= COALESCE((SELECT MAX(amount_tnd) FROM offers WHERE reference = ? AND kind = 'bid' AND status <> 'refused') + ?, ?)
      RETURNING id, reference, amount_tnd, kind, created_at`
   ).bind(user.id, lot.reference, amount, new Date().toISOString(), amount, lot.reference, etat.incrementTnd, etat.minNextBidTnd).first();
   if (!offer) throw new ApiError(409, "Une enchère plus haute vient d'être placée. Le prix a été mis à jour, réessaie.");
