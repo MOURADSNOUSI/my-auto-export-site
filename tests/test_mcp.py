@@ -115,10 +115,14 @@ class McpTest(unittest.TestCase):
         headers = {"Content-Type": "application/x-www-form-urlencoded", **({"Origin": cls.base} if origine else {})}
         return cls.envoyer(chemin, urllib.parse.urlencode(champs).encode(), headers, "POST")
 
+    enregistrements = 0
+
     @classmethod
     def enregistrer(cls, redirect_uris=(RETOUR,), nom="Claude"):
+        # Une adresse IP par enregistrement : la limite par IP est testée dans tests/test_securite.py.
+        cls.enregistrements += 1
         statut, corps, _ = cls.envoyer("/oauth/register", json.dumps({"client_name": nom, "redirect_uris": list(redirect_uris)}).encode(),
-                                       {"Content-Type": "application/json"}, "POST")
+                                       {"Content-Type": "application/json", "CF-Connecting-IP": f"10.1.0.{cls.enregistrements}"}, "POST")
         return statut, json.loads(corps)
 
     @classmethod
@@ -265,7 +269,7 @@ class McpTest(unittest.TestCase):
         retour = f"http://127.0.0.1:{serveur.server_port}/callback"
         client = self.enregistrer([retour], nom="Claude <script>")[1]
         verifier, challenge = pkce()
-        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        context = self.browser.new_context(bypass_csp=True, viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
         params = urllib.parse.urlencode({"response_type": "code", "client_id": client["client_id"], "redirect_uri": retour,

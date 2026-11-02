@@ -137,6 +137,21 @@ acheteur affiche « PDF non disponible » et `/api/invoices/<id>/document` répo
 bucket R2 privé (`npx wrangler r2 bucket create my-auto-export-documents`), le déclarer avec le binding `DOCUMENTS`
 et prévoir l'envoi des PDF depuis l'administration (pas encore développé).
 
+## Sécurité
+
+- **Enchères refusées** : refuser une enchère (par exemple un montant fantaisiste) la retire du prix courant, de l'historique
+  public et du calcul de la meilleure enchère ; la vente reprend au prix réel.
+- **Essais de mot de passe** : 5 échecs par e-mail et par adresse IP, 30 par IP, 100 par e-mail sur 15 minutes. De faux mots de
+  passe tapés ailleurs ne bloquent donc pas le titulaire du compte. Inscriptions : 10 par IP et par heure.
+- **En-têtes** : `ENTETES_SECURITE` (worker/index.js) pour les réponses du Worker, `my-auto-export/_headers` pour les fichiers
+  statiques (CSP, HSTS, interdiction d'affichage dans un cadre). Les deux doivent rester identiques (tests/test_securite.py).
+
+⚠️ Appliquer la migration **avant** de pousser le code, sinon la connexion échoue :
+`npx wrangler d1 migrations apply DB --remote` (0012), puis `git push origin main`.
+
+Dans le tableau de bord Cloudflare (SSL/TLS → Edge Certificates) : activer « Always Use HTTPS », sans quoi le site reste
+accessible en http.
+
 ## Connecter Claude au site (serveur MCP)
 
 Le Worker expose un serveur MCP sur `/mcp` : Claude peut alors gérer le site avec les droits d'un administrateur

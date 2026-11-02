@@ -1,7 +1,7 @@
 """Crée un compte administrateur (ou redonne l'accès admin et un nouveau mot de passe à un compte existant).
 
 Lancement, depuis le dossier du site :
-  python3 scripts/creer_admin.py --email snoussi.tech@gmail.com --nom "Snoussi"
+  python3 scripts/creer_admin.py --email admin@exemple.com --nom "Prénom Nom"
 
 Le mot de passe est demandé dans le terminal (rien ne s'affiche à la saisie). Seule son empreinte PBKDF2,
 calculée comme le fait le Worker, est envoyée à la base D1 de production via `npx wrangler d1 execute`.
@@ -34,7 +34,10 @@ def requete_sql(email, nom, mot_de_passe):
         "ON CONFLICT(email) DO UPDATE SET password_hash = excluded.password_hash, "
         "password_salt = excluded.password_salt, role = 'admin'; "
         f"DELETE FROM login_failures WHERE email = {sql_texte(email)}; "
-        f"DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE email = {sql_texte(email)});"
+        f"DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE email = {sql_texte(email)}); "
+        # Accès donnés à Claude (MCP) : révoqués aussi, au cas où le mot de passe aurait fuité.
+        f"DELETE FROM oauth_tokens WHERE user_id = (SELECT id FROM users WHERE email = {sql_texte(email)}); "
+        f"DELETE FROM oauth_codes WHERE user_id = (SELECT id FROM users WHERE email = {sql_texte(email)});"
     )
 
 

@@ -431,9 +431,10 @@
       $("remove-check").classList.toggle("hidden", Boolean(vendu));
       $("decision-error").classList.add("hidden");
       $("bids-body").innerHTML = offers.length ? `<ol class="bids">${offers.map((offre) => {
-        const decidable = offre.status === "pending" && !vendu && !(offre.kind === "bid" && auction?.status === "live");
+        // Une enchère peut être refusée pendant la vente (montant fantaisiste…), acceptée seulement après la fin.
+        const decidable = offre.status === "pending" && !vendu;
         // Une enchère perdante peut être refusée, pas acceptée : seule la meilleure enchère l'est (règle aussi appliquée par le Worker).
-        const acceptable = decidable && (offre.kind !== "bid" || offre.best);
+        const acceptable = decidable && (offre.kind !== "bid" || (offre.best && auction?.status !== "live"));
         return `<li${offre.best ? ` class="best"` : ""}>
           <div class="bid-line"><strong>${tnd(offre.amountTnd)}</strong>
             <span class="badge ${offre.kind === "bid" ? "upcoming" : "stock"}">${offre.kind === "bid" ? "Enchère" : "Achat immédiat"}</span>

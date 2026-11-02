@@ -59,7 +59,7 @@ class EspaceAcheteurTest(unittest.TestCase):
         cls.tmp.cleanup()
 
     def nouvelle_page(self):
-        context = self.browser.new_context()
+        context = self.browser.new_context(bypass_csp=True)
         self.addCleanup(context.close)
         page = context.new_page()
         page.goto(self.base + "/")
