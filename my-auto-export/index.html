@@ -106,25 +106,15 @@
     .hero-cta:hover { background: var(--green-dark); border-color: var(--green-dark); }
     .hero-cta-secondary { background: var(--surface); color: var(--green); }
     .hero-cta-secondary:hover { background: var(--green-pale); color: var(--green-dark); }
-    .hero-search { max-width: 880px; margin-top: 32px; padding: 18px; border-radius: 20px; background: var(--surface); box-shadow: 0 10px 40px #10151324, 0 0 0 1px #10151310; }
-    .search-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
-    .search-grid .filter-group { margin: 0; }
-    .filter-label.indispo::after, .filter-group > label.indispo::after { content: " (non renseigné)"; font-weight: 500; }
-    .range-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .range-row.avec-unite { grid-template-columns: 1fr 1fr 78px; }
-    .filter-group :disabled { opacity: .55; cursor: not-allowed; }
-    .check-field { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 650; color: var(--ink); }
-    .check-field input { width: 20px; height: 20px; accent-color: var(--green); }
-    .search-advanced { margin-top: 14px; padding-top: 4px; border-top: 1px solid var(--line); }
-    .search-advanced summary { display: flex; min-height: 44px; align-items: center; gap: 8px; color: var(--ink); font-size: 14px; font-weight: 700; cursor: pointer; }
-    .search-advanced summary:hover { color: var(--green); }
-    .search-advanced .search-grid { margin-top: 6px; }
-    #panel-avances-grille { display: grid; gap: 0; }
-    .search-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 16px; }
-    .search-reset { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 0 6px; border: 0; background: none; color: var(--ink-soft); font-size: 14px; font-weight: 700; cursor: pointer; }
-    .search-reset:hover { color: var(--green); }
-    .hero-submit { min-height: 52px; padding: 0 28px; border: 0; border-radius: 30px; background: var(--green); color: white; font-size: 15px; font-weight: 750; white-space: nowrap; }
+    .hero-search { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: center; max-width: 880px; margin-top: 36px; padding: 10px 10px 10px 8px; border-radius: 48px; background: var(--surface); box-shadow: 0 10px 40px #10151324, 0 0 0 1px #10151310; }
+    .hero-search label { display: grid; padding: 4px 18px; border-right: 1px solid var(--line); }
+    .hero-search label span { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .hero-search select { width: 100%; padding: 2px 0; border: 0; background: transparent; color: var(--ink); font-size: 15px; font-weight: 650; }
+    .hero-search select:focus-visible { outline-offset: 6px; }
+    .hero-submit { min-height: 54px; margin-left: 10px; padding: 0 26px; border: 0; border-radius: 30px; background: var(--green); color: white; font-size: 15px; font-weight: 750; white-space: nowrap; }
     .hero-submit:hover { background: var(--green-dark); }
+    .advanced-link { display: inline-flex; align-items: center; gap: 8px; margin: 16px 0 0 22px; color: var(--ink); font-size: 14px; font-weight: 700; }
+    .advanced-link:hover { color: var(--green); }
 
     /* --- Atouts --- */
     .features { border-bottom: 1px solid var(--line); background: var(--surface); }
@@ -165,7 +155,7 @@
     .field, .select-field { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; color: var(--ink); font-size: 14px; }
     .field::placeholder { color: #7d8781; }
     .filter-group { display: grid; gap: 6px; margin-top: 12px; }
-    .filter-group label, .filter-label { display: flex; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+    .filter-group label { display: flex; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
     .filter-group label svg { color: var(--muted); }
     .filter-submit { width: 100%; min-height: 46px; margin-top: 18px; border: 0; border-radius: 24px; background: var(--green); color: white; font-size: 15px; font-weight: 750; }
     .filter-submit:hover { background: var(--green-dark); }
@@ -407,9 +397,10 @@
       .hero-photo { inset: 0; width: 100%; opacity: .22; }
       .hero::after { background: linear-gradient(180deg, #ffffffb3, #ffffffe6); }
       .hero h1 { font-size: 40px; }
-      .search-grid { grid-template-columns: 1fr; }
-      .hero-search { padding: 14px; }
-      .hero-submit { flex: 1 1 100%; }
+      .hero-search { grid-template-columns: 1fr; gap: 10px; padding: 0; border-radius: 0; background: none; box-shadow: none; }
+      .hero-search label { padding: 10px 16px; border: 0; border-radius: 12px; background: white; box-shadow: 0 4px 18px #10151318; }
+      .hero-submit { margin: 4px 0 0; }
+      .advanced-link { margin-left: 0; }
       .market { grid-template-columns: 1fr; }
       .filter-panel { position: static; }
       .filter-toggle { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 24px; background: white; color: var(--ink); font-size: 15px; font-weight: 750; }
@@ -533,17 +524,13 @@
         <a class="hero-cta" href="#ventes">Voir les véhicules</a>
         <a class="hero-cta hero-cta-secondary" href="#contact">Nous contacter</a>
       </div>
-      <form class="hero-search" id="hero-search" role="search" aria-label="Recherche de véhicules">
-        <div class="search-grid" id="hero-principaux"></div>
-        <details class="search-advanced" id="hero-avances" data-avances>
-          <summary><svg class="icon"><use href="#i-sliders"/></svg>Recherche avancée</summary>
-          <div class="search-grid" id="hero-avances-grille"></div>
-        </details>
-        <div class="search-actions">
-          <button class="hero-submit" type="submit" id="hero-submit">Afficher les véhicules</button>
-          <button class="search-reset" type="button" id="hero-reset"><svg class="icon"><use href="#i-reset"/></svg>Réinitialiser les filtres</button>
-        </div>
+      <form class="hero-search" id="hero-search" role="search" aria-label="Recherche rapide">
+        <label><span>Marque</span><select id="hero-make"><option value="">Toutes</option></select></label>
+        <label><span>Modèle</span><select id="hero-model"><option value="">Tous</option></select></label>
+        <label><span>Immatriculé depuis</span><select id="hero-year"><option value="">Toutes années</option></select></label>
+        <button class="hero-submit" type="submit" id="hero-submit">Rechercher</button>
       </form>
+      <a class="advanced-link" href="#ventes" id="advanced-link"><svg class="icon"><use href="#i-sliders"/></svg>Filtres avancés</a>
     </div>
   </section>
 
@@ -575,12 +562,14 @@
         <button class="filter-toggle" type="button" id="filter-toggle" aria-expanded="false" aria-controls="filter-body"><svg class="icon"><use href="#i-sliders"/></svg>Filtrer les véhicules</button>
         <div class="filter-body" id="filter-body">
           <h2 class="panel-title"><svg class="icon"><use href="#i-search"/></svg>Recherche</h2>
-          <input class="field" id="search" data-filtre="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off" aria-label="Référence, marque ou modèle">
-          <div id="panel-principaux"></div>
-          <details class="search-advanced" id="panel-avances" data-avances>
-            <summary><svg class="icon"><use href="#i-sliders"/></svg>Recherche avancée</summary>
-            <div id="panel-avances-grille"></div>
-          </details>
+          <input class="field" id="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off" aria-label="Référence, marque ou modèle">
+          <div class="filter-group"><label for="make"><svg class="icon"><use href="#i-car"/></svg>Marque</label><select class="select-field" id="make"><option value="">Toutes les marques</option></select></div>
+          <div class="filter-group"><label for="model"><svg class="icon"><use href="#i-tag"/></svg>Modèle</label><select class="select-field" id="model"><option value="">Tous les modèles</option></select></div>
+          <div class="filter-group"><label for="fuel"><svg class="icon"><use href="#i-fuel"/></svg>Énergie</label><select class="select-field" id="fuel"><option value="">Toutes les énergies</option></select></div>
+          <div class="filter-group"><label for="year-min"><svg class="icon"><use href="#i-calendar"/></svg>Première immatriculation</label><select class="select-field" id="year-min"><option value="">Toutes les années</option></select></div>
+          <div class="filter-group"><label for="price-max"><svg class="icon"><use href="#i-coin"/></svg>Prix maximum</label>
+            <select class="select-field" id="price-max"><option value="">Sans limite</option><option value="80000">80 000 TND</option><option value="120000">120 000 TND</option><option value="160000">160 000 TND</option><option value="220000">220 000 TND</option><option value="300000">300 000 TND</option></select></div>
+          <div class="filter-group"><label for="body-type"><svg class="icon"><use href="#i-car"/></svg>Catégorie</label><select class="select-field" id="body-type"><option value="">Toutes les catégories</option></select></div>
           <button class="filter-submit" type="button" id="filter-submit">Afficher les véhicules</button>
           <button class="clear-button" id="clear-filters" type="button"><svg class="icon"><use href="#i-reset"/></svg>Réinitialiser les filtres</button>
         </div>
@@ -720,6 +709,7 @@
     } catch {
       localStorage.removeItem("my-auto-watchlist");
     }
+    const FILTRES = ["search", "make", "model", "fuel", "year-min", "price-max", "body-type"];
     let activeTab = "all";
 
     function valeur(id) {
@@ -736,204 +726,28 @@
       return fuel || "";
     }
 
-    // --- Filtres : une seule définition, deux panneaux (recherche du bandeau « hero- » et panneau du catalogue) ---
-    const ETATS_VEHICULE = { new: "Neuf", used: "Occasion", accident: "Accidenté", damaged: "Endommagé" };
-    const KW_PAR_CH = 0.7355;
-    const TYPES_ENCHERE = [["live", "Enchère en cours"], ["upcoming", "Enchère à venir"], ["buynow", "Achat immédiat"]];
-    // Identifiant du contrôle (ex. « year-min ») -> valeur saisie. Un filtre vide est absent : il ne restreint rien.
-    const filtres = {};
-
-    function nombreLot(lot, champ) {
-      return Number.isFinite(lot[champ]) ? lot[champ] : null;
+    function correspond(lot, criteres) {
+      const searchable = `${lot.reference} ${lot.make} ${lot.model} ${lot.trim || ""}`.toLocaleLowerCase("fr");
+      const prix = prixLot(lot);
+      return (!criteres.query || searchable.includes(criteres.query))
+        && (!criteres.make || lot.make === criteres.make)
+        && (!criteres.model || lot.model === criteres.model)
+        && (!criteres.fuel || familleEnergie(lot.fuel) === criteres.fuel)
+        && (!criteres.yearMin || Number(lot.year) >= criteres.yearMin)
+        && (!criteres.priceMax || (prix != null && prix <= criteres.priceMax))
+        && (!criteres.bodyType || lot.bodyType === criteres.bodyType);
     }
 
-    function familleBoite(boite) {
-      const texte = (boite || "").toLocaleLowerCase("fr").trim();
-      if (!texte) return "";
-      if (texte.includes("semi")) return "Semi-automatique";
-      if (texte.includes("manuel")) return "Manuelle";
-      if (texte.includes("auto")) return "Automatique";
-      return boite.trim();
-    }
-
-    // Puissance en ch : champ powerHp, sinon la caractéristique « Puissance » (ch, cv ou kW) déjà saisie sur l'annonce.
-    function puissanceCh(lot) {
-      if (Number.isFinite(lot.powerHp)) return lot.powerHp;
-      const ligne = (lot.specs || []).find((spec) => /^puissance$/i.test(String(spec?.[0] || "").trim()));
-      const trouve = ligne && /(\d+(?:[.,]\d+)?)\s*(ch|cv|hp|kw)\b/i.exec(String(ligne[1]));
-      if (!trouve) return null;
-      const valeurBrute = Number(trouve[1].replace(",", "."));
-      return trouve[2].toLowerCase() === "kw" ? valeurBrute / KW_PAR_CH : valeurBrute;
-    }
-
-    function enchereEnCours(lot) {
-      return lot.status === "open" && (lot.auction ? lot.auction.status === "live" : true);
-    }
-
-    function achatImmediat(lot) {
-      return Number.isFinite(lot.buyNowPriceTnd);
-    }
-
-    // type : select (valeur exacte), annees (deux listes min/max), plage (deux nombres), enchere, achat.
-    const DEFS_FILTRES = [
-      { id: "make", label: "Marque", type: "select", vide: "Toutes les marques", valeur: (lot) => lot.make, principal: true },
-      { id: "model", label: "Modèle", type: "select", vide: "Tous les modèles", valeur: (lot) => lot.model, principal: true },
-      { id: "fuel", label: "Type de carburant", type: "select", vide: "Tous les carburants", valeur: (lot) => familleEnergie(lot.fuel), principal: true },
-      { id: "year", label: "Première immatriculation", type: "annees", valeur: (lot) => nombreLot(lot, "year"), principal: true },
-      { id: "gearbox", label: "Boîte de vitesses", type: "select", vide: "Toutes les boîtes", valeur: (lot) => familleBoite(lot.transmission), principal: true },
-      { id: "condition", label: "État du véhicule", type: "select", vide: "Tous les états", valeur: (lot) => (ETATS_VEHICULE[lot.condition] ? lot.condition : ""), libelles: ETATS_VEHICULE, principal: true },
-      { id: "mileage", label: "Kilométrage (km)", type: "plage", valeur: (lot) => nombreLot(lot, "mileageKm") },
-      { id: "price", label: "Prix (TND)", type: "plage", valeur: prixLot },
-      { id: "country", label: "Pays", type: "select", vide: "Tous les pays", valeur: (lot) => lot.country },
-      { id: "power", label: "Puissance", type: "plage", unites: true, valeur: puissanceCh },
-      { id: "color", label: "Couleur", type: "select", vide: "Toutes les couleurs", valeur: (lot) => lot.color },
-      { id: "displacement", label: "Cylindrée (cm³)", type: "plage", valeur: (lot) => nombreLot(lot, "engineCc") },
-      { id: "body-type", label: "Type de carrosserie", type: "select", vide: "Toutes les carrosseries", valeur: (lot) => lot.bodyType },
-      { id: "doors", label: "Nombre de portes", type: "select", vide: "Indifférent", valeur: (lot) => nombreLot(lot, "doors"), numerique: true },
-      { id: "seats", label: "Nombre de sièges", type: "select", vide: "Indifférent", valeur: (lot) => nombreLot(lot, "seats"), numerique: true },
-      { id: "auction", label: "Type d'enchère", type: "enchere", vide: "Tous les types" },
-      { id: "buy-now", label: "Achat immédiat uniquement", type: "achat" }
-    ];
-
-    function valeurPlein(valeur) {
-      return valeur !== null && valeur !== undefined && valeur !== "";
-    }
-
-    function defDisponible(def) {
-      if (def.type === "enchere" || def.type === "achat") return true;
-      return lots.some((lot) => valeurPlein(def.valeur(lot)));
-    }
-
-    // Un filtre renseigné écarte les annonces dont la caractéristique est absente : rien n'est supposé.
-    function defCorrespond(def, lot, c) {
-      if (def.type === "enchere") {
-        const choix = c.auction;
-        return !choix || (choix === "live" && enchereEnCours(lot)) || (choix === "upcoming" && lot.status === "upcoming") || (choix === "buynow" && achatImmediat(lot));
-      }
-      if (def.type === "achat") return !c["buy-now"] || achatImmediat(lot);
-      const valeur = def.valeur(lot);
-      if (def.type === "select") return !c[def.id] || (valeurPlein(valeur) && String(valeur) === c[def.id]);
-      const min = Number(c[`${def.id}-min`]);
-      const max = Number(c[`${def.id}-max`]);
-      const aMin = valeurPlein(c[`${def.id}-min`]) && Number.isFinite(min);
-      const aMax = valeurPlein(c[`${def.id}-max`]) && Number.isFinite(max);
-      if (!aMin && !aMax) return true;
-      if (!valeurPlein(valeur)) return false;
-      const mesure = def.unites && c["power-unit"] === "kW" ? valeur * KW_PAR_CH : valeur;
-      // Arrondi : 100 kW saisis doivent retrouver une annonce à 136 ch.
-      const compare = def.unites ? Math.round(mesure) : mesure;
-      return (!aMin || compare >= min) && (!aMax || compare <= max);
-    }
-
-    function correspond(lot, c) {
-      const recherche = (c.search || "").trim().toLocaleLowerCase("fr");
-      if (recherche && !`${lot.reference} ${lot.make} ${lot.model} ${lot.trim || ""}`.toLocaleLowerCase("fr").includes(recherche)) return false;
-      return DEFS_FILTRES.every((def) => defCorrespond(def, lot, c));
-    }
-
-    function filtresActifs() {
-      return Object.entries(filtres).some(([cle, valeur]) => cle !== "power-unit" && valeurPlein(valeur));
-    }
-
-    function optionsDef(def) {
-      if (def.type === "enchere") return TYPES_ENCHERE;
-      const sources = def.id === "model" && filtres.make ? lots.filter((lot) => lot.make === filtres.make) : lots;
-      const valeurs = [...new Set(sources.map(def.valeur).filter(valeurPlein))];
-      if (def.libelles) return Object.keys(def.libelles).filter((cle) => valeurs.includes(cle)).map((cle) => [cle, def.libelles[cle]]);
-      if (def.numerique) return valeurs.sort((a, b) => a - b).map((valeur) => [String(valeur), String(valeur)]);
-      return valeurs.map(String).sort((a, b) => a.localeCompare(b, "fr")).map((valeur) => [valeur, valeur]);
-    }
-
-    function htmlFiltre(def, p) {
-      const id = `${p}${def.id}`;
-      if (def.type === "achat") {
-        return `<div class="filter-group"><label class="check-field"><input type="checkbox" id="${id}" data-filtre="buy-now">${def.label}</label></div>`;
-      }
-      if (def.type === "select" || def.type === "enchere") {
-        return `<div class="filter-group"><label for="${id}" data-label="${def.id}">${def.label}</label><select class="select-field" id="${id}" data-filtre="${def.id}"></select></div>`;
-      }
-      const nom = def.label.replace(/ \(.*\)$/, "").toLocaleLowerCase("fr");
-      const controle = (suffixe, mot) => def.type === "annees"
-        ? `<select class="select-field" id="${id}-${suffixe}" data-filtre="${def.id}-${suffixe}" aria-label="${def.label} ${mot}"></select>`
-        : `<input class="field" id="${id}-${suffixe}" data-filtre="${def.id}-${suffixe}" type="number" inputmode="numeric" min="0" placeholder="${suffixe === "min" ? "Min." : "Max."}" aria-label="${def.label.replace(/ \(.*\)$/, "")} ${mot}">`;
-      const unite = def.unites ? `<select class="select-field" id="${id}-unit" data-filtre="power-unit" aria-label="Unité de puissance"><option value="ch">ch</option><option value="kW">kW</option></select>` : "";
-      return `<div class="filter-group" role="group" aria-labelledby="${id}-label"><span class="filter-label" id="${id}-label" data-label="${def.id}">${def.label}</span>`
-        + `<div class="range-row${def.unites ? " avec-unite" : ""}">${controle("min", "minimum")}${controle("max", "maximum")}${unite}</div></div>`;
-    }
-
-    function construireFiltres() {
-      [["hero-", "hero-principaux", "hero-avances-grille"], ["", "panel-principaux", "panel-avances-grille"]].forEach(([p, principaux, avances]) => {
-        document.getElementById(principaux).innerHTML = DEFS_FILTRES.filter((def) => def.principal).map((def) => htmlFiltre(def, p)).join("");
-        document.getElementById(avances).innerHTML = DEFS_FILTRES.filter((def) => !def.principal).map((def) => htmlFiltre(def, p)).join("");
-      });
-    }
-
-    function remplirSelect(select, vide, options) {
-      select.replaceChildren(new Option(vide, ""));
-      options.forEach(([valeur, libelle]) => select.add(new Option(libelle, valeur)));
-      select.disabled = options.length === 0;
-    }
-
-    // Listes alimentées par les annonces réelles ; une caractéristique qu'aucune annonce ne renseigne est grisée.
-    function remplirOptions() {
-      DEFS_FILTRES.forEach((def) => {
-        const dispo = defDisponible(def);
-        if (def.type === "select" || def.type === "enchere") {
-          const options = optionsDef(def);
-          document.querySelectorAll(`select[data-filtre="${def.id}"]`).forEach((select) => {
-            remplirSelect(select, def.vide, options);
-            if (!options.some(([valeur]) => valeur === filtres[def.id])) delete filtres[def.id];
-          });
-        } else if (def.type === "annees") {
-          const annees = [...new Set(lots.map(def.valeur).filter(valeurPlein))].sort((a, b) => b - a).map((annee) => [String(annee), String(annee)]);
-          ["min", "max"].forEach((borne) => document.querySelectorAll(`select[data-filtre="${def.id}-${borne}"]`).forEach((select) => {
-            remplirSelect(select, borne === "min" ? "Année min." : "Année max.", annees);
-            if (!annees.some(([valeur]) => valeur === filtres[`${def.id}-${borne}`])) delete filtres[`${def.id}-${borne}`];
-          }));
-        } else if (def.type === "plage") {
-          document.querySelectorAll(`[data-filtre^="${def.id}-"]`).forEach((champ) => { champ.disabled = !dispo; });
-          if (def.unites) document.querySelectorAll('[data-filtre="power-unit"]').forEach((champ) => { champ.disabled = !dispo; });
-        }
-        document.querySelectorAll(`[data-label="${def.id}"]`).forEach((libelle) => libelle.classList.toggle("indispo", !dispo));
-      });
-    }
-
-    // Recopie l'état dans tous les contrôles (bandeau et catalogue), sauf celui que l'utilisateur est en train de saisir.
-    function synchroniserControles(source) {
-      document.querySelectorAll("[data-filtre]").forEach((champ) => {
-        if (champ === source) return;
-        const valeur = filtres[champ.dataset.filtre];
-        if (champ.type === "checkbox") champ.checked = valeur === "1";
-        else champ.value = valeur ?? (champ.dataset.filtre === "power-unit" ? "ch" : "");
-      });
-      if (filtresAvancesActifs()) document.querySelectorAll("[data-avances]").forEach((bloc) => { bloc.open = true; });
-    }
-
-    function filtresAvancesActifs() {
-      const principaux = new Set(DEFS_FILTRES.filter((def) => def.principal).flatMap((def) => [def.id, `${def.id}-min`, `${def.id}-max`]));
-      return Object.entries(filtres).some(([cle, valeur]) => cle !== "search" && cle !== "power-unit" && valeurPlein(valeur) && !principaux.has(cle));
-    }
-
-    function definirFiltres(valeurs) {
-      Object.keys(filtres).forEach((cle) => delete filtres[cle]);
-      Object.assign(filtres, valeurs);
-      remplirOptions();
-      synchroniserControles(null);
-    }
-
-    function surChangementFiltre(event) {
-      const champ = event.target.closest?.("[data-filtre]");
-      if (!champ) return;
-      const cle = champ.dataset.filtre;
-      const valeur = champ.type === "checkbox" ? (champ.checked ? "1" : "") : champ.value;
-      if (valeurPlein(valeur)) filtres[cle] = valeur; else delete filtres[cle];
-      // Les listes sont reconstruites : tous les contrôles, y compris celui touché, reprennent la valeur de l'état.
-      if (cle === "make") {
-        delete filtres.model;
-        remplirOptions();
-      }
-      synchroniserControles(cle === "make" ? null : champ);
-      updateView();
+    function criteresFiltres() {
+      return {
+        query: valeur("search").trim().toLocaleLowerCase("fr"),
+        make: valeur("make"),
+        model: valeur("model"),
+        fuel: valeur("fuel"),
+        yearMin: Number(valeur("year-min")) || 0,
+        priceMax: Number(valeur("price-max")) || 0,
+        bodyType: valeur("body-type")
+      };
     }
 
     function pluriel(nombre, mot) {
@@ -941,8 +755,10 @@
     }
 
     function updateView() {
+      const criteres = criteresFiltres();
+      const filtresActifs = Object.values(criteres).some(Boolean);
       const watchOnly = activeTab === "watchlist";
-      let visibleLots = lots.filter((lot) => correspond(lot, filtres)
+      let visibleLots = lots.filter((lot) => correspond(lot, criteres)
         && (watchOnly ? watchlist.has(lot.reference) : CATEGORIES[activeTab](lot)));
 
       const sort = document.getElementById("sort").value;
@@ -977,7 +793,7 @@
       } else if (watchOnly) {
         title.textContent = "Aucun favori pour le moment";
         copy.textContent = "Cliquez sur le cœur d'une annonce pour la retrouver ici.";
-      } else if (filtresActifs() || activeTab !== "all") {
+      } else if (filtresActifs || activeTab !== "all") {
         title.textContent = "Aucun véhicule ne correspond à ces critères";
         copy.textContent = "Modifiez les filtres ou réinitialisez-les pour voir tout le catalogue.";
       } else {
@@ -994,20 +810,30 @@
       });
     }
 
-    // Le bouton du bandeau compte les annonces correspondant aux filtres, quel que soit l'onglet de la liste.
-    function majRechercheRapide() {
-      const bouton = document.getElementById("hero-submit");
-      if (catalogueEtat !== "ready") {
-        bouton.textContent = "Afficher les véhicules";
-        return;
-      }
-      bouton.textContent = `Afficher ${pluriel(lots.filter((lot) => correspond(lot, filtres)).length, "véhicule")}`;
+    // Recherche du bandeau d'accueil : mêmes critères que les filtres, appliqués au clic.
+    function criteresRapides() {
+      return { make: valeur("hero-make"), model: valeur("hero-model"), yearMin: Number(valeur("hero-year")) || 0 };
     }
 
-    function reinitialiserFiltres() {
-      definirFiltres({});
-      document.getElementById("sort").value = "ending";
-      choisirOnglet("all");
+    function majRechercheRapide() {
+      if (catalogueEtat !== "ready") return;
+      const nombre = lots.filter((lot) => correspond(lot, criteresRapides())).length;
+      document.getElementById("hero-submit").textContent = `Rechercher ${pluriel(nombre, "véhicule")}`;
+    }
+
+    function remplirModeles(selectId, marque, libelleInitial) {
+      const select = document.getElementById(selectId);
+      const actuel = select.value;
+      remplirFiltre(selectId, lots.filter((lot) => !marque || lot.make === marque).map((lot) => lot.model), libelleInitial);
+      if ([...select.options].some((option) => option.value === actuel)) select.value = actuel;
+    }
+
+    function remplirAnnees(selectId, libelleInitial) {
+      const select = document.getElementById(selectId);
+      select.replaceChildren(new Option(libelleInitial, ""));
+      [...new Set(lots.map((lot) => Number(lot.year)).filter(Number.isFinite))]
+        .sort((a, b) => b - a)
+        .forEach((annee) => select.add(new Option(`${annee} et plus`, annee)));
     }
 
     function photoPrincipale(lot) {
@@ -1552,6 +1378,14 @@
       return typeof url === "string" && (url.startsWith("https://") || /^photos\/[^/]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url));
     }
 
+    function remplirFiltre(selectId, valeurs, libelleInitial) {
+      const select = document.getElementById(selectId);
+      select.replaceChildren(new Option(libelleInitial, ""));
+      [...new Set(valeurs.filter((value) => typeof value === "string" && value.trim()))]
+        .sort((a, b) => a.localeCompare(b, "fr"))
+        .forEach((value) => select.add(new Option(value, value)));
+    }
+
     async function chargerCatalogue() {
       try {
         // Avec le serveur : lots.json + véhicules de l'administration. Sans serveur (aperçu statique) : lots.json seul.
@@ -1566,7 +1400,14 @@
         }
         // Fin effective de l'enchère (éventuellement prolongée) fournie par le serveur, sinon date prévue.
         lots = catalogue.filter((lot) => lot.status !== "open" || Date.parse(lot.auction?.endsAt || lot.endsAt) > Date.now());
-        remplirOptions();
+        remplirFiltre("make", lots.map((lot) => lot.make), "Toutes les marques");
+        remplirFiltre("hero-make", lots.map((lot) => lot.make), "Toutes");
+        remplirModeles("model", "", "Tous les modèles");
+        remplirModeles("hero-model", "", "Tous");
+        remplirFiltre("fuel", lots.map((lot) => familleEnergie(lot.fuel)), "Toutes les énergies");
+        remplirAnnees("year-min", "Toutes les années");
+        remplirAnnees("hero-year", "Toutes années");
+        remplirFiltre("body-type", lots.map((lot) => lot.bodyType), "Toutes les catégories");
         catalogueEtat = "ready";
         renderArrivages();
         renderMarques();
@@ -1583,11 +1424,20 @@
       })[character]);
     }
 
-    document.addEventListener("input", surChangementFiltre);
-    document.addEventListener("change", surChangementFiltre);
-    document.getElementById("sort").addEventListener("change", updateView);
-    document.getElementById("clear-filters").addEventListener("click", reinitialiserFiltres);
-    document.getElementById("hero-reset").addEventListener("click", reinitialiserFiltres);
+    document.addEventListener("input", (event) => {
+      if (event.target.matches("#search")) updateView();
+    });
+    FILTRES.slice(1).concat("sort").forEach((id) => document.getElementById(id).addEventListener("change", updateView));
+    document.getElementById("make").addEventListener("change", () => {
+      remplirModeles("model", valeur("make"), "Tous les modèles");
+      updateView();
+    });
+    document.getElementById("clear-filters").addEventListener("click", () => {
+      FILTRES.forEach((id) => { document.getElementById(id).value = ""; });
+      remplirModeles("model", "", "Tous les modèles");
+      document.getElementById("sort").value = "ending";
+      choisirOnglet("all");
+    });
     document.querySelectorAll("[data-nav]").forEach((link) => link.addEventListener("click", () => {
       choisirOnglet(link.dataset.nav);
       fermerMenu();
@@ -1615,10 +1465,25 @@
     });
     document.querySelector("#main-nav a[href='#contact']").addEventListener("click", fermerMenu);
 
+    document.getElementById("hero-make").addEventListener("change", () => {
+      remplirModeles("hero-model", valeur("hero-make"), "Tous");
+      majRechercheRapide();
+    });
+    ["hero-model", "hero-year"].forEach((id) => document.getElementById(id).addEventListener("change", majRechercheRapide));
     document.getElementById("hero-search").addEventListener("submit", (event) => {
       event.preventDefault();
+      const rapides = criteresRapides();
+      FILTRES.forEach((id) => { document.getElementById(id).value = ""; });
+      document.getElementById("make").value = rapides.make;
+      remplirModeles("model", rapides.make, "Tous les modèles");
+      document.getElementById("model").value = rapides.model;
+      document.getElementById("year-min").value = rapides.yearMin || "";
       choisirOnglet("all");
       allerAuCatalogue();
+    });
+    document.getElementById("advanced-link").addEventListener("click", () => {
+      document.getElementById("filter-panel").classList.add("open");
+      document.getElementById("filter-toggle").setAttribute("aria-expanded", "true");
     });
     document.getElementById("filter-toggle").addEventListener("click", (event) => {
       const ouvert = document.getElementById("filter-panel").classList.toggle("open");
@@ -1632,7 +1497,9 @@
     document.getElementById("brand-chips").addEventListener("click", (event) => {
       const chip = event.target.closest("[data-make]");
       if (!chip) return;
-      definirFiltres({ make: chip.dataset.make });
+      FILTRES.forEach((id) => { document.getElementById(id).value = ""; });
+      document.getElementById("make").value = chip.dataset.make;
+      remplirModeles("model", chip.dataset.make, "Tous les modèles");
       choisirOnglet("all");
       allerAuCatalogue();
     });
@@ -1822,7 +1689,6 @@
       dialog.close();
     });
 
-    construireFiltres();
     updateView();
     chargerCatalogue().then(chargerCompte).finally(() => {
       // Lien depuis une page véhicule (/?lot=REF) : ouvre directement sa fiche, avec enchère et achat.

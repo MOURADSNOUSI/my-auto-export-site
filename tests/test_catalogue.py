@@ -81,7 +81,7 @@ class CatalogueTest(unittest.TestCase):
         self.assertEqual(page.text_content("#result-count"), "Résultats (2 véhicules)")
         makes = page.eval_on_selector_all("#make option", "opts => opts.map(o => o.value)")
         self.assertEqual(makes, ["", "Audi", "Peugeot"])
-        self.assertEqual(page.text_content("#hero-submit"), "Afficher 2 véhicules")
+        self.assertEqual(page.text_content("#hero-submit"), "Rechercher 2 véhicules")
 
     def test_recherche_rapide_applique_les_filtres(self):
         page = self.open_site([
@@ -91,9 +91,9 @@ class CatalogueTest(unittest.TestCase):
         ])
         page.select_option("#hero-make", "Peugeot")
         self.assertEqual(page.eval_on_selector_all("#hero-model option", "o => o.map(x => x.value)"), ["", "208", "3008"])
-        self.assertEqual(page.text_content("#hero-submit"), "Afficher 2 véhicules")
-        page.select_option("#hero-year-min", "2021")
-        self.assertEqual(page.text_content("#hero-submit"), "Afficher 1 véhicule")
+        self.assertEqual(page.text_content("#hero-submit"), "Rechercher 2 véhicules")
+        page.select_option("#hero-year", "2021")
+        self.assertEqual(page.text_content("#hero-submit"), "Rechercher 1 véhicule")
         page.click("#hero-submit")
         self.assertEqual(page.locator(".lot-card").count(), 1)
         self.assertIn("MY-001", page.text_content("#lot-grid"))
@@ -108,8 +108,7 @@ class CatalogueTest(unittest.TestCase):
         self.assertEqual(page.eval_on_selector_all("#fuel option", "o => o.map(x => x.value)"), ["", "Diesel", "Hybride"])
         page.select_option("#fuel", "Hybride")
         self.assertEqual(page.locator(".lot-card").count(), 2)
-        page.click("#panel-avances summary")
-        page.fill("#price-max", "120000")
+        page.select_option("#price-max", "120000")
         self.assertEqual(page.locator(".lot-card").count(), 1)
         page.click("#clear-filters")
         self.assertEqual(page.locator(".lot-card").count(), 3)
