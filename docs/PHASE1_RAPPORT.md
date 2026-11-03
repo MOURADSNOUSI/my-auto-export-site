@@ -34,3 +34,9 @@ Aperçu local actualisé sur **http://127.0.0.1:8787/** depuis ce worktree. Les 
 Voir docs/PHASE1_EXPLOITATION.md pour installation locale, API, conservation et conditions de mise en service. La confirmation contractuelle et la collecte de pièces d'identité sont désactivées par défaut, en attente de validation et d'autorisation. La finalisation d'une vente et les formalités de propriété restent hors plateforme ; le statut vendu est une déclaration manuelle explicite.
 
 Les règles de production, services de paiement, automatisations de collecte et intégrations Facebook ne sont pas modifiés. Les enchères historiques sont conservées pour les annonces existantes ; aucune nouvelle annonce phase 1 ne peut y être inscrite.
+
+## Pull Request et contrôle externe
+
+[PR #10](https://github.com/MOURADSNOUSI/my-auto-export-site/pull/10) ouverte vers main, sans fusion ni activation de déploiement manuel. Issue #5 mise à jour.
+
+Le contrôle automatique **Workers Builds: my-auto-export-site** a échoué immédiatement sur b81e0d9. L'API GitHub retourne seulement un identifiant/lien Cloudflare, sans texte d'erreur ni annotation : la cause n'est pas établie. Ce contrôle externe est distinct des **102 tests réussis** et du **bundle --dry-run réussi**. Aucun build externe n'a été relancé, aucune commande de déploiement réel ou de migration distante n'a été exécutée. Le journal accessible à l'équipe Cloudflare doit être examiné avant toute mise en service autorisée ; ne pas modifier les workflows ou provisionner la production pour contourner cet échec.
