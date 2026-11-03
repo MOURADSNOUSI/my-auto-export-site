@@ -127,3 +127,35 @@ class Lot1PropositionsTest(fixtures.SellerFixture):
             page=browser.new_page();page.goto(self.base+'/');card=page.locator('.lot-card').filter(has_text=ref);expect(card.get_by_role('button',name='Proposer une offre')).to_be_visible()
             self.assertEqual(page.locator('[data-nav=auction]').get_attribute('aria-disabled'),'true');self.assertEqual(page.locator('[data-bid-open]').count(),0)
             card.get_by_role('button',name='Voir la fiche',exact=True).click();detail=page.locator('#lot-dialog');expect(detail.get_by_role('button',name='Proposer une offre')).to_be_visible();detail.get_by_role('button',name='Proposer une offre').click();expect(page.locator('#proposal-dialog')).to_contain_text('Connectez-vous')
+
+    def test_missing_reserve_keeps_amount_and_message_editable_in_nested_dialog(self):
+        ref,_=self.vehicle(reserve=None)
+        with sync_playwright() as pw,pw.chromium.launch(headless=True) as browser:
+            for width,height in [(1440,1100),(390,844)]:
+                with self.subTest(width=width),browser.new_context(viewport={'width':width,'height':height}) as context:
+                    context.add_cookies([{'name':'my_session','value':self.tokens['other'],'url':self.base}]);page=context.new_page();sent=[]
+                    page.on('request',lambda r:sent.append(r.url) if r.method=='POST' and r.url.endswith('/api/marketplace/offers') else None)
+                    page.goto(self.base+'/');card=page.locator('.lot-card').filter(has_text=ref);card.get_by_role('button',name='Voir la fiche',exact=True).click()
+                    page.locator('#lot-dialog').get_by_role('button',name='Proposer une offre',exact=True).click();popup=page.locator('#proposal-dialog')
+                    field=popup.locator('[name=amount]');message=popup.locator('[name=message]');expect(field).to_be_editable();expect(message).to_be_editable()
+                    field.click();field.press_sequentially('50000.000');message.click();message.press_sequentially('Bonjour, visite possible samedi ?')
+                    expect(field).to_have_value('50000.000');expect(message).to_have_value('Bonjour, visite possible samedi ?')
+                    expect(popup.locator('.proposal-unavailable')).to_contain_text('Vous pouvez renseigner votre montant et votre message')
+                    expect(popup.locator('#proposal-send')).to_be_disabled()
+                    popup.locator('[name=intention]').check()
+                    # Une soumission forcée côté navigateur reste refusée sans appel API.
+                    popup.locator('#proposal-form').evaluate("f=>f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))")
+                    expect(popup.locator('.proposal-error')).to_contain_text('L’envoi reste indisponible')
+                    self.assertFalse(sent);self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),width)
+        self.assertEqual(self.propose(ref,50000000)[0],409)
+
+    def test_typing_before_login_preserves_amount_and_message(self):
+        ref,_=self.vehicle(reserve=None);email=uuid.uuid4().hex+'@example.test';password='LocalFormTest42!'
+        self.assertEqual(self.call('POST','/api/register',{'name':'Test saisie','email':email,'phone':'12345678','password':password},who=None)[0],201)
+        with sync_playwright() as pw,pw.chromium.launch(headless=True) as browser:
+            page=browser.new_page();page.goto(self.base+'/vehicules/'+ref);page.get_by_role('button',name='Proposer une offre',exact=True).click();popup=page.locator('#proposal-dialog')
+            popup.locator('[name=amount]').fill('52000.125');popup.locator('[name=message]').fill('Je souhaite des précisions.')
+            login=popup.locator('#proposal-login');login.locator('[name=email]').fill(email);login.locator('[name=password]').fill(password);login.get_by_role('button',name='Se connecter',exact=True).click()
+            expect(popup.locator('#proposal-auth')).to_be_hidden()
+            expect(popup.locator('[name=amount]')).to_have_value('52000.125');expect(popup.locator('[name=message]')).to_have_value('Je souhaite des précisions.')
+            expect(popup.locator('#proposal-send')).to_be_disabled()

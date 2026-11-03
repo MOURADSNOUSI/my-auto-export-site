@@ -97,3 +97,9 @@ Contrôle complémentaire des annonces sans réserve : cas élargi réussi (25,6
 [PR #11](https://github.com/MOURADSNOUSI/my-auto-export-site/pull/11) ouverte sur `feature/marketplace-phase1` (PR #10), sans fusion. Issue #5 mise à jour pour suivi.
 
 Le contrôle automatique **Workers Builds: my-auto-export-site** a échoué immédiatement sur 5495f09. L'API GitHub ne fournit que le lien/identifiant Cloudflare, sans message d'erreur ni annotation ; la cause n'est pas établie. Ce résultat externe est distinct des 115 tests réussis, des vérifications ciblées et du bundle local en simulation réussi. Aucun build externe n'a été relancé et aucune configuration de workflow n'a été modifiée. Avant toute production autorisée, examiner ce journal, valider les conditions juridiques et renseigner réserves/propriétaires réels.
+
+## Correctif de saisie après livraison
+
+Le formulaire de l'annonce Citroën C5 (7753628) désactivait explicitement le montant lorsque la réserve ou l'ouverture aux propositions manquait. Le montant et le message peuvent désormais être saisis pour préparer une proposition. Le bouton d'envoi et un garde côté formulaire restent bloqués si l'annonce n'est pas prête ; les contrôles serveur restent inchangés. Le message d'indisponibilité explique cette différence.
+
+Validation : **13 tests Lot 1 réussis en 73,148 s**, dont saisie réelle au clavier dans les fenêtres imbriquées sur ordinateur/mobile, absence de requête de proposition lors d'un envoi forcé sur une annonce sans réserve, et conservation du montant/message après connexion. Contrôle manuel automatisé sur l'aperçu 8787 pour la référence signalée à 1440 et 390 px : deux champs éditables, valeurs conservées et envoi désactivé. Aucun envoi réel ni déploiement en production. La suite complète n'a pas été relancée pour cette modification d'interface ; son résultat antérieur reste consigné ci-dessus.
