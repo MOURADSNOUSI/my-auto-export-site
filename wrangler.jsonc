@@ -2,6 +2,7 @@
 	"name": "my-auto-export-site",
 	"compatibility_date": "2026-10-01",
 	"main": "worker/main.js",
+    "vars": {"LEGACY_AUCTIONS_ENABLED":"false"},
 	"assets": {
 		"directory": "./my-auto-export",
 		"binding": "ASSETS",

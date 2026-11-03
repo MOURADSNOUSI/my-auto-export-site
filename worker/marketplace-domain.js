@@ -18,7 +18,7 @@ export async function policy(env){return env.DB.prepare('SELECT * FROM marketpla
 export async function audit(env,user,action,resource){await env.DB.prepare('INSERT INTO audit_logs(actor_id,action,resource_id,at) VALUES(?,?,?,?)').bind(user.id,action,resource,dateNow()).run();}
 export async function expireOffers(env){
  await env.DB.prepare('DELETE FROM marketplace_api_attempts WHERE at<?').bind(new Date(Date.now()-86400000).toISOString()).run();
- await env.DB.prepare("UPDATE vehicle_offers SET status='expired',revision=revision+1,updated_at=?,actor_id=NULL,reason='deadline' WHERE status IN ('submitted','accepted_by_seller','awaiting_contract_confirmation') AND expires_at<=?").bind(dateNow(),dateNow()).run();
+ await env.DB.prepare("UPDATE vehicle_offers SET status='expired',revision=revision+1,updated_at=?,actor_id=NULL,reason='deadline' WHERE status='pending' AND expires_at<=?").bind(dateNow(),dateNow()).run();
  await env.DB.prepare("UPDATE seller_diagnostics SET diagnostic_status='expired' WHERE diagnostic_status='approved' AND valid_until<date('now')").run();
 }
 export async function financial(env,submission){return env.DB.prepare('SELECT * FROM seller_financials WHERE submission_id=?').bind(submission).first();}

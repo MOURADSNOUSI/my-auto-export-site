@@ -1,5 +1,9 @@
 # my-auto-export-site
 
+## Lot 1 — propositions d’achat
+
+Le bouton « Proposer une offre » et le contrôle de réserve officiel sont décrits dans [le rapport du Lot 1](docs/LOT1_PROPOSITIONS.md), avec les fichiers modifiés, les migrations et les tests. Les enchères sont désactivées par défaut. Une réserve publique et un propriétaire vendeur explicite sont nécessaires avant l’envoi ; le minimum vendeur reste privé. Aucune production sans validation distincte.
+
 ## Marketplace phase 1 (branche de développement)
 
 Parcours vendeur, diagnostics privés et offres d’achat : [audit](docs/PHASE1_AUDIT.md), [installation et exploitation](docs/PHASE1_EXPLOITATION.md), [compte rendu et tests](docs/PHASE1_RAPPORT.md). Les confirmations contractuelles sont désactivées par défaut en attente de validation juridique. Cette livraison ne constitue pas une autorisation de déploiement : les commandes distantes historiques ci-dessous ne doivent pas être exécutées pour cette phase sans accord distinct.

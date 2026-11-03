@@ -25,7 +25,7 @@ KINDS = PHOTO_KINDS + ['registration','ownership','diagnostic']
 
 
 @unittest.skipUnless(WRANGLER, 'définir WRANGLER pour les tests Worker locaux')
-class VendeurTest(unittest.TestCase):
+class SellerFixture(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
@@ -59,7 +59,7 @@ class VendeurTest(unittest.TestCase):
             cls.log.seek(0); raise RuntimeError(cls.log.read())
         cls.tokens = {}
         # Sessions déterministes de test : les routes vérifient réellement les cookies et les rôles en base.
-        for i, name in enumerate(['seller','other','admin'],1):
+        for i, name in enumerate(['seller','other','admin','outsider'],1):
             token = hashlib.sha256(name.encode()).hexdigest(); cls.tokens[name]=token
             cls.sql(f"INSERT INTO users(id,email,name,phone,password_hash,password_salt,role) VALUES({i},'{name}@example.test','{name}','12345678','unused','00','{'admin' if name=='admin' else 'buyer'}'); INSERT INTO sessions(token_hash,user_id,expires_at) VALUES('{hashlib.sha256(token.encode()).hexdigest()}',{i},'2099-01-01T00:00:00Z')")
         cls.garage = cls.call('POST','/api/admin/seller/garages',{'name':'Garage partenaire','address':'Tunis','contact':'contact@example.test','professionalNumber':'GAR-001','validUntil':'2099-12-31'},'admin')[1]['garage']['id']
@@ -68,8 +68,8 @@ class VendeurTest(unittest.TestCase):
 
     def setUp(self):
         for purpose in ['seller_terms','privacy_notice']:
-            self.call('POST','/api/marketplace/consents',{'purpose':purpose,'version':'phase1-draft-1','confirmed':True})
-        self.sql('DELETE FROM seller_upload_attempts')
+            self.call('POST','/api/marketplace/consents',{'purpose':purpose,'version':'lot1-draft-1','confirmed':True})
+        self.sql('DELETE FROM seller_upload_attempts; DELETE FROM marketplace_api_attempts')
 
     @classmethod
     def stop(cls):
@@ -107,8 +107,8 @@ class VendeurTest(unittest.TestCase):
         code,p,_=self.call('POST','/api/seller/submissions',{})
         self.assertEqual(code,201,p); s=p['submission']
         if complete:
-            self.sql('DELETE FROM seller_upload_attempts')
-            data={'make':'Peugeot','model':'208','year':2021,'mileageKm':50000,'fuel':'Essence','vin':'VF3CAHMRPKS123456','location':'Tunis','originCountry':'FR','licensePlate':'AA-123-BB','firstRegistrationDate':'2021-04-18','priceAmount':'65000.000','priceCurrency':'TND','minimumAmount':'55000.000','allowOffers':True,'diagnosticValidUntil':'2099-01-01','saleType':sale_type,'garageId':self.garage,'diagnosticDate':datetime.now(timezone.utc).date().isoformat(),'observations':{k:'Contrôlé sans anomalie' for k in ['engine','transmission','brakes','suspension','steering','electronics','battery','body','tyres','defects']}}
+            self.sql('DELETE FROM seller_upload_attempts; DELETE FROM marketplace_api_attempts')
+            data={'make':'Peugeot','model':'208','year':2021,'mileageKm':50000,'fuel':'Essence','vin':'VF3CAHMRPKS123456','location':'Tunis','originCountry':'FR','licensePlate':'AA-123-BB','firstRegistrationDate':'2021-04-18','priceAmount':'65000.000','priceCurrency':'TND','minimumAmount':'55000.000','publicReserveAmount':'60000.000','allowOffers':True,'diagnosticValidUntil':'2099-01-01','saleType':sale_type,'garageId':self.garage,'diagnosticDate':datetime.now(timezone.utc).date().isoformat(),'observations':{k:'Contrôlé sans anomalie' for k in ['engine','transmission','brakes','suspension','steering','electronics','battery','body','tyres','defects']}}
             data['vin']='VF3'+uuid.uuid4().hex[:14].upper()
             data.update(diagnosticReference='R-'+s['id'],diagnosticVin=data['vin'],diagnosticMileageKm=50000)
             if sale_type=='auction': data.update(auctionStart=(datetime.now(timezone.utc)+timedelta(days=1)).isoformat(),auctionEnd=(datetime.now(timezone.utc)+timedelta(days=3)).isoformat())
@@ -141,10 +141,13 @@ class VendeurTest(unittest.TestCase):
         return p['submission']
 
     def offer(self,s,who='other',amount=60000000):
-        code,p,_=self.call('POST','/api/marketplace/offers',{'reference':'SV-'+s['id'],'amountMinor':amount,'currency':'TND','confirmIntent':True,'rulesVersion':'phase1-draft-1'},who)
+        code,p,_=self.call('POST','/api/marketplace/offers',{'reference':'SV-'+s['id'],'amountMinor':amount,'currency':'TND','confirmIntent':True,'rulesVersion':'lot1-draft-1'},who)
         self.assertEqual(code,201,p)
         return p['id']
 
+
+
+class VendeurTest(SellerFixture):
     def test_01_registration_profile_and_incomplete_draft(self):
         self.assertEqual(self.call('POST','/api/register',{'email':uuid.uuid4().hex+'@example.test','name':'Vendeur neuf','phone':'12345678','password':'VendeurTest42!'},who=None)[0],201)
         s=self.draft();code,p,_=self.call('POST',f"/api/seller/submissions/{s['id']}/submit",{'revision':s['revision']})
@@ -171,29 +174,29 @@ class VendeurTest(unittest.TestCase):
         self.assertTrue(any(x['action']=='document.read' and x['resource_id']==f['id'] for x in self.call('GET','/api/marketplace/dashboard',who='admin')[1]['audit_logs']))
 
     def test_04_offer_authentication_intention_currency_and_self_offer(self):
-        s=self.published();body={'reference':'SV-'+s['id'],'amountMinor':60000000,'currency':'TND','confirmIntent':True,'rulesVersion':'phase1-draft-1'}
-        self.assertEqual(self.call('POST','/api/marketplace/offers',body,who=None)[0],401);self.assertEqual(self.call('POST','/api/marketplace/offers',body)[0],409)
-        for patch,expected in [({'confirmIntent':False},428),({'currency':'EUR'},409),({'amountMinor':60.5},400),({'amountMinor':'60000000'},400)]:
+        s=self.published();body={'reference':'SV-'+s['id'],'amountMinor':60000000,'currency':'TND','confirmIntent':True,'rulesVersion':'lot1-draft-1'}
+        self.assertEqual(self.call('POST','/api/marketplace/offers',body,who=None)[0],401);self.assertEqual(self.call('POST','/api/marketplace/offers',body)[0],403)
+        for patch,expected in [({'confirmIntent':False},428),({'currency':'EUR'},400),({'amountMinor':60.5},400),({'amountMinor':'60000000'},400)]:
             self.assertEqual(self.call('POST','/api/marketplace/offers',{**body,**patch},'other')[0],expected)
-        oid=self.offer(s);self.assertEqual(self.call('GET','/api/marketplace/offers/'+oid,who='other')[1]['offer']['status'],'submitted')
-        self.assertEqual(self.call('POST','/api/offers',{'reference':body['reference'],'kind':'buy_now'},'other')[0],409)
+        oid=self.offer(s);self.assertEqual(self.call('GET','/api/marketplace/offers/'+oid,who='other')[1]['offer']['status'],'pending')
+        self.assertEqual(self.call('POST','/api/offers',{'reference':body['reference'],'kind':'buy_now'},'other')[0],410)
 
     def test_05_manual_acceptance_is_not_contract_and_money_immutable(self):
         s=self.published();oid=self.offer(s);p='/api/marketplace/offers/'+oid
         self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0},'other')[0],403)
         self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0,'amountMinor':1})[0],400)
         self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0})[0],200)
-        d=self.call('GET',p)[1];self.assertEqual(d['offer']['status'],'accepted_by_seller');self.assertIsNone(d['transaction']);self.assertIsNone(d['offer']['counterparty'])
-        self.assertEqual(self.call('POST',p+'/contract',{})[0],409)
+        d=self.call('GET',p)[1];self.assertEqual(d['offer']['status'],'accepted');self.assertIsNone(d['transaction']);self.assertNotIn('counterparty',d['offer'])
+        self.assertEqual(self.call('POST',p+'/contract',{})[0],410)
         self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0})[0],409)
-        self.assertTrue(any(n['event_code']=='offer.submitted' for n in self.call('GET','/api/marketplace/notifications')[1]['notifications']))
+        self.assertTrue(any(n['event_code']=='offer.pending' for n in self.call('GET','/api/marketplace/notifications')[1]['notifications']))
 
     def test_06_concurrent_incompatible_acceptances(self):
         s=self.published();a=self.offer(s);b=self.offer(s,'admin',61000000)
         def accept(oid):return self.call('POST','/api/marketplace/offers/'+oid+'/decision',{'decision':'accept','revision':0})[0]
         with concurrent.futures.ThreadPoolExecutor() as pool:codes=list(pool.map(accept,[a,b]))
         self.assertEqual(sorted(codes),[200,409])
-        offers=self.call('GET','/api/marketplace/offers?side=seller')[1]['offers'];self.assertEqual(sum(o['status']=='accepted_by_seller' and o['submission_id']==s['id'] for o in offers),1)
+        offers=self.call('GET','/api/marketplace/offers?side=seller')[1]['offers'];self.assertEqual(sum(o['status']=='accepted' and o['submission_id']==s['id'] for o in offers),1)
 
     def test_07_expiry_withdrawal_rejection_and_cancellation(self):
         s=self.published();a=self.offer(s);p='/api/marketplace/offers/'+a
@@ -204,24 +207,18 @@ class VendeurTest(unittest.TestCase):
         self.assertEqual(self.call('POST',p+'/decision',{'decision':'reject','revision':0,'reason':''})[0],400)
         self.assertEqual(self.call('POST',p+'/decision',{'decision':'reject','revision':0,'reason':'Prix non retenu'})[0],200)
         d=self.offer(s);p='/api/marketplace/offers/'+d;self.call('POST',p+'/decision',{'decision':'accept','revision':0})
-        self.assertEqual(self.call('POST',p+'/cancel',{'reason':'Accord suspendu'})[0],200)
+        self.assertEqual(self.call('POST',p+'/cancel',{'reason':'Accord suspendu'})[0],403)
 
-    def test_08_two_contract_confirmations_and_dispute(self):
-        # Activation fictive dans la seule base éphémère ; aucune décision juridique réelle.
-        self.sql("UPDATE marketplace_policy SET contract_enabled=1,legal_review_reference='TEST UNIQUEMENT'")
-        try:
-            s=self.published();oid=self.offer(s);p='/api/marketplace/offers/'+oid;self.call('POST',p+'/decision',{'decision':'accept','revision':0})
-            self.assertEqual(self.call('POST',p+'/contract',{})[0],200)
-            b={'confirmContract':True,'rulesVersion':'phase1-draft-1'}
-            self.assertEqual(self.call('POST',p+'/confirm',{**b,'confirmContract':False},'other')[0],428)
-            self.assertEqual(self.call('POST',p+'/confirm',b,'other')[0],200)
-            self.assertEqual(self.call('GET',p)[1]['offer']['status'],'awaiting_contract_confirmation')
-            self.assertEqual(self.call('POST',p+'/confirm',b)[0],200)
-            detail=self.call('GET',p)[1];self.assertEqual(detail['offer']['status'],'contract_confirmed');self.assertEqual(detail['transaction']['amount_minor'],60000000);self.assertEqual(detail['offer']['counterparty']['email'],'other@example.test')
-            self.assertEqual(self.call('POST',p+'/withdraw',{},'other')[0],409)
-            self.assertEqual(self.call('POST','/api/marketplace/reports',{'category':'dispute','offerId':oid,'reason':'Désaccord signalé'},'other')[0],201)
-            self.assertEqual(self.call('GET',p)[1]['transaction']['status'],'disputed')
-        finally:self.sql("UPDATE marketplace_policy SET contract_enabled=0,legal_review_reference=''")
+    def test_08_acceptance_creates_no_contract_sale_or_payment(self):
+        s=self.published();oid=self.offer(s);p='/api/marketplace/offers/'+oid
+        self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0})[0],200)
+        self.assertEqual(self.call('GET',p)[1]['offer']['status'],'accepted')
+        self.assertIsNone(self.call('GET',p)[1]['transaction'])
+        self.assertEqual(self.call('POST',p+'/contract',{})[0],410)
+        self.assertEqual(self.call('POST',p+'/confirm',{'confirmContract':True,'rulesVersion':'lot1-draft-1'},'other')[0],410)
+        self.assertFalse(self.call('GET','/api/marketplace/rules',who=None)[1]['contractEnabled'])
+        account=self.call('GET','/api/me',who='other')[1];self.assertFalse(account['vehicles']);self.assertFalse(account['invoices'])
+        self.assertEqual(self.call('POST','/api/marketplace/reports',{'category':'dispute','offerId':oid,'reason':'Désaccord signalé'},'other')[0],201)
 
     def test_09_revalidation_hides_and_cancels_pending_offers(self):
         s=self.published();oid=self.offer(s);p='/api/marketplace/listings/'+s['id']+'/revalidate'
@@ -284,7 +281,7 @@ class VendeurTest(unittest.TestCase):
         self.assertEqual(self.call('GET','/mes-offres')[2]['Cache-Control'],'private, no-store')
 
     def test_15_eur_exact_values_and_auction_exclusion(self):
-        s=self.draft(True);d={**s['data'],'priceCurrency':'EUR','priceAmount':'12345.67','minimumAmount':'12000.01'}
+        s=self.draft(True);d={**s['data'],'priceCurrency':'EUR','priceAmount':'12345.67','minimumAmount':'12000.01','publicReserveAmount':'12000.00'}
         code,p,_=self.call('PUT','/api/seller/submissions/'+s['id'],{'revision':s['revision'],'data':d});self.assertEqual(code,200,p)
         code,p,_=self.review(self.submit(p['submission']));self.assertEqual(code,200,p)
         lot=next(l for l in self.call('GET','/api/catalogue',who=None)[1] if l['reference']=='SV-'+s['id']);self.assertEqual(lot['priceMinor'],1234567);self.assertEqual(lot['currency'],'EUR');self.assertNotIn('indicativePriceTnd',lot)
@@ -309,28 +306,25 @@ class VendeurTest(unittest.TestCase):
             context.close()
 
     def test_17_browser_private_offer_seller_decision_and_history(self):
-        from playwright.sync_api import sync_playwright, expect
+        from playwright.sync_api import sync_playwright,expect
         s=self.published()
-        with sync_playwright() as pw, pw.chromium.launch(headless=True) as browser:
-            buyer=browser.new_context();buyer.add_cookies([{'name':'my_session','value':self.tokens['other'],'url':self.base}])
-            page=buyer.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-            page.goto(self.base+'/vehicules/SV-'+s['id']);page.locator('#make-offer').click();page.locator('[name=amount]').fill('60000.001');page.locator('[name=intent]').check();page.locator('#offer button').click()
-            expect(page.locator('#status')).to_contain_text('transmise')
-            page.goto(self.base+'/mes-offres');page.get_by_text('Soumise',exact=True).first.wait_for()
-            seller=browser.new_context();seller.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}]);review=seller.new_page();review.on('pageerror',lambda e:errors.append(str(e)))
-            review.goto(self.base+'/vendeur/offres');article=review.locator('article',has=review.locator('a[href="/vehicules/SV-'+s['id']+'"]'))
-            article.get_by_role('button',name='Accepter l’offre',exact=True).click();article.get_by_role('button',name='Ouvrir l’étape de confirmation contractuelle').wait_for()
-            article.get_by_role('button',name='Historique',exact=True).click();article.locator('ol').wait_for()
-            article.get_by_role('button',name='Ouvrir l’étape de confirmation contractuelle').click();expect(review.locator('#status')).to_contain_text('désactivée')
-            self.assertFalse(errors,errors);buyer.close();seller.close()
+        with sync_playwright() as pw,pw.chromium.launch(headless=True) as browser:
+            buyer=browser.new_context();buyer.add_cookies([{'name':'my_session','value':self.tokens['other'],'url':self.base}]);page=buyer.new_page()
+            page.goto(self.base+'/vehicules/SV-'+s['id']);page.get_by_role('button',name='Proposer une offre',exact=True).click()
+            popup=page.locator('#proposal-dialog');popup.locator('[name=amount]').fill('60000.001');popup.locator('[name=intention]').check();popup.get_by_role('button',name='Envoyer ma proposition').click()
+            expect(popup).to_contain_text('Votre proposition a été envoyée')
+            page.goto(self.base+'/mes-offres');expect(page.get_by_text('En attente',exact=True).first).to_be_visible()
+            seller=browser.new_context();seller.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}]);review=seller.new_page();review.goto(self.base+'/vendeur/offres')
+            article=review.locator('article',has=review.locator('a[href="/vehicules/SV-'+s['id']+'"]'))
+            article.get_by_role('button',name='Accepter l’offre',exact=True).click();expect(article).to_contain_text('Acceptée par le vendeur')
+            article.get_by_role('button',name='Historique',exact=True).click();expect(article.locator('ol')).to_contain_text('Acceptée par le vendeur')
+            self.assertEqual(article.locator('[data-action=contract]').count(),0);buyer.close();seller.close()
 
-    def test_18_sale_completion_is_manual_and_revalidation_respects_reservation(self):
+    def test_18_sale_completion_is_manual_and_revalidation_respects_acceptance(self):
         s=self.published();oid=self.offer(s);p='/api/marketplace/listings/'+s['id']
         self.assertEqual(self.call('POST',p+'/availability',{'availability':'sold'})[0],428)
         self.call('POST','/api/marketplace/offers/'+oid+'/decision',{'decision':'accept','revision':0})
         self.assertEqual(self.call('POST',p+'/revalidate',{'revision':s['revision']})[0],409)
-        self.assertEqual(self.call('POST',p+'/availability',{'availability':'sold','confirmExternalCompletion':True})[0],409)
-        self.call('POST','/api/marketplace/offers/'+oid+'/cancel',{'reason':'Vente finalement réalisée en dehors de cette offre'})
         self.assertEqual(self.call('POST',p+'/availability',{'availability':'sold','confirmExternalCompletion':True})[0],200)
         listing=next(x for x in self.call('GET','/api/seller/submissions')[1]['submissions'] if x['id']==s['id']);self.assertEqual(listing['listingState'],'sold')
 
@@ -338,12 +332,12 @@ class VendeurTest(unittest.TestCase):
         original=self.call('GET','/api/marketplace/policy',who='admin')[1]['policy']
         b={'version':'test-policy','offerHours':24,'confirmationHours':48,'withdrawalAllowed':False,'contractEnabled':True,'legalReviewReference':'','confirmLegalReview':False,'minPhotos':7,'retentionDays':30,'identityRequired':False,'identityProcedure':''}
         self.assertEqual(self.call('PUT','/api/marketplace/policy',b)[0],403)
-        self.assertEqual(self.call('PUT','/api/marketplace/policy',b,'admin')[0],400)
+        self.assertEqual(self.call('PUT','/api/marketplace/policy',b,'admin')[0],409)
         try:
             self.assertEqual(self.call('PUT','/api/marketplace/policy',{**b,'contractEnabled':False},'admin')[0],200)
             self.assertFalse(self.call('GET','/api/marketplace/rules',who=None)[1]['withdrawalAllowed'])
         finally:
-            self.sql("UPDATE marketplace_policy SET version='phase1-draft-1',offer_hours=72,confirmation_hours=168,withdrawal_allowed=1,contract_enabled=0,legal_review_reference='',min_photos=8,retention_days=180,identity_required=0,identity_procedure=''")
+            self.sql("UPDATE marketplace_policy SET version='lot1-draft-1',offer_hours=72,confirmation_hours=168,withdrawal_allowed=1,contract_enabled=0,legal_review_reference='',min_photos=8,retention_days=180,identity_required=0,identity_procedure=''")
 
     def test_20_retention_preserves_evidence_and_purges_only_inactive_drafts(self):
         d=self.draft(True);p=self.published();oid=self.offer(p)

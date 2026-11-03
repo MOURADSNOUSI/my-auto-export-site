@@ -1,3 +1,5 @@
+import {proposalRoute,proposals} from './proposals.js';
+import {legacyAuctionsEnabled,lot1Public} from './proposal-domain.js';
 // Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*) et le serveur MCP (worker/mcp.js).
 import {sellerRoutes,routeSeller,sellerMedia,verifiedSellerLots} from './seller.js';
 import {marketplace} from './marketplace.js';
@@ -25,12 +27,14 @@ async function handle(request,env){
   if(url.pathname.startsWith('/media/')&&['GET','HEAD'].includes(request.method))return servirPhoto(env,url);
   if(estRouteMcp(url.pathname))return routeMcp(request,env,url);
   if(url.pathname.startsWith('/api/'))return await routeApi(request,env,url);
-  const detail=url.pathname.match(/^\/vehicules\/(SV-[a-f0-9]{32})$/);
+  const detail=url.pathname.match(/^\/vehicules\/([A-Za-z0-9._-]{1,64})$/);
   if(detail){const lot=(await catalogue(request,env)).find(l=>l.reference===detail[1]);return detailPage(lot);}
   const aliases={'/mes-vehicules':'/vendre','/vendre':'/vendre','/admin-vendeurs':'/admin-vendeurs'};
   if(aliases[url.pathname])return env.ASSETS.fetch(new Request(new URL(aliases[url.pathname],url),request));
   if(['/mes-offres','/vendeur/offres','/garages','/admin/marketplace','/confidentialite','/conditions-marketplace','/droits-donnees'].includes(url.pathname))return marketplacePage(url.pathname);
-  return env.ASSETS.fetch(request);
+  const asset=await env.ASSETS.fetch(request);
+  if(legacyAuctionsEnabled(env)&&['/','/index.html'].includes(url.pathname)&&asset.headers.get('Content-Type')?.includes('text/html'))return new Response((await asset.text()).replace('data-proposal-only="true"','data-proposal-only="false"'),{status:asset.status,headers:asset.headers});
+  return asset;
  }catch(error){
   if(error instanceof ApiError)return json({error:error.message},error.status);
   if(String(error).includes('marketplace_one')||String(error).includes('UNIQUE constraint failed: vehicle_offers'))return json({error:'Une offre incompatible existe déjà.'},409);
@@ -63,6 +67,7 @@ async function routeApi(request, env, url) {
   const path = url.pathname;
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
+  if(proposalRoute(path))return proposals(request,env,url,{json,ApiError,exigerUtilisateur,lireJson,catalogueComplet});
   if(path.startsWith('/api/marketplace/'))return marketplace(request,env,url,{json,ApiError,exigerUtilisateur,lireJson});
   if(sellerRoutes(path))return routeSeller(request,env,url,{json,ApiError,exigerUtilisateur,sha256,CGV_VERSION});
   if (path === "/api/me" && method === "GET") return me(request, env);
@@ -208,7 +213,7 @@ async function me(request, env) {
     env.DB.prepare("SELECT id, reference, make, model, trim, status, purchased_at FROM customer_vehicles WHERE user_id = ? ORDER BY purchased_at DESC, id DESC").bind(user.id).all(),
     env.DB.prepare("SELECT id, vehicle_id, invoice_number, issued_at, total_tnd, status, document_key FROM invoices WHERE user_id = ? ORDER BY issued_at DESC, id DESC").bind(user.id).all()
   ]);
-  const references = [...new Set(offers.results.filter((row) => row.kind === "bid").map((row) => row.reference))];
+  const references = !legacyAuctionsEnabled(env)?[]:[...new Set(offers.results.filter((row) => row.kind === "bid").map((row) => row.reference))];
   const encheres = new Map();
   if (references.length) {
     const [lots, meilleures] = await Promise.all([
@@ -339,16 +344,16 @@ async function lotsFichier(request, env) {
 export async function catalogueComplet(request, env) {
   const [fichier, base] = await Promise.all([
     lotsFichier(request, env),
-    env.DB.prepare("SELECT reference, data, removed, updated_at FROM vehicles").all()
+    env.DB.prepare("SELECT reference, data, removed, updated_at,EXISTS(SELECT 1 FROM vehicle_offer_owners ow WHERE ow.vehicle_id=vehicles.reference) AS offer_owner_assigned FROM vehicles").all()
   ]);
   const lignes = new Map(base.results.map((row) => [row.reference, row]));
   const resultat = fichier.map((lot) => {
     const row = lignes.get(lot.reference);
     lignes.delete(lot.reference);
-    return row ? { lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at } : { lot, source: "fichier", removed: false };
+    return row ? { lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at,offerOwnerAssigned:Boolean(row.offer_owner_assigned) } : { lot, source: "fichier", removed: false };
   });
   for (const row of lignes.values()) {
-    resultat.push({ lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at });
+    resultat.push({ lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at,offerOwnerAssigned:Boolean(row.offer_owner_assigned) });
   }
   const rows=await env.DB.prepare("SELECT s.id,s.stage,s.public_data,x.user_id AS suspended FROM seller_submissions s LEFT JOIN marketplace_suspensions x ON x.user_id=s.user_id").all();
   const sellerRows=new Map(rows.results.map(r=>['SV-'+r.id,r]));
@@ -362,6 +367,7 @@ export async function catalogueComplet(request, env) {
 
 // Lots publics, avec l'état de leur enchère (prix actuel, fin effective…) pour les lots open et upcoming.
 async function catalogue(request, env) {
+  if(!legacyAuctionsEnabled(env))return (await catalogueComplet(request,env)).filter(item=>!item.removed&&(item.offerOwnerAssigned||item.lot.status!=='open'||!item.lot.endsAt||Date.parse(item.lot.endsAt)>Date.now())).map(item=>lot1Public(item.lot));
   const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
   const maintenant = Date.now();
   return items.filter((item) => !item.removed).map((item) => avecEnchere(item.lot, resumes, maintenant));
@@ -421,6 +427,7 @@ async function etiquettesEncherisseurs(env, reference) {
 }
 
 async function detailEnchere(request, env, reference) {
+  if(!legacyAuctionsEnabled(env))throw new ApiError(410,"Les enchères sont désactivées pendant le Lot 1.");
   const lot = await chargerLot(request, env, reference);
   if (!lot?.auction) throw new ApiError(404, "Aucune enchère pour ce lot.");
   const [user, etiquettes, { results }] = await Promise.all([
@@ -462,10 +469,11 @@ async function exigerAdmin(request, env) {
 
 async function routeAdmin(request, env, path, method) {
   const user = await exigerAdmin(request, env);
+  if(path.includes("/auctions/")&&!legacyAuctionsEnabled(env))throw new ApiError(410,"Les enchères sont désactivées pendant le Lot 1.");
   if (path === "/api/admin/vehicles" && method === "GET") {
     const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
     const maintenant = Date.now();
-    const vehicles = items.map((item) => ({ ...item, auction: etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant) }));
+    const vehicles = items.map((item) => ({ ...item, auction: legacyAuctionsEnabled(env)?etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant):null }));
     return json({ vehicles, photosEnabled: Boolean(env.PHOTOS) });
   }
   const encheres = path.match(/^\/api\/admin\/auctions\/([^/]{1,64})$/);
@@ -525,7 +533,7 @@ export async function listerOffres(request, env, reference) {
     lots[item.lot.reference] = {
       title: `${item.lot.make} ${item.lot.model} ${item.lot.trim || ""}`.trim(),
       removed: item.removed,
-      auction: etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant)
+      auction: legacyAuctionsEnabled(env)?etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant):null
     };
   }
   const meilleures = new Map();
@@ -545,6 +553,7 @@ export async function listerOffres(request, env, reference) {
 // Accepter une offre : les autres offres en attente du véhicule sont refusées, le véhicule rejoint « Mes véhicules »
 // de l'acheteur et, si demandé, il est retiré du site. Refuser : l'offre seule passe en « refusée ».
 export async function deciderOffre(request, env, user, offreId, accepter, retirerDuSite = true) {
+  if(!legacyAuctionsEnabled(env))throw new ApiError(410,"Les décisions du module historique sont désactivées pendant le Lot 1.");
   const offre = await env.DB.prepare("SELECT id, user_id, reference, kind, amount_tnd, status FROM offers WHERE id = ?").bind(offreId).first();
   if (!offre) throw new ApiError(404, "Offre introuvable.");
   if (offre.status !== "pending") throw new ApiError(409, "Cette offre a déjà été traitée.");
@@ -737,6 +746,7 @@ async function toggleFavorite(request, env, reference, ajouter) {
 
 async function createOffer(request, env) {
   const user = await exigerUtilisateur(request, env);
+  if(!legacyAuctionsEnabled(env))throw new ApiError(410,"Utilisez Proposer une offre ; les enchères et achats automatiques sont désactivés pendant le Lot 1.");
   const body = await lireJson(request);
   const reference = texte(body.reference, 64);
   if(reference.startsWith('SV-'))throw new ApiError(409,'Utiliser les offres privées marketplace.');

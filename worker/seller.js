@@ -31,7 +31,7 @@ export async function routeSeller(request,env,url,h){
   const row={...r,status:r.stage};
   if(admin)await audit(env,user,'listing.private_read',r.id);
   const f=await financial(env,r.id),diag=await query('SELECT * FROM seller_diagnostics WHERE submission_id=?',r.id).first();
-  const d=JSON.parse(row.data);if(f)Object.assign(d,{priceAmount:decimal(f.asking_minor,f.currency),priceCurrency:f.currency,minimumAmount:f.minimum_minor===null?'':decimal(f.minimum_minor,f.currency),availableFrom:f.available_from,availability:f.availability,deliveryTerms:f.delivery_terms});
+  const d=JSON.parse(row.data);if(f&&d.reservePriceMinor!=null)d.publicReserveAmount=decimal(d.reservePriceMinor,f.currency);if(f)Object.assign(d,{priceAmount:decimal(f.asking_minor,f.currency),priceCurrency:f.currency,minimumAmount:f.minimum_minor===null?'':decimal(f.minimum_minor,f.currency),availableFrom:f.available_from,availability:f.availability,deliveryTerms:f.delivery_terms});
   if(diag){d.diagnosticValidUntil=diag.valid_until||'';d.diagnosticReservations=diag.reservations;} let listingState=row.stage==='archived'?'archived':'active';
   if(['published','archived'].includes(row.stage)){
    const v=await query("SELECT removed,EXISTS(SELECT 1 FROM seller_financials WHERE submission_id=? AND availability='sold') AS sold FROM vehicles WHERE reference=?",r.id,reference(r.id)).first();
