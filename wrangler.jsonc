@@ -4,7 +4,8 @@
 	"main": "worker/main.js",
 	"assets": {
 		"directory": "./my-auto-export",
-		"binding": "ASSETS"
+		"binding": "ASSETS",
+        "run_worker_first": true
 	},
 	// Base de l'espace acheteur (production). Pour une nouvelle base : `npx wrangler d1 create my-auto-export`,
 	// puis remplacer database_id par l'identifiant affiché (voir README).
@@ -16,10 +17,12 @@
 			"migrations_dir": "migrations"
 		}
 	],
-	// Photos envoyées depuis /admin.html (créé avec `npx wrangler r2 bucket create my-auto-export-photos`).
+	// Le bucket SELLER_DOCUMENTS devra être créé séparément et rester privé avant mise en service autorisée.
+    // Photos envoyées depuis /admin.html (créé avec `npx wrangler r2 bucket create my-auto-export-photos`).
 	// Le Worker lit env.PHOTOS ; en local, `wrangler dev` utilise un stockage local, pas celui de production.
 	// Pas de binding DOCUMENTS : le téléchargement des factures PDF reste désactivé (voir README, « Factures PDF »).
 	"r2_buckets": [
+        {"binding":"SELLER_DOCUMENTS","bucket_name":"my-auto-export-seller-private"},
 		{
 			"binding": "PHOTOS",
 			"bucket_name": "my-auto-export-photos"

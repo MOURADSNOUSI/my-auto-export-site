@@ -435,7 +435,8 @@
       html { scroll-behavior: auto; }
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
-  </style>
+  .seller-banner{margin:1rem auto;padding:1.4rem;background:#edf4ff;border:1px solid #b6cff7;border-radius:14px;max-width:1240px}.seller-banner a{display:inline-block;color:#144da2;font-weight:700;margin:.4rem .6rem .4rem 0}
+</style>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -515,6 +516,8 @@
   </section>
 
   <main class="shell">
+<section class="seller-banner"><h2>Vendez votre véhicule sur M&amp;Y AUTO EXPORT</h2><p>Déposez un dossier privé. Publication après vérification du diagnostic par notre équipe.</p><a href="/vendre">Déposer mon véhicule</a> · <a href="/mes-vehicules">Espace vendeur</a> · <a href="/mes-offres">Mes offres privées</a></section>
+
     <section class="block" id="arrivages" aria-labelledby="recent-title" hidden>
       <div class="section-title"><h2 id="recent-title">Arrivages récents</h2>
         <div class="track-buttons"><button type="button" data-scroll="-1" aria-label="Précédents">‹</button><button type="button" data-scroll="1" aria-label="Suivants">›</button></div>
@@ -848,6 +851,7 @@
 
     // Mise à prix d'enchère en priorité, sinon prix indicatif.
     function prixLot(lot) {
+      if(lot.marketplace)return lot.currency==="TND"?lot.priceMinor/1000:null;
       return lot.startingPriceTnd ?? lot.indicativePriceTnd ?? null;
     }
 
@@ -856,6 +860,7 @@
     }
 
     function libellePrix(lot) {
+      if(lot.marketplace)return {label:'Prix demandé',value:new Intl.NumberFormat('fr-FR',{style:'currency',currency:lot.currency,minimumFractionDigits:lot.currency==='TND'?3:2}).format(lot.priceMinor/(lot.currency==='TND'?1000:100))};
       if (lot.auction?.currentBidTnd != null) {
         return { label: lot.auction.status === "ended" ? "Dernière enchère" : "Enchère actuelle", value: formatTnd(lot.auction.currentBidTnd) };
       }
@@ -1254,7 +1259,7 @@
         </div>
         <div class="lot-side">
           <div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>
-          ${prixEnchere(lot)}${boutonAchat(lot)}
+          ${lot.diagnosticVerified?'<p>Diagnostic vérifié par M&Y AUTO EXPORT</p>':''}${prixEnchere(lot)}${boutonAchat(lot)}
           ${lot.auction?.status === "live" && compte.disponible ? `<button class="bid-now" type="button" data-bid-open="${escapeHtml(lot.reference)}">Enchérir<small>minimum ${formatTnd(lot.auction.minNextBidTnd)}</small></button>` : ""}
           <div class="lot-actions"><button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}" aria-pressed="${isWatched}" aria-label="${isWatched ? "Retirer des favoris" : "Ajouter aux favoris"}">${icone("heart")}</button></div>
         </div>
@@ -1281,9 +1286,9 @@
         <h3 class="fiche-section">Enlèvement</h3>
         ${enlevementLot(lot)}
         ${lot.auction && compte.disponible ? "" : `<div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>`}
-        ${prixEnchere(lot)}${boutonAchat(lot)}
+        ${lot.diagnosticVerified?'<p>Diagnostic vérifié par M&Y AUTO EXPORT</p>':''}${prixEnchere(lot)}${boutonAchat(lot)}
         ${panneauEnchere(lot)}
-        <div class="lot-actions">${lienLot(lot)}</div>`;
+        <div class="lot-actions">${lot.marketplace?`<a href="/vehicules/${escapeHtml(lot.reference)}">Consulter et faire une offre privée</a>`:lienLot(lot)}</div>`;
       document.getElementById("lot-dialog-body").dataset.photos = JSON.stringify(photos.map((photo) => photo.url));
       if (!lotDialog.open) lotDialog.showModal();
       if (lot.auction && compte.disponible) suivreEnchere(reference);
@@ -1301,7 +1306,7 @@
 
     // Photo hébergée en https ou fichier local du dossier photos/ du site.
     function photoAffichable(url) {
-      return typeof url === "string" && (url.startsWith("https://") || /^photos\/[^/]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url));
+      return typeof url === "string" && (/^\/seller-media\/[a-f0-9]{32}$/.test(url) || url.startsWith("https://") || /^photos\/[^/]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url));
     }
 
     function remplirFiltre(selectId, valeurs, libelleInitial) {

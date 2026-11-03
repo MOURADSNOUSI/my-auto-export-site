@@ -1,4 +1,9 @@
 // Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*) et le serveur MCP (worker/mcp.js).
+import {sellerRoutes,routeSeller,sellerMedia,verifiedSellerLots} from './seller.js';
+import {marketplace} from './marketplace.js';
+import {diagnosticValid,expireOffers,policy} from './marketplace-domain.js';
+import {purgeSeller} from './seller-domain.js';
+import {marketplacePage,detailPage} from './marketplace-pages.js';
 import { estRouteMcp, routeMcp } from "./mcp.js";
 
 const SESSION_COOKIE = "my_session";
@@ -12,20 +17,38 @@ const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
+async function handle(request,env){
+ const url=new URL(request.url);
+ try {
+  const media=url.pathname.match(/^\/seller-media\/([a-f0-9]{32})$/);
+  if(media&&['GET','HEAD'].includes(request.method))return sellerMedia(env,media[1],request.method==='HEAD');
+  if(url.pathname.startsWith('/media/')&&['GET','HEAD'].includes(request.method))return servirPhoto(env,url);
+  if(estRouteMcp(url.pathname))return routeMcp(request,env,url);
+  if(url.pathname.startsWith('/api/'))return await routeApi(request,env,url);
+  const detail=url.pathname.match(/^\/vehicules\/(SV-[a-f0-9]{32})$/);
+  if(detail){const lot=(await catalogue(request,env)).find(l=>l.reference===detail[1]);return detailPage(lot);}
+  const aliases={'/mes-vehicules':'/vendre','/vendre':'/vendre','/admin-vendeurs':'/admin-vendeurs'};
+  if(aliases[url.pathname])return env.ASSETS.fetch(new Request(new URL(aliases[url.pathname],url),request));
+  if(['/mes-offres','/vendeur/offres','/garages','/admin/marketplace','/confidentialite','/conditions-marketplace','/droits-donnees'].includes(url.pathname))return marketplacePage(url.pathname);
+  return env.ASSETS.fetch(request);
+ }catch(error){
+  if(error instanceof ApiError)return json({error:error.message},error.status);
+  if(String(error).includes('marketplace_one')||String(error).includes('UNIQUE constraint failed: vehicle_offers'))return json({error:'Une offre incompatible existe déjà.'},409);
+  // Le message et la pile d'une erreur D1/R2 peuvent contenir des données privées.
+  console.error('worker_request_failed');return json({error:'Erreur interne, réessaie plus tard.'},500);
+ }
+}
 export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    if (url.pathname.startsWith("/media/") && (request.method === "GET" || request.method === "HEAD")) return servirPhoto(env, url);
-    if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
-    try {
-      return await routeApi(request, env, url);
-    } catch (error) {
-      if (error instanceof ApiError) return json({ error: error.message }, error.status);
-      console.error(error);
-      return json({ error: "Erreur interne, réessaie plus tard." }, 500);
-    }
+ async fetch(request,env){
+  const response=await handle(request,env),headers=new Headers(response.headers),path=new URL(request.url).pathname;
+  headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','same-origin');
+  if(path.startsWith('/api/')||['/vendre','/mes-vehicules','/mes-offres','/vendeur/offres','/garages','/admin/marketplace'].includes(path)||path.includes('vendeur')){
+   headers.set('Cache-Control','private, no-store');headers.set('X-Robots-Tag','noindex, nofollow');
+   if(!headers.has('Content-Security-Policy'))headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
   }
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+ },
+ async scheduled(event,env,ctx){ctx.waitUntil((async()=>{await expireOffers(env);const p=await policy(env);await purgeSeller(env,p.retention_days);})());}
 };
 
 export class ApiError extends Error {
@@ -40,6 +63,8 @@ async function routeApi(request, env, url) {
   const path = url.pathname;
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
+  if(path.startsWith('/api/marketplace/'))return marketplace(request,env,url,{json,ApiError,exigerUtilisateur,lireJson});
+  if(sellerRoutes(path))return routeSeller(request,env,url,{json,ApiError,exigerUtilisateur,sha256,CGV_VERSION});
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/catalogue" && method === "GET") return json(await catalogue(request, env));
   const enchere = path.match(/^\/api\/auctions\/([^/]{1,64})$/);
@@ -77,9 +102,13 @@ async function lireJson(request) {
     throw new ApiError(415, "Format attendu : JSON.");
   }
   try {
-    const body = await request.json();
-    if (body && typeof body === "object") return body;
-  } catch {}
+    if(Number(request.headers.get('Content-Length'))>262144)throw new ApiError(413,'JSON trop volumineux.');
+    const reader=request.body?.getReader();if(!reader)throw new Error();const chunks=[];let size=0;
+    while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>262144){await reader.cancel();throw new ApiError(413,'JSON trop volumineux.');}chunks.push(value);}
+    const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length;}
+    const body = JSON.parse(new TextDecoder().decode(bytes));
+    if (body && typeof body === "object" && !Array.isArray(body)) return body;
+  } catch(e) {if(e instanceof ApiError)throw e;}
   throw new ApiError(400, "Requête illisible.");
 }
 
@@ -148,6 +177,7 @@ async function utilisateurConnecte(request, env) {
 async function exigerUtilisateur(request, env) {
   const user = await utilisateurConnecte(request, env);
   if (!user) throw new ApiError(401, "Connecte-toi à ton espace acheteur.");
+  if(await env.DB.prepare('SELECT 1 FROM marketplace_suspensions WHERE user_id=?').bind(user.id).first())throw new ApiError(403,'Compte suspendu. Contacter la plateforme.');
   return user;
 }
 
@@ -320,7 +350,14 @@ export async function catalogueComplet(request, env) {
   for (const row of lignes.values()) {
     resultat.push({ lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at });
   }
-  return resultat;
+  const rows=await env.DB.prepare("SELECT s.id,s.stage,s.public_data,x.user_id AS suspended FROM seller_submissions s LEFT JOIN marketplace_suspensions x ON x.user_id=s.user_id").all();
+  const sellerRows=new Map(rows.results.map(r=>['SV-'+r.id,r]));
+  const checked=await verifiedSellerLots(env,resultat);
+  return Promise.all(checked.map(async item=>{
+   if(!item.lot.reference.startsWith('SV-'))return item;
+   const row=sellerRows.get(item.lot.reference),valid=row&&row.stage==='published'&&!row.suspended&&await diagnosticValid(env,row.id);
+   return {...item,removed:item.removed||!valid,lot:{...item.lot,url:'/vehicules/'+item.lot.reference}};
+  }));
 }
 
 // Lots publics, avec l'état de leur enchère (prix actuel, fin effective…) pour les lots open et upcoming.
@@ -633,6 +670,7 @@ function validerVehicule(body, reference) {
 
 export async function enregistrerVehicule(env, user, reference, body) {
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Référence invalide (lettres, chiffres, . _ - ; 40 caractères maximum).");
+  if(reference.startsWith('SV-'))throw new ApiError(409,'Les annonces vendeur passent par la validation marketplace.');
   const lot = validerVehicule(body, reference);
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 0, ?, ?)
@@ -701,6 +739,7 @@ async function createOffer(request, env) {
   const user = await exigerUtilisateur(request, env);
   const body = await lireJson(request);
   const reference = texte(body.reference, 64);
+  if(reference.startsWith('SV-'))throw new ApiError(409,'Utiliser les offres privées marketplace.');
   const kind = body.kind === "buy_now" ? "buy_now" : "bid";
   if (user.terms_version !== CGV_VERSION) {
     throw new ApiError(428, "Accepte les conditions générales de vente avant d'enchérir ou d'acheter.");

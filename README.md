@@ -1,5 +1,9 @@
 # my-auto-export-site
 
+## Marketplace phase 1 (branche de développement)
+
+Parcours vendeur, diagnostics privés et offres d’achat : [audit](docs/PHASE1_AUDIT.md), [installation et exploitation](docs/PHASE1_EXPLOITATION.md), [compte rendu et tests](docs/PHASE1_RAPPORT.md). Les confirmations contractuelles sont désactivées par défaut en attente de validation juridique. Cette livraison ne constitue pas une autorisation de déploiement : les commandes distantes historiques ci-dessous ne doivent pas être exécutées pour cette phase sans accord distinct.
+
 ## Tests
 
 ```
