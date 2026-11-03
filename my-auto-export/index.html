@@ -343,6 +343,7 @@
     .offer-status { padding: 2px 7px; border-radius: 3px; background: var(--gold-pale); color: #725b2d; font-size: 10px; font-weight: 750; }
     .offer-status.accepted { background: var(--green-pale); color: var(--green); }
     .offer-status.refused { background: #fbeaea; color: #8f2a2a; }
+    .offer-status.withdrawn { background: #e6eae7; color: var(--muted); }
     .admin-link { display: inline-flex; align-items: center; margin-right: 8px; border-color: var(--green); color: var(--green); }
     .logout-button { margin-top: 18px; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 12px; font-weight: 700; }
     .lot-dialog { width: min(880px, calc(100% - 28px)); }
@@ -1231,7 +1232,7 @@
       const user = compte.user;
       const favoris = [...watchlist].map((reference) => lots.find((lot) => lot.reference === reference)).filter(Boolean);
       const statuts = {
-        pending: "En attente de confirmation", accepted: "Acceptée · l'équipe vous contacte", refused: "Refusée",
+        pending: "En attente de confirmation", accepted: "Acceptée · l'équipe vous contacte", refused: "Refusée", withdrawn: "Retirée",
         leading: "Vous menez", outbid: "Surenchérie", won: "Remportée", lost: "Perdue", reserve_not_met: "Réserve non atteinte"
       };
       const statutsVehicule = { purchased: "Acheté", in_preparation: "En préparation", ready_for_pickup: "Prêt à enlever", picked_up: "Enlevé" };
@@ -1261,7 +1262,8 @@
             const lot = lots.find((item) => item.reference === offer.reference);
             return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
               <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Enchère"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
-              <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span></li>`;
+              <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span>
+              ${offer.canWithdraw ? `<button type="button" class="text-action" data-withdraw="${offer.id}">Retirer mon offre</button>` : ""}</li>`;
           }).join("")}</ul>` : `<p class="account-empty">Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères.</p>`}
         </section>
         <section class="account-panel hidden" data-account-panel="favorites">
@@ -1649,6 +1651,21 @@
       if (detail) {
         accountDialog.close();
         ouvrirFiche(detail.dataset.detail);
+        return;
+      }
+      const retrait = event.target.closest("[data-withdraw]");
+      if (retrait) {
+        if (!confirm("Retirer cette enchère ? Elle ne comptera plus et le prix reviendra à l'offre précédente.")) return;
+        retrait.disabled = true;
+        try {
+          await api(`/api/offers/${encodeURIComponent(retrait.dataset.withdraw)}`, { method: "DELETE" });
+        } catch (error) {
+          alert(error.message);
+        }
+        await chargerCompte();
+        chargerCatalogue();
+        ouvrirEspace();
+        document.querySelector('#account-body [data-account-view="offers"]')?.click();
         return;
       }
       if (event.target.closest("[data-logout]")) {

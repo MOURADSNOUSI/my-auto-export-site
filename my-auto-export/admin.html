@@ -92,7 +92,7 @@
     .bid-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 2px; }
     .decision { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .badge.offer-accepted, .badge.sold { background: var(--green); color: white; }
-    .badge.offer-refused { background: #e6eae7; color: var(--muted); text-decoration: line-through; }
+    .badge.offer-withdrawn, .badge.offer-refused { background: #e6eae7; color: var(--muted); text-decoration: line-through; }
     .badge.offer-pending { background: var(--gold-pale); color: #725b2d; }
     .remove-check { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-size: 14px; font-weight: 650; }
     .remove-check input { width: 20px; height: 20px; accent-color: var(--green); }
@@ -372,7 +372,7 @@
       return `<div class="meta auction-meta">Enchère ${fin} · ${meilleure}${reserve}</div>`;
     }
 
-    const STATUTS_OFFRE = { pending: "En attente", accepted: "Acceptée", refused: "Refusée" };
+    const STATUTS_OFFRE = { pending: "En attente", accepted: "Acceptée", refused: "Refusée", withdrawn: "Retirée" };
 
     function offresDe(reference) {
       return (etat.offres || []).filter((offre) => offre.reference === reference);
