@@ -91,3 +91,9 @@ Vérification visuelle Chromium sur ordinateur (1440 px), tablette (820 px) et m
 Les fichiers `docs/images/lot1-*.png` sont des captures de données fictives, pas des annonces réelles. `docs/PHASE1_EXPLOITATION.md` renvoie désormais vers les instructions de ce Lot 1.
 
 Contrôle complémentaire des annonces sans réserve : cas élargi réussi (25,681 s), avec devise TND visible et absence de valeur déduite du prix demandé. Aperçu actualisé sur http://127.0.0.1:8787/ dans une base locale distincte ; 20 annonces historiques restent visibles, sans compte à rebours ni données d’enchères, et aucune affectation réelle n’a été effectuée.
+
+## Pull Request et contrôle externe
+
+[PR #11](https://github.com/MOURADSNOUSI/my-auto-export-site/pull/11) ouverte sur `feature/marketplace-phase1` (PR #10), sans fusion. Issue #5 mise à jour pour suivi.
+
+Le contrôle automatique **Workers Builds: my-auto-export-site** a échoué immédiatement sur 5495f09. L'API GitHub ne fournit que le lien/identifiant Cloudflare, sans message d'erreur ni annotation ; la cause n'est pas établie. Ce résultat externe est distinct des 115 tests réussis, des vérifications ciblées et du bundle local en simulation réussi. Aucun build externe n'a été relancé et aucune configuration de workflow n'a été modifiée. Avant toute production autorisée, examiner ce journal, valider les conditions juridiques et renseigner réserves/propriétaires réels.
