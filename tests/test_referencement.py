@@ -44,7 +44,7 @@ class ReferencementTest(unittest.TestCase):
         page = (SITE / "index.html").read_text()
         self.assertIn(f'<link rel="canonical" href="{DOMAINE}/">', page)
         self.assertIn(f'<meta property="og:image" content="{DOMAINE}/logo.png">', page)
-        self.assertIn('<meta name="viewport" content="width=device-width, initial-scale=1">', page)
+        self.assertIn('<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">', page)
         self.assertEqual(len(re.findall(r"<h1[ >]", page)), 1)
         donnees = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(1))
         self.assertEqual((donnees["@type"], donnees["url"], donnees["email"]), ("AutoDealer", f"{DOMAINE}/", "contact@myautoexport.com"))

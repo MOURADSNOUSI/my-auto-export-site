@@ -2,7 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10231b">
   <meta name="theme-color" content="#101513">
   <meta name="description" content="M&Y AUTO EXPORT : achat et import de véhicules d'occasion sélectionnés en Europe et livrés en Tunisie. Stock, enchères en ligne et achat direct, prix affichés en dinars tunisiens (TND).">
   <title>M&Y AUTO EXPORT — Achat et import de véhicules européens en Tunisie</title>
@@ -52,8 +53,8 @@
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 76px; }
-    body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.5; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 76px; }
+    body { margin: 0; overflow-x: clip; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.5; }
     button, input, select, textarea { font: inherit; }
     button, a, select { -webkit-tap-highlight-color: transparent; }
     a { color: inherit; text-decoration: none; }
@@ -426,6 +427,10 @@
       .brand-name small { font-size: 10px; }
       .account-chip { margin-left: 2px; padding-left: 8px; }
       .icon-button { width: 38px; height: 38px; }
+      .header-tools { gap: 0; }
+      .account-chip { margin-left: 0; padding-left: 4px; }
+      .account-chip small { display: none; }
+      .account-chip strong { font-size: 13px; }
       #nav-search { display: none; }
       .main-nav { padding-inline: 14px; }
       .hero-inner { padding: 34px 0 30px; }
@@ -448,6 +453,11 @@
       .steps { grid-template-columns: 1fr; gap: 10px; }
       .account-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .footer-inner { align-items: start; flex-direction: column; gap: 5px; }
+    }
+    /* iOS zoome sur tout champ dont la police est inférieure à 16 px */
+    @media (hover: none) and (pointer: coarse), (max-width: 920px) {
+      input, select, textarea, .field, .select-field, .offer-row input, .form-field input, .form-field textarea { font-size: 16px; }
+      .footer-inner { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
     }
     @media (max-width: 359px) {
       .brand-name { display: none; }
