@@ -1055,7 +1055,10 @@ async function placerEnchere(request, env, user, lot, body) {
 
   const auction = etatEnchere(lot, (await resumesEncheres(env)).get(lot.reference), Date.now());
   return json({
-    offer: { id: offer.id, reference: offer.reference, amountTnd: offer.amount_tnd, kind: offer.kind, status: "leading", createdAt: offer.created_at },
+    offer: {
+      id: offer.id, reference: offer.reference, amountTnd: offer.amount_tnd, kind: offer.kind, status: "leading", createdAt: offer.created_at,
+      canWithdraw: retraitPossible(auction, Date.now())
+    },
     auction
   }, 201);
 }

@@ -525,6 +525,12 @@ class EncheresTest(unittest.TestCase):
         page.wait_for_function("document.querySelector('#auction-panel .current-box strong')?.textContent.includes('102')", timeout=15000)
         self.assertNotIn("Vous êtes le meilleur enchérisseur", page.text_content("#auction-panel"))
         self.assertEqual(page.input_value("#offer-amount"), "103000")
+        # Alice retire sa propre enchère depuis la fiche : le bouton disparaît.
+        self.assertIn("Retirer mon enchère de", page.text_content("#auction-panel .withdraw-bid"))
+        page.click("#auction-panel .withdraw-bid")
+        page.wait_for_selector("#auction-panel .withdraw-bid", state="detached", timeout=15000)
+        statut = next(o for o in self.requete("/api/me", cookie=self.cookies["alice@ex.com"])[1]["offers"] if o["reference"] == "ENC-9")
+        self.assertEqual(statut["status"], "withdrawn")
 
 
 if __name__ == "__main__":

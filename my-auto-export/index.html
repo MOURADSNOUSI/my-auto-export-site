@@ -998,6 +998,7 @@
         </div>`;
       } else {
         const meneur = encheres?.[0]?.you;
+        const retirable = compte.offers.find((offer) => offer.reference === lot.reference && offer.kind === "bid" && offer.canWithdraw);
         action = `<form class="offer-form bid-form" data-offer="${escapeHtml(lot.reference)}">
           ${meneur ? `<p class="form-success">Vous êtes le meilleur enchérisseur.</p>` : ""}
           <div class="step-bids" role="group" aria-label="Augmenter mon enchère">${[1, 2, 5].map((n) => `<button type="button" data-step="${n * a.incrementTnd}">+${formatTnd(n * a.incrementTnd)}</button>`).join("")}</div>
@@ -1007,6 +1008,7 @@
           ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
           <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
           <p class="form-error" role="alert" hidden></p>
+          ${retirable ? `<button type="button" class="text-action withdraw-bid" data-withdraw="${retirable.id}">Retirer mon enchère de ${formatTnd(retirable.amountTnd)}</button><p class="form-footnote">Retrait possible jusqu'à 12 h avant la fin de la vente.</p>` : ""}
         </form>`;
       }
       const finTunis = a.endsAt ? new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Tunis" }).format(new Date(a.endsAt)) : "";
@@ -1169,6 +1171,18 @@
       }
       updateView();
       afficherCompte();
+    }
+
+    async function retirerEnchere(bouton) {
+      if (!confirm("Retirer cette enchère ? Elle ne comptera plus et le prix reviendra à l'offre précédente.")) return;
+      bouton.disabled = true;
+      try {
+        await api(`/api/offers/${encodeURIComponent(bouton.dataset.withdraw)}`, { method: "DELETE" });
+      } catch (error) {
+        alert(error.message);
+      }
+      await chargerCompte();
+      await chargerCatalogue();
     }
 
     function numeroMembre(user) {
@@ -1540,7 +1554,7 @@
     });
 
     const lotDialog = document.getElementById("lot-dialog");
-    lotDialog.addEventListener("click", (event) => {
+    lotDialog.addEventListener("click", async (event) => {
       const thumb = event.target.closest("[data-thumb]");
       if (thumb) {
         const index = Number(thumb.dataset.thumb);
@@ -1569,6 +1583,13 @@
         const base = Math.max(Number(champ.value) || 0, Number(champ.min));
         champ.value = base + Number(pas.dataset.step);
         majTotalEnchere();
+        return;
+      }
+      const retrait = event.target.closest("[data-withdraw]");
+      if (retrait) {
+        const reference = document.getElementById("auction-panel")?.dataset.ref;
+        await retirerEnchere(retrait);
+        if (reference) rafraichirEnchere(reference);
         return;
       }
       const connexionOffre = event.target.closest("[data-offer-login]");
@@ -1653,17 +1674,8 @@
         ouvrirFiche(detail.dataset.detail);
         return;
       }
-      const retrait = event.target.closest("[data-withdraw]");
-      if (retrait) {
-        if (!confirm("Retirer cette enchère ? Elle ne comptera plus et le prix reviendra à l'offre précédente.")) return;
-        retrait.disabled = true;
-        try {
-          await api(`/api/offers/${encodeURIComponent(retrait.dataset.withdraw)}`, { method: "DELETE" });
-        } catch (error) {
-          alert(error.message);
-        }
-        await chargerCompte();
-        chargerCatalogue();
+      if (event.target.closest("[data-withdraw]")) {
+        await retirerEnchere(event.target.closest("[data-withdraw]"));
         ouvrirEspace();
         document.querySelector('#account-body [data-account-view="offers"]')?.click();
         return;
