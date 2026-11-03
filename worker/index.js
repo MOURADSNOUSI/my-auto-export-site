@@ -692,7 +692,7 @@ async function retirerOffre(request, env, offreId) {
   const user = await exigerUtilisateur(request, env);
   const offre = await env.DB.prepare("SELECT id, reference, kind, status FROM offers WHERE id = ? AND user_id = ?").bind(offreId, user.id).first();
   if (!offre) throw new ApiError(404, "Offre introuvable.");
-  if (offre.kind !== "bid") throw new ApiError(400, "Seule une enchère peut être retirée.");
+  if (offre.kind !== "bid") throw new ApiError(400, "Un achat immédiat n'est pas révocable : seule une enchère d'une vente ouverte peut être retirée.");
   if (offre.status !== "pending") throw new ApiError(409, "Cette offre a déjà été traitée ou retirée.");
   const lot = await chargerLot(request, env, offre.reference);
   if (!retraitPossible(lot?.auction, Date.now())) {

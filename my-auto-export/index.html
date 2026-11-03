@@ -1263,7 +1263,7 @@
             return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
               <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Enchère"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
               <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span>
-              ${offer.canWithdraw ? `<button type="button" class="text-action" data-withdraw="${offer.id}">Retirer mon offre</button>` : ""}</li>`;
+              ${offer.canWithdraw ? `<button type="button" class="text-action" data-withdraw="${offer.id}">Retirer mon offre</button>` : offer.kind === "buy_now" ? `<small class="muted">Achat immédiat : non révocable</small>` : ""}</li>`;
           }).join("")}</ul>` : `<p class="account-empty">Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères.</p>`}
         </section>
         <section class="account-panel hidden" data-account-panel="favorites">
