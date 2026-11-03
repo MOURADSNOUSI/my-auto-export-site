@@ -107,6 +107,44 @@ class EncheresTest(unittest.TestCase):
     def enchere(self, reference):
         return self.requete(f"/api/auctions/{reference}", cookie=self.cookies["alice@ex.com"])[1]
 
+    def test_retrait_d_une_enchere_avant_12_heures_de_la_fin(self):
+        self.creer_lot("RETRAIT-1", endsAt=dans(hours=30))
+        self.assertEqual(self.encherir("alice", "RETRAIT-1", 100000)[0], 201)
+        statut, data, _ = self.encherir("bob", "RETRAIT-1", 101000)
+        self.assertEqual(statut, 201, data)
+        offre_bob = data["offer"]["id"]
+        mes_offres = self.requete("/api/me", cookie=self.cookies["bob@ex.com"])[1]["offers"]
+        self.assertTrue(next(o for o in mes_offres if o["id"] == offre_bob)["canWithdraw"])
+        # Une autre personne ne peut pas retirer l'offre.
+        self.assertEqual(self.requete(f"/api/offers/{offre_bob}", method="DELETE", cookie=self.cookies["alice@ex.com"])[0], 404)
+        statut, data, _ = self.requete(f"/api/offers/{offre_bob}", method="DELETE", cookie=self.cookies["bob@ex.com"])
+        self.assertEqual((statut, data["status"]), (200, "withdrawn"), data)
+        self.assertEqual(data["auction"]["currentBidTnd"], 100000)
+        self.assertEqual(data["auction"]["bidCount"], 1)
+        mes_offres = self.requete("/api/me", cookie=self.cookies["bob@ex.com"])[1]["offers"]
+        retiree = next(o for o in mes_offres if o["id"] == offre_bob)
+        self.assertEqual((retiree["status"], retiree["canWithdraw"]), ("withdrawn", False))
+        self.assertEqual(self.requete(f"/api/offers/{offre_bob}", method="DELETE", cookie=self.cookies["bob@ex.com"])[0], 409)
+        # Le prix minimum suivant revient au niveau de l'offre précédente.
+        self.assertEqual(self.encherir("bob", "RETRAIT-1", 101000)[0], 201)
+
+    def test_retrait_refuse_a_moins_de_12_heures_de_la_fin(self):
+        self.creer_lot("RETRAIT-2", endsAt=dans(hours=11))
+        statut, data, _ = self.encherir("alice", "RETRAIT-2", 100000)
+        self.assertEqual(statut, 201, data)
+        offre = data["offer"]["id"]
+        mes_offres = self.requete("/api/me", cookie=self.cookies["alice@ex.com"])[1]["offers"]
+        self.assertFalse(next(o for o in mes_offres if o["id"] == offre)["canWithdraw"])
+        statut, data, _ = self.requete(f"/api/offers/{offre}", method="DELETE", cookie=self.cookies["alice@ex.com"])
+        self.assertEqual(statut, 403, data)
+        self.assertEqual(self.enchere("RETRAIT-2")["auction"]["currentBidTnd"], 100000)
+
+    def test_retrait_impossible_pour_une_offre_deja_acceptee(self):
+        self.creer_lot("RETRAIT-3", endsAt=dans(hours=30), buyNowPriceTnd=150000)
+        statut, data, _ = self.requete("/api/offers", {"reference": "RETRAIT-3", "kind": "buy_now"}, "POST", self.cookies["alice@ex.com"])
+        self.assertEqual(statut, 201, data)
+        self.assertEqual(self.requete(f"/api/offers/{data['offer']['id']}", method="DELETE", cookie=self.cookies["alice@ex.com"])[0], 400)
+
     def test_regles_du_montant_minimum(self):
         self.creer_lot("ENC-1")
         statut, data, _ = self.encherir("alice", "ENC-1", 99000)

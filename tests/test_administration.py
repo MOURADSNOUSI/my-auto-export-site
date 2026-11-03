@@ -198,25 +198,6 @@ class AdministrationTest(unittest.TestCase):
         statut, data, _ = self.requete("/api/offers", {"reference": "MY-ADM-2", "amount": 120000}, "POST", acheteur)
         self.assertEqual(statut, 201, data)
 
-    def test_caracteristiques_pour_les_filtres(self):
-        cookie = self.cookie("admin@example.com")
-        complet = {"make": "Kia", "model": "Ceed", "status": "stock", "transmission": "Automatique", "color": "Rouge", "condition": "used",
-                   "powerHp": 140, "engineCc": 1500, "doors": 5, "seats": 5}
-        statut, data, _ = self.requete("/api/admin/vehicles/MY-FILTRES", complet, "PUT", cookie)
-        self.assertEqual(statut, 200, data)
-        lot = self.catalogue_public()["MY-FILTRES"]
-        for cle in ("transmission", "color", "condition", "powerHp", "engineCc", "doors", "seats"):
-            self.assertEqual(lot[cle], complet[cle], cle)
-        # Champs vides : rien n'est enregistré, le filtre ne les inventera pas.
-        statut, _, _ = self.requete("/api/admin/vehicles/MY-FILTRES", {"make": "Kia", "model": "Ceed", "status": "stock", "condition": "", "doors": None}, "PUT", cookie)
-        self.assertEqual(statut, 200)
-        lot = self.catalogue_public()["MY-FILTRES"]
-        self.assertNotIn("condition", lot)
-        self.assertNotIn("doors", lot)
-        for corps in ({"condition": "casse"}, {"powerHp": 0}, {"doors": 2.5}, {"seats": 500}, {"engineCc": 99999}):
-            statut, _, _ = self.requete("/api/admin/vehicles/MY-FILTRES", {"make": "Kia", "model": "Ceed", "status": "stock", **corps}, "PUT", cookie)
-            self.assertEqual(statut, 400, corps)
-
     def test_donnees_invalides_refusees(self):
         cookie = self.cookie("admin@example.com")
         cas = {

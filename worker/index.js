@@ -24,6 +24,7 @@ export function depotRequis(lot) {
   return DEPOSIT_TIERS.find(([plafond]) => valeur <= plafond)?.[1] ?? DEPOSIT_TOP_TND;
 }
 const DEFAULT_TND_PER_EUR = 3.4;
+const RETRAIT_MIN_MS = 12 * 3_600_000; // une enchère ne peut plus être retirée dans les 12 dernières heures
 const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes repousse la fin de 2 minutes
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -132,6 +133,8 @@ async function routeApi(request, env, url, ctx) {
   if (path === "/api/login" && method === "POST") return login(request, env);
   if (path === "/api/logout" && method === "POST") return logout(request, env);
   if (path === "/api/offers" && method === "POST") return createOffer(request, env);
+  const retrait = path.match(/^\/api\/offers\/(\d{1,12})$/);
+  if (retrait && method === "DELETE") return retirerOffre(request, env, Number(retrait[1]));
   if (path === "/api/terms" && method === "POST") return accepterConditions(request, env);
   if (path === "/api/deposit/card" && method === "POST") return caution_carte(request, env, url);
   if (path === "/api/deposit/transfer" && method === "POST") return caution_virement(request, env);
@@ -405,7 +408,7 @@ async function me(request, env) {
   if (!user) return json({ user: null }, 401);
   const [favorites, offers, vehicles, invoices] = await Promise.all([
     env.DB.prepare("SELECT reference FROM favorites WHERE user_id = ? ORDER BY created_at DESC").bind(user.id).all(),
-    env.DB.prepare("SELECT id, reference, amount_tnd, kind, status, created_at FROM offers WHERE user_id = ? ORDER BY id DESC").bind(user.id).all(),
+    env.DB.prepare("SELECT id, reference, amount_tnd, kind, status, created_at, withdrawn_at FROM offers WHERE user_id = ? ORDER BY id DESC").bind(user.id).all(),
     env.DB.prepare("SELECT id, reference, make, model, trim, status, purchased_at FROM customer_vehicles WHERE user_id = ? ORDER BY purchased_at DESC, id DESC").bind(user.id).all(),
     env.DB.prepare("SELECT id, vehicle_id, invoice_number, issued_at, total_tnd, status, document_key FROM invoices WHERE user_id = ? ORDER BY issued_at DESC, id DESC").bind(user.id).all()
   ]);
@@ -428,9 +431,11 @@ async function me(request, env) {
     favorites: favorites.results.map((row) => row.reference),
     offers: offers.results.map((row) => {
       const enchere = row.kind === "bid" ? encheres.get(row.reference) : null;
+      const retiree = Boolean(row.withdrawn_at);
       return {
         id: row.id, reference: row.reference, amountTnd: row.amount_tnd, kind: row.kind,
-        status: enchere ? statutEnchere(row, enchere.meilleureId, enchere.auction) : row.status, createdAt: row.created_at
+        status: retiree ? "withdrawn" : enchere ? statutEnchere(row, enchere.meilleureId, enchere.auction) : row.status, createdAt: row.created_at,
+        canWithdraw: row.kind === "bid" && row.status === "pending" && retraitPossible(enchere?.auction, Date.now())
       };
     }),
     vehicles: vehicles.results.map((row) => ({
@@ -676,6 +681,30 @@ function statutEnchere(offre, meilleureId, auction) {
   return auction.reserveMet === false ? "reserve_not_met" : "won";
 }
 
+// Retrait possible tant qu'il reste au moins 12 h avant la fin effective de la vente.
+function retraitPossible(auction, maintenant) {
+  if (auction?.status !== "live") return false;
+  const fin = Date.parse(auction.endsAt);
+  return Number.isFinite(fin) && fin - maintenant >= RETRAIT_MIN_MS;
+}
+
+async function retirerOffre(request, env, offreId) {
+  const user = await exigerUtilisateur(request, env);
+  const offre = await env.DB.prepare("SELECT id, reference, kind, status FROM offers WHERE id = ? AND user_id = ?").bind(offreId, user.id).first();
+  if (!offre) throw new ApiError(404, "Offre introuvable.");
+  if (offre.kind !== "bid") throw new ApiError(400, "Seule une enchère peut être retirée.");
+  if (offre.status !== "pending") throw new ApiError(409, "Cette offre a déjà été traitée ou retirée.");
+  const lot = await chargerLot(request, env, offre.reference);
+  if (!retraitPossible(lot?.auction, Date.now())) {
+    throw new ApiError(403, "Une enchère ne peut plus être retirée moins de 12 heures avant la fin de la vente.");
+  }
+  const { meta } = await env.DB.prepare("UPDATE offers SET status = 'refused', withdrawn_at = ? WHERE id = ? AND user_id = ? AND status = 'pending'")
+    .bind(new Date().toISOString(), offreId, user.id).run();
+  if (meta.changes !== 1) throw new ApiError(409, "Cette offre a déjà été traitée ou retirée.");
+  const auction = etatEnchere(lot, (await resumesEncheres(env)).get(offre.reference), Date.now());
+  return json({ id: offreId, status: "withdrawn", auction });
+}
+
 async function chargerLot(request, env, reference) {
   return (await catalogue(request, env)).find((lot) => lot.reference === reference) || null;
 }
@@ -756,7 +785,7 @@ export async function listerOffres(request, env, reference) {
     resumesEncheres(env),
     reference ? etiquettesEncherisseurs(env, reference) : Promise.resolve(null),
     env.DB.prepare(
-      `SELECT offers.id, offers.reference, offers.kind, offers.amount_tnd, offers.status, offers.created_at, offers.user_id,
+      `SELECT offers.id, offers.reference, offers.kind, offers.amount_tnd, offers.status, offers.created_at, offers.withdrawn_at, offers.user_id,
               users.name, users.email, users.phone, users.deposit_tnd FROM offers JOIN users ON users.id = offers.user_id
        ${reference ? "WHERE offers.reference = ?" : ""} ORDER BY offers.reference, offers.kind, offers.amount_tnd DESC, offers.created_at ASC LIMIT 1000`
     ).bind(...(reference ? [reference] : [])).all()
@@ -778,7 +807,7 @@ export async function listerOffres(request, env, reference) {
   return {
     lots,
     offers: results.map((row) => ({
-      id: row.id, reference: row.reference, kind: row.kind, amountTnd: row.amount_tnd, status: row.status, createdAt: row.created_at,
+      id: row.id, reference: row.reference, kind: row.kind, amountTnd: row.amount_tnd, status: row.withdrawn_at ? "withdrawn" : row.status, createdAt: row.created_at,
       best: meilleures.get(row.reference) === row.id, bidder: etiquettes?.get(row.user_id) || null,
       name: row.name, email: row.email, phone: row.phone || "", userId: row.user_id, depositTnd: row.deposit_tnd || 0
     }))
@@ -854,7 +883,6 @@ export async function deciderOffre(request, env, user, offreId, accepter, retire
 const MEILLEURE_ENCHERE = "SELECT id FROM offers WHERE reference = ? AND kind = 'bid' AND status <> 'refused' ORDER BY amount_tnd DESC, created_at ASC, id ASC LIMIT 1";
 
 const STATUTS = ["open", "upcoming", "stock"];
-const ETATS_VEHICULE = ["new", "used", "accident", "damaged"];
 
 function nombre(value, nom) {
   if (value === null || value === undefined || value === "") return null;
@@ -871,15 +899,11 @@ function photoValide(url) {
 // Ne garde que les champs connus, vérifiés comme le fait la page publique (lotValide).
 function validerVehicule(body, reference) {
   const lot = { reference };
-  const champs = { make: "Marque", model: "Modèle", trim: null, fuel: null, bodyType: null, country: null, transmission: null, color: null, pickupLocation: null, seller: null, availableFrom: null };
+  const champs = { make: "Marque", model: "Modèle", trim: null, fuel: null, bodyType: null, country: null, pickupLocation: null, seller: null, availableFrom: null };
   for (const [cle, obligatoire] of Object.entries(champs)) {
     const valeur = texte(body[cle], 120);
     if (obligatoire && !valeur) throw new ApiError(400, `${obligatoire} obligatoire.`);
     if (valeur) lot[cle] = valeur;
-  }
-  if (body.condition !== undefined && body.condition !== null && body.condition !== "") {
-    if (!ETATS_VEHICULE.includes(body.condition)) throw new ApiError(400, "État du véhicule invalide.");
-    lot.condition = body.condition;
   }
   if (!STATUTS.includes(body.status)) throw new ApiError(400, "Statut invalide.");
   lot.status = body.status;
@@ -896,12 +920,6 @@ function validerVehicule(body, reference) {
   for (const [cle, nom] of [["mileageKm", "Kilométrage"], ["indicativePriceTnd", "Prix"], ["startingPriceTnd", "Mise à prix"], ["reservePriceTnd", "Prix de réserve"], ["buyNowPriceTnd", "Achat immédiat"], ["bidIncrementTnd", "Pas d'enchère"]]) {
     const valeur = nombre(body[cle], nom);
     if (valeur !== null) lot[cle] = valeur;
-  }
-  for (const [cle, nom, max] of [["powerHp", "Puissance", 5000], ["engineCc", "Cylindrée", 20000], ["doors", "Nombre de portes", 9], ["seats", "Nombre de sièges", 99]]) {
-    const valeur = nombre(body[cle], nom);
-    if (valeur === null) continue;
-    if (!Number.isInteger(valeur) || valeur < 1 || valeur > max) throw new ApiError(400, `${nom} : valeur invalide.`);
-    lot[cle] = valeur;
   }
   const sourceUrl = texte(body.sourceUrl, 500);
   if (sourceUrl) {
