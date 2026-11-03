@@ -24,7 +24,7 @@ et le nom de sa branche dédiée. L'issue reste la référence si un statut dive
 
 | Issue | Tâche | Agent | Statut | Branche |
 |---|---|---|---|---|
-| [#5](https://github.com/MOURADSNOUSI/my-auto-export-site/issues/5) | Vendre mon véhicule : dossier vendeur et diagnostic validé | OpenAI Codex | Prêt pour revue, 160 tests réussis, non déployé | `feature/marketplace-vendeurs-diagnostic` |
+| [#5](https://github.com/MOURADSNOUSI/my-auto-export-site/issues/5) | Vendre mon véhicule : dossier vendeur et diagnostic validé | OpenAI Codex | En revue (PR [#7](https://github.com/MOURADSNOUSI/my-auto-export-site/pull/7)), 160 tests réussis, non déployé | `feature/marketplace-vendeurs-diagnostic` |
 | — | Aucune issue ouverte | — | — | — |
 
 Après chaque intervention, commenter l'issue et actualiser la ligne correspondante avec le statut,
@@ -146,3 +146,10 @@ Limites documentées : PDF OPENLANE absent, absence d'OCR/antivirus complet, ré
 professionnelles/exigences nationales à vérifier et renseigner par l'équipe.
 Le contrôle automatique avait temporairement bloqué une vérification locale par quota ;
 elle a ensuite pu être exécutée avec succès. Aucun blocage technique restant.
+
+PR #7 ouverte le 3 novembre 2026 :
+https://github.com/MOURADSNOUSI/my-auto-export-site/pull/7
+Branche cible `config/agents-ia`, base d'intégration finale `344b7e9` (filtres inclus),
+commits poussés sur `feature/marketplace-vendeurs-diagnostic`. Les API, migrations,
+contrôles, résultats et limites sont récapitulés dans la description et les guides.
+Suite finale : 160/160 tests réussis en 375,162 s. Aucune fusion ni opération de production.
