@@ -549,13 +549,16 @@ class VendeurTest(unittest.TestCase):
         ids=[f['id'] for f in photos][::-1];path=f"/api/seller/submissions/{s['id']}"
         self.assertEqual(self.call('PUT',path+'/photos',{'revision':s['revision'],'order':ids,'main':uuid.uuid4().hex})[0],400)
         code,p,_=self.call('PUT',path+'/photos',{'revision':s['revision'],'order':ids,'main':ids[0]});self.assertEqual(code,200);s=p['submission']
-        d={**s['data'],'powerKw':88,'equipment':['Apple CarPlay'],'damages':[{'zone':'hood','type':'rayure','severity':'léger','description':'Rayure constatée','photoIds':[ids[0]]}]}
+        d={**s['data'],'powerKw':88,'powerHp':120,'gearbox':'Automatique','exteriorColor':'Gris','displacementCc':1598,'doors':5,'seats':5,'condition':'Occasion','equipment':['Apple CarPlay'],'damages':[{'zone':'hood','type':'rayure','severity':'léger','description':'Rayure constatée','photoIds':[ids[0]]}]}
         s=self.call('PUT',path,{'revision':s['revision'],'data':d})[1]['submission'];s=self.submit(s)
         self.assertEqual(self.review(s)[0],200)
         lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']=='SV-'+s['id'])
         self.assertEqual(lot['photos'][0]['url'],'/seller-media/'+ids[0])
         self.assertEqual(lot['damages'][0]['description'],'Rayure constatée')
         self.assertEqual(lot['equipment'],['Apple CarPlay']);self.assertEqual(lot['diagnostic']['garage'],'Garage partenaire')
+        self.assertEqual({k:lot[k] for k in ['transmission','color','powerHp','engineCc','doors','seats','condition']},{'transmission':'Automatique','color':'Gris','powerHp':120,'engineCc':1598,'doors':5,'seats':5,'condition':'used'})
+        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+lot['reference'],{**lot,'indicativePriceTnd':67000},'admin')[0],200)
+        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+lot['reference'],{**lot,'color':'Noir'},'admin')[0],409)
         self.assertEqual(lot['diagnostic']['date'],s['data']['diagnosticDate'])
         code,html,_=self.call('GET',lot['url'],who=None);self.assertEqual(code,200);html=html.decode()
         self.assertIn('Diagnostic vérifié par M&amp;Y AUTO EXPORT',html);self.assertIn('Rayure constatée',html);self.assertIn('/seller-media/'+ids[0],html)

@@ -231,7 +231,7 @@ export async function sellerMedia(env,id,head=false){
 }
 export async function verifiedSellerLots(env,items){
  const rows=await env.DB.prepare("SELECT id,public_data FROM seller_submissions WHERE stage='published' AND diagnostic_verified_at IS NOT NULL").all();
- const signature=lot=>JSON.stringify(['make','model','trim','year','mileageKm','fuel','bodyType','photos','specs','equipment','damages','diagnostic'].map(k=>lot[k]??null));
+ const signature=lot=>JSON.stringify(['make','model','trim','year','mileageKm','fuel','bodyType','transmission','color','powerHp','engineCc','doors','seats','condition','photos','specs','equipment','damages','diagnostic'].map(k=>lot[k]??null));
  const verified=new Map(rows.results.filter(r=>r.public_data).map(r=>[reference(r.id),signature(JSON.parse(r.public_data))]));
  return items.map(item=>{const lot={...item.lot};delete lot.diagnosticVerified;if(verified.get(lot.reference)===signature(lot))lot.diagnosticVerified=true;return {...item,lot};});
 }
@@ -242,7 +242,7 @@ export async function preserveSellerPublicFields(env,lot,fail){
  const row=await env.DB.prepare("SELECT v.data,s.stage FROM seller_submissions s LEFT JOIN vehicles v ON v.reference='SV-'||s.id WHERE s.id=?").bind(lot.reference.slice(3)).first();
  if(!row||row.stage!=='published'||!row.data)fail('Cette référence est réservée au circuit de validation vendeur.');
  const previous=JSON.parse(row.data);
- const signature=value=>JSON.stringify(['make','model','trim','year','mileageKm','fuel','bodyType','photos','specs'].map(k=>['photos','specs'].includes(k)?value[k]||[]:value[k]??null));
+ const signature=value=>JSON.stringify(['make','model','trim','year','mileageKm','fuel','bodyType','transmission','color','powerHp','engineCc','doors','seats','condition','photos','specs'].map(k=>['photos','specs'].includes(k)?value[k]||[]:value[k]??null));
  if(signature(lot)!==signature(previous))fail('Les caractéristiques et photos d’une annonce vendeur publiée nécessitent un nouveau dossier validé. Archive cette annonce avant de la redéposer.');
  for(const key of ['diagnostic','equipment','damages','description','allowSellerOffers'])if(Object.hasOwn(previous,key))lot[key]=previous[key];
 }

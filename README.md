@@ -197,7 +197,7 @@ publication sont deux actions distinctes**. Les enchères restent à venir jusqu
 administrative dans le système existant.
 
 Documentation : [guide technique et fonctionnel](docs/ESPACE_VENDEUR.md),
-[audit préalable](docs/AUDIT_ESPACE_VENDEUR.md),
+[audit préalable](docs/AUDIT_ESPACE_VENDEUR.md), [validation finale](docs/VALIDATION_ESPACE_VENDEUR.md),
 [cahier des charges fourni](docs/ESPACE_VENDEUR_CAHIER_DES_CHARGES.md).
 Le guide décrit les API, migrations 0011/0012/0013, contrôles, stockage R2 privé, accès temporaires,
 règles documentaires, conservation et instructions de déploiement soumis à autorisation.

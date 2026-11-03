@@ -61,6 +61,8 @@ prolongation, réserve, classement, acceptation) restent inchangées. Pour une v
 propositions autorisées, un acheteur connecté ayant accepté les CGV peut proposer un prix : l'offre
 rejoint la file administrative existante. Un vendeur ne peut pas proposer un prix sur son véhicule.
 
+Les caractéristiques publiées reprennent aussi les champs des filtres du catalogue (boîte, couleur, puissance, cylindrée, portes, sièges et état déclaré).
+
 Le catalogue affiche les caractéristiques, équipements, dommages et leurs photos, le nom du garage,
 la date et le résumé autorisé du diagnostic. Les textes destinés au public sont aussi vérifiés contre le VIN et la plaque connus avant publication. Le VIN, la plaque, la référence du rapport, les coordonnées
 et les justificatifs ne sont pas ajoutés à l'objet public. Le badge est calculé depuis l'état publié
@@ -203,6 +205,6 @@ sur un domaine public. `wrangler.jsonc` prépare son binding, `SELLER_RETENTION_
 Renseigner les garages réels, leurs numéros et dates, puis les exigences documentaires de plateforme.
 La première publication exige toujours deux actions administratives, et jamais une soumission seule.
 
-Cette branche repose sur `config/agents-ia` (base d’intégration `a8ae916`), qui porte la sécurité, le SEO, l'authentification et les enchères/cautions
+Cette branche repose sur `config/agents-ia` (base d’intégration finale `344b7e9`), qui porte les filtres, la sécurité, le SEO, l'authentification et les enchères/cautions
 nécessaires. La PR est empilée sur cette branche pour ne pas annuler ses changements. Elle pourra être
 reciblée vers main après l'intégration de cette base, sans fusion automatique par Codex.

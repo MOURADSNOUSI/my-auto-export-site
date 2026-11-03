@@ -24,7 +24,7 @@ et le nom de sa branche dédiée. L'issue reste la référence si un statut dive
 
 | Issue | Tâche | Agent | Statut | Branche |
 |---|---|---|---|---|
-| [#5](https://github.com/MOURADSNOUSI/my-auto-export-site/issues/5) | Vendre mon véhicule : dossier vendeur et diagnostic validé | OpenAI Codex | Extension marketplace, vérification finale en cours, non déployé | `feature/marketplace-vendeurs-diagnostic` |
+| [#5](https://github.com/MOURADSNOUSI/my-auto-export-site/issues/5) | Vendre mon véhicule : dossier vendeur et diagnostic validé | OpenAI Codex | Prêt pour revue, 160 tests réussis, non déployé | `feature/marketplace-vendeurs-diagnostic` |
 | — | Aucune issue ouverte | — | — | — |
 
 Après chaque intervention, commenter l'issue et actualiser la ligne correspondante avec le statut,
@@ -129,3 +129,20 @@ des changements D1 avec triggers, une assertion du marqueur de couverture et le 
 écriture documentaire interdite. Les règles métier, les enchères et la caution passent dans la
 première suite globale de 105 tests (1 échec de code HTTP corrigé).
 Le PDF OPENLANE n'était pas présent ; aucun audit PDF ni antivirus complet n'est revendiqué.
+
+
+Livraison finale #5 (2026-11-03), Codex : branche
+`feature/marketplace-vendeurs-diagnostic`, base `344b7e9` de `config/agents-ia`.
+Intégration conservant les filtres, la sécurité, le SEO, les enchères et la caution.
+**Suite complète : 160 tests réussis en 375,162 s**, avec Wrangler 4.156.0, D1/R2
+éphémères et Chromium ; aucun test ignoré ni erreur. L'attente Playwright incompatible
+avec la CSP a été corrigée sans ajouter unsafe-eval. Les nouveaux champs techniques
+publics utilisent le contrat des filtres et ne sont pas modifiables sans revalidation.
+Contrôle local 8787 : accueil, vendeur, administration vendeurs, schéma partagé, API
+catalogue et liste véhicules répondent 200 ; noindex et CSP vérifiés à 390 px.
+Syntaxe des modules JS et git diff --check valides. Les migrations restent locales.
+Pull Request à ouvrir vers `config/agents-ia`, en dépendance de #1, sans fusion main.
+Limites documentées : PDF OPENLANE absent, absence d'OCR/antivirus complet, références
+professionnelles/exigences nationales à vérifier et renseigner par l'équipe.
+Le contrôle automatique avait temporairement bloqué une vérification locale par quota ;
+elle a ensuite pu être exécutée avec succès. Aucun blocage technique restant.

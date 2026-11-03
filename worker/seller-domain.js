@@ -70,7 +70,10 @@ export async function publicLot(env,row,files,priceTnd) {
   damages:(d.damages||[]).map(x=>({zone:x.zone,type:x.type,severity:x.severity,description:x.description,photos:x.photoIds.map(id=>`/seller-media/${id}`)}))
  };
  if(d.trim)lot.trim=d.trim;if(d.bodyType)lot.bodyType=d.bodyType;
- lot.specs=[...TECH_FIELDS,...HISTORY_FIELDS.filter(f=>['mechanicalCondition','runningCondition','knownAccidents','majorRepairs','serviceHistory'].includes(f[0]))].filter(([k])=>d[k]!==null&&d[k]!==undefined&&d[k]!=='').map(([k,l])=>[l,String(d[k])]);
+ if(d.gearbox)lot.transmission=d.gearbox;if(d.exteriorColor)lot.color=d.exteriorColor;
+ for(const [source,target] of [['powerHp','powerHp'],['displacementCc','engineCc'],['doors','doors'],['seats','seats']])if(Number.isFinite(d[source])&&d[source]>0)lot[target]=d[source];
+ if(d.condition)lot.condition={'Neuf':'new','Occasion':'used','Accidenté':'accident','Endommagé':'damaged'}[d.condition];
+ lot.specs=[...TECH_FIELDS,...HISTORY_FIELDS.filter(f=>['mechanicalCondition','runningCondition','knownAccidents','majorRepairs','serviceHistory'].includes(f[0]))].filter(([k])=>d[k]!==null&&d[k]!==undefined&&d[k]!=='').map(([k,l])=>k==='powerKw'?['Puissance',`${d[k]} kW`]:[l,String(d[k])]);
  if(d.saleType==='auction'){lot.startingPriceTnd=price;if(d.reservePriceTnd)lot.reservePriceTnd=d.reservePriceTnd;lot.endsAt=d.auctionEnd;}
  const visible=JSON.stringify(lot).toUpperCase();
  if([d.vin,d.licensePlate].filter(v=>v&&v.length>=4).some(v=>visible.includes(v.toUpperCase())))throw new Error('private-identifiers');

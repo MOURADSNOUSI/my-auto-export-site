@@ -30,3 +30,8 @@ pages véhicules, sitemap dynamique et contrôles SEO. La purge vendeur a son cr
 sans remplacer les contrôles SEO de 07:00 Paris. Les pages vendeur/admin passent aussi par
 le Worker pour leurs en-têtes d'indexation. Les photos et diagnostics vendeurs sont présentés
 sur les fiches HTML rendues côté serveur, et la publication alimente le contrôle SEO existant.
+
+La base a ensuite intégré les 16 filtres du catalogue (commit `344b7e9`). La branche vendeur
+a été replacée sur cette base, sans conflit. Les champs publiés transmission/couleur/puissance/
+cylindrée/portes/places/état utilisent le contrat du catalogue, tout en restant protégés par la
+validation du diagnostic. Les variantes de boîte et les puissances en kW restent recherchables.

@@ -25,10 +25,11 @@ export const TECH_FIELDS = [
  ['powerKw','Puissance (kW)','number',2000],['powerHp','Puissance (chevaux)','number',3000],['displacementCc','Cylindrée (cm³)','number',20000],
  ['gearbox','Boîte de vitesses','select',['Manuelle','Automatique','Robotisée','Sans boîte conventionnelle']],['gearCount','Nombre de rapports','number',20],
  ['drivetrain','Transmission','select',['Traction','Propulsion','4 roues motrices']],['bodyType','Carrosserie','select',['Berline','SUV','Break','Monospace','Citadine','Coupé','Cabriolet','Utilitaire','Autre']],
- ['doors','Nombre de portes','number',10],['seats','Nombre de places','number',60],['euroStandard','Norme Euro','select',['Euro 1','Euro 2','Euro 3','Euro 4','Euro 5','Euro 6','Euro 6d','Euro 6e','Non applicable']],
+ ['doors','Nombre de portes','number',9],['seats','Nombre de places','number',60],['euroStandard','Norme Euro','select',['Euro 1','Euro 2','Euro 3','Euro 4','Euro 5','Euro 6','Euro 6d','Euro 6e','Non applicable']],
  ['co2GKm','Émissions CO₂ (g/km)','number',2000],['exteriorColor','Couleur extérieure','text'],['interiorColor','Couleur intérieure','text']
 ];
 export const HISTORY_FIELDS = [
+ ['condition','État du véhicule','select',['Neuf','Occasion','Accidenté','Endommagé']],
  ['serviceHistory','Historique d’entretien','textarea'],['lastServiceDate','Date du dernier entretien','date'],['lastServiceKm','Kilométrage du dernier entretien','number',10000000],
  ['previousOwners','Propriétaires précédents','number',100],['knownAccidents','Accidents connus (indiquer Aucun le cas échéant)','textarea'],
  ['majorRepairs','Réparations importantes','textarea'],['roadworthinessApplicable','Contrôle technique applicable','select',['Oui','Non']],
