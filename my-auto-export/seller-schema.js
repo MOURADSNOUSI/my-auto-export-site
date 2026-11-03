@@ -61,7 +61,7 @@ export function sanitizeExtra(src,fail) {
  if(src.damages!=null && !Array.isArray(src.damages)) fail(400,'Liste de dommages attendue.');
  if((src.damages||[]).length>30) fail(400,'30 dommages maximum.');
  d.damages=(src.damages||[]).map((x,i)=>{
-  if(!x || !ZONES[x.zone] || !DAMAGE_TYPES.includes(x.type) || !SEVERITIES.includes(x.severity)) fail(400,'Zone, type ou gravité du dommage invalide.');
+  if(!x || !Object.hasOwn(ZONES,x.zone) || !DAMAGE_TYPES.includes(x.type) || !SEVERITIES.includes(x.severity)) fail(400,'Zone, type ou gravité du dommage invalide.');
   const description=typeof x.description==='string'?x.description.trim().slice(0,2000):'';
   const photoIds=Array.isArray(x.photoIds)?[...new Set(x.photoIds)]:[];
   if(photoIds.length>40 || photoIds.some(id=>typeof id!=='string' || !/^[a-f0-9]{32}$/.test(id))) fail(400,'Photo de dommage invalide.');

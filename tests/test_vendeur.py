@@ -194,6 +194,8 @@ class VendeurTest(unittest.TestCase):
     def test_upload_formats_removal_and_stale_revision(self):
         s=self.draft()
         path=f"/api/seller/submissions/{s['id']}/files?kind="
+        self.assertEqual(self.call('POST',path+'constructor',PDF)[0],400)
+        self.assertEqual(self.call('POST',path+'__proto__',PDF)[0],400)
         self.assertEqual(self.call('POST',path+'diagnostic',PNG,content_type='image/png')[0],415)
         self.assertEqual(self.call('POST',path+'diagnostic',b'<script>bad</script>')[0],415)
         self.assertEqual(self.call('POST',path+'exterior',PDF)[0],415)
@@ -250,13 +252,13 @@ class VendeurTest(unittest.TestCase):
             self.identify_in_browser(page)
             self.assertTrue(page.locator('#submit-dossier').is_disabled())
             page.get_by_role('button',name='Enregistrer le brouillon',exact=True).click()
-            page.wait_for_function("document.getElementById('message').textContent === 'Brouillon enregistré.'")
+            page.wait_for_function("() => document.getElementById('message').textContent === 'Brouillon enregistré.'")
             self.assertEqual(page.locator('[name=make]').input_value(),'Renault')
             self.assertTrue(page.locator('#submit-dossier').is_disabled())
             self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),390)
             # Vérifier le badge réel et l'absence de documents dans le DOM public.
             s=self.submit(self.draft(True));self.assertEqual(self.review(s)[0],200)
-            page.goto(self.base+'/');page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
+            page.goto(self.base+'/');page.wait_for_function("() => typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
             self.assertGreater(page.get_by_text('Diagnostic vérifié par M&Y AUTO EXPORT',exact=True).count(),0)
             self.assertEqual(page.locator('a[href*="/seller/files/"]').count(),0)
 
@@ -479,8 +481,9 @@ class VendeurTest(unittest.TestCase):
         d=first['data'];d['damages']=[{'zone':'hood','type':'rayure','severity':'léger','description':'Rayure','photoIds':[uuid.uuid4().hex]}]
         code,p,_=self.call('PUT',f"/api/seller/submissions/{first['id']}",{'revision':first['revision'],'data':d});self.assertEqual(code,200)
         self.assertEqual(self.call('POST',f"/api/seller/submissions/{first['id']}/submit",{'revision':p['submission']['revision']})[0],400)
-        d['damages'][0]['zone']='unknown'
-        self.assertEqual(self.call('PUT',f"/api/seller/submissions/{first['id']}",{'revision':p['submission']['revision'],'data':d})[0],400)
+        for zone in ['unknown','__proto__','constructor']:
+            d['damages'][0]['zone']=zone
+            self.assertEqual(self.call('PUT',f"/api/seller/submissions/{first['id']}",{'revision':p['submission']['revision'],'data':d})[0],400)
 
     def test_temporary_document_access_expiration_and_pdf_rejection(self):
         s=self.draft(True);f=next(f for f in s['files'] if f['kind']=='registration')
@@ -554,6 +557,9 @@ class VendeurTest(unittest.TestCase):
         self.assertEqual(lot['damages'][0]['description'],'Rayure constatée')
         self.assertEqual(lot['equipment'],['Apple CarPlay']);self.assertEqual(lot['diagnostic']['garage'],'Garage partenaire')
         self.assertEqual(lot['diagnostic']['date'],s['data']['diagnosticDate'])
+        code,html,_=self.call('GET',lot['url'],who=None);self.assertEqual(code,200);html=html.decode()
+        self.assertIn('Diagnostic vérifié par M&amp;Y AUTO EXPORT',html);self.assertIn('Rayure constatée',html);self.assertIn('/seller-media/'+ids[0],html)
+        self.assertNotIn(s['data']['vin'],html)
         for secret in [s['data']['vin'],s['data']['licensePlate'],s['data']['diagnosticReference']]:self.assertNotIn(secret,json.dumps(lot))
 
     def test_large_json_is_rejected_before_mutation(self):

@@ -54,7 +54,9 @@ La révision et un jeton de mutation empêchent les doubles décisions concurren
 
 Une vente directe apparaît en stock. Une enchère apparaît **À venir**, jamais immédiatement active.
 L'ouverture et la date définitive sont gérées dans l'administration du catalogue existante ; les dates
-saisies par le vendeur sont des dates souhaitées. Les règles existantes (caution, pas minimal,
+saisies par le vendeur sont des dates souhaitées. Les fiches HTML côté serveur présentent également le badge, les photos, les équipements et les dommages ; la publication déclenche le contrôle SEO existant. Le cron de purge est distinct des deux crons SEO.
+
+Les règles existantes (caution, pas minimal,
 prolongation, réserve, classement, acceptation) restent inchangées. Pour une vente directe avec
 propositions autorisées, un acheteur connecté ayant accepté les CGV peut proposer un prix : l'offre
 rejoint la file administrative existante. Un vendeur ne peut pas proposer un prix sur son véhicule.
@@ -201,6 +203,6 @@ sur un domaine public. `wrangler.jsonc` prépare son binding, `SELLER_RETENTION_
 Renseigner les garages réels, leurs numéros et dates, puis les exigences documentaires de plateforme.
 La première publication exige toujours deux actions administratives, et jamais une soumission seule.
 
-Cette branche repose sur `config/agents-ia`, qui porte l'authentification et les enchères/cautions
+Cette branche repose sur `config/agents-ia` (base d’intégration `a8ae916`), qui porte la sécurité, le SEO, l'authentification et les enchères/cautions
 nécessaires. La PR est empilée sur cette branche pour ne pas annuler ses changements. Elle pourra être
 reciblée vers main après l'intégration de cette base, sans fusion automatique par Codex.

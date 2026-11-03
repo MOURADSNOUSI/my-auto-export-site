@@ -71,7 +71,7 @@ export async function routeSeller(request,env,url,h){
   if(method==='GET')return json({rules:(await query('SELECT country_code,seller_type,kind,required,updated_at FROM seller_document_rules ORDER BY country_code,seller_type,kind').all()).results});
   if(method==='POST'&&admin){
    const b=await lireJson(request),country=b.countryCode,type=b.sellerType,kind=b.kind;
-   if((country!=='*'&&!COUNTRY_CODES.has(country))||!['*','individual','professional'].includes(type)||!FILE_LABELS[kind]||PHOTO_KINDS.includes(kind)||typeof b.required!=='boolean')fail(400,'Règle documentaire invalide.');
+   if((country!=='*'&&!COUNTRY_CODES.has(country))||!['*','individual','professional'].includes(type)||!Object.hasOwn(FILE_LABELS,kind)||PHOTO_KINDS.includes(kind)||typeof b.required!=='boolean')fail(400,'Règle documentaire invalide.');
    await query('INSERT INTO seller_document_rules(country_code,seller_type,kind,required,updated_by,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(country_code,seller_type,kind) DO UPDATE SET required=excluded.required,updated_by=excluded.updated_by,updated_at=excluded.updated_at',country,type,kind,b.required?1:0,user.id,now()).run();
    return json({ok:true});
   }
@@ -162,7 +162,7 @@ export async function routeSeller(request,env,url,h){
   const gate=await query('INSERT INTO seller_upload_attempts(user_id,at) SELECT ?,? WHERE (SELECT COUNT(*) FROM seller_upload_attempts WHERE user_id=? AND at>?)<20',user.id,now(),user.id,new Date(Date.now()-60000).toISOString()).run();
   if(gate.meta.changes!==1)fail(429,'20 tentatives d’envoi par minute maximum. Réessaie dans une minute.');
   const kind=url.searchParams.get('kind'),type=request.headers.get('Content-Type')?.split(';')[0];
-  if(!FILE_LABELS[kind])fail(400,'Catégorie inconnue.');
+  if(!Object.hasOwn(FILE_LABELS,kind))fail(400,'Catégorie inconnue.');
   if(kind==='diagnostic'?type!=='application/pdf':!['application/pdf','image/jpeg','image/png','image/webp'].includes(type)||(PHOTO_KINDS.includes(kind)&&type==='application/pdf'))fail(415,'Format de pièce invalide.');
   if((await files(row.id)).length>=40)fail(400,'40 pièces maximum.');
   const reader=request.body?.getReader();if(!reader)fail(400,'Fichier vide.');const chunks=[];let size=0;
@@ -222,12 +222,12 @@ export async function routeSeller(request,env,url,h){
  }
  fail(405,'Méthode non autorisée.');
 }
-export async function sellerMedia(env,id){
+export async function sellerMedia(env,id,head=false){
  const f=await env.DB.prepare(`SELECT f.* FROM seller_files f JOIN seller_submissions s ON s.id=f.submission_id JOIN vehicles v ON v.reference='SV-'||s.id
   WHERE f.id=? AND s.stage='published' AND s.diagnostic_verified_at IS NOT NULL AND v.removed=0`).bind(id).first();
  if(!f||!PHOTO_KINDS.includes(f.kind)||!env.SELLER_DOCUMENTS)return new Response('Introuvable',{status:404});
- const object=await env.SELLER_DOCUMENTS.get(f.storage_key);if(!object)return new Response('Introuvable',{status:404});
- return new Response(object.body,{headers:{'Content-Type':f.content_type,'Cache-Control':'public, max-age=60','X-Content-Type-Options':'nosniff'}});
+ const object=await env.SELLER_DOCUMENTS[head?'head':'get'](f.storage_key);if(!object)return new Response('Introuvable',{status:404});
+ return new Response(head?null:object.body,{headers:{'Content-Type':f.content_type,'Cache-Control':'public, max-age=60','X-Content-Type-Options':'nosniff'}});
 }
 export async function verifiedSellerLots(env,items){
  const rows=await env.DB.prepare("SELECT id,public_data FROM seller_submissions WHERE stage='published' AND diagnostic_verified_at IS NOT NULL").all();

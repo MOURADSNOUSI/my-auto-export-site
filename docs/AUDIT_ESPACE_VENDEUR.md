@@ -21,3 +21,12 @@ La migration 0012 ajoute ces éléments en préservant les lignes 0011 et le sta
 Le texte du cahier des charges est archivé dans `ESPACE_VENDEUR_CAHIER_DES_CHARGES.md`. Aucun fichier `OPENLANE Sell.pdf` n'était présent dans les pièces jointes accessibles : aucune comparaison PDF n'est revendiquée. Le schéma SVG du véhicule est original et ne reprend pas une illustration de cette plateforme.
 
 Le travail local non committé du dépôt d'origine `my-auto-export-site` n'est pas déplacé ni incorporé. Le travail vendeur est isolé dans `my-auto-export-vendeur`. Aucun déploiement de production, aucune migration distante, aucune annonce réelle et aucune fusion ne sont autorisés par ce développement.
+
+## Intégration de la base actualisée
+
+La base `config/agents-ia` a reçu les changements de sécurité et SEO pendant le développement
+(commit d'intégration `a8ae916`). Ils sont conservés : en-têtes et limitations IP, réponses 404,
+pages véhicules, sitemap dynamique et contrôles SEO. La purge vendeur a son cron distinct,
+sans remplacer les contrôles SEO de 07:00 Paris. Les pages vendeur/admin passent aussi par
+le Worker pour leurs en-têtes d'indexation. Les photos et diagnostics vendeurs sont présentés
+sur les fiches HTML rendues côté serveur, et la publication alimente le contrôle SEO existant.

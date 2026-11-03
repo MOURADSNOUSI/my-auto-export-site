@@ -72,7 +72,7 @@ async function repondre(request, env, ctx) {
   }
   const lecture = request.method === "GET" || request.method === "HEAD";
   if (/^\/seller-media\/[a-f0-9]{32}$/.test(url.pathname) && lecture) {
-    try { return await sellerMedia(env, url.pathname.split("/")[2]); } catch { return new Response("Indisponible", {status:503}); }
+    try { return await sellerMedia(env, url.pathname.split("/")[2], request.method === "HEAD"); } catch { return new Response("Indisponible", {status:503}); }
   }
   if (url.pathname.startsWith("/media/") && lecture) return servirPhoto(env, url);
   if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
@@ -124,7 +124,12 @@ async function routeApi(request, env, url, ctx) {
   if (path === "/api/stripe/webhook" && method === "POST") return webhookStripe(request, env);
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
-  if (sellerRoutes(path)) return routeSeller(request, env, url, {json, ApiError, exigerUtilisateur, lireJson, sha256, CGV_VERSION});
+  if (sellerRoutes(path)) {
+    const response = await routeSeller(request, env, url, {json, ApiError, exigerUtilisateur, lireJson, sha256, CGV_VERSION});
+    const publication = path.match(/^\/api\/admin\/seller\/submissions\/([a-f0-9]{32})\/(publish|archive)$/);
+    if (publication && method === "POST" && response.ok) await controlerApresPublication(env, ctx, `SV-${publication[1]}`);
+    return response;
+  }
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/catalogue" && method === "GET") {
     return json((await catalogue(request, env)).map((lot) => ({ ...lot, url: cheminVehicule(lot) })));
