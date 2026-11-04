@@ -105,7 +105,7 @@ describe("normalisation", () => {
       total: 2,
       voitures: [
         {
-          id: "7754225", titre: "Mercedes-Benz GLC 300e", annee: 2021, km: 85659, carburant: "Hybrid", boite: "Automatic",
+          id: "openlane-7754225", titre: "Mercedes-Benz GLC 300e", annee: 2021, km: 85659, carburant: "Hybrid", boite: "Automatic",
           prixEur: 28500, prixTnd: 99750, source: "OPENLANE", finEnchere: "2026-11-10T16:00:00.000Z", image: "https://cdn.exemple.com/1.jpg"
         },
         {
@@ -114,6 +114,16 @@ describe("normalisation", () => {
         }
       ]
     });
+  });
+
+  it("distingue deux enchères de même numéro sur deux sources", () => {
+    const { voitures } = normaliser({ results: [{ auction_id: 42, site_name: "OPENLANE" }, { auction_id: 42, site_name: "eCarsTrade" }] }, null);
+    expect(voitures.map((voiture) => voiture.id)).toEqual(["openlane-42", "ecarstrade-42"]);
+  });
+
+  it("compose le titre avec la marque et le modèle si car_name_en manque", () => {
+    const { voitures } = normaliser({ results: [{ brand: "Peugeot", model: "3008" }, { make: "Audi" }, { car_name_en: "  ", model: "Q5" }] }, null);
+    expect(voitures.map((voiture) => voiture.titre)).toEqual(["Peugeot 3008", "Audi", "Q5"]);
   });
 
   it("tolère une réponse incomplète ou inattendue", () => {

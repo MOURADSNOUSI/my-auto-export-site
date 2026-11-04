@@ -119,16 +119,20 @@ export function normaliser(donnees, taux) {
 
 function normaliserVoiture(voiture, taux) {
   const prixEur = nombre(voiture.public_price_eur ?? voiture.price_eur ?? voiture.price);
+  const source = texte(voiture.site_name ?? voiture.site, 60);
+  const numero = texte(voiture.auction_id ?? voiture.id, 80);
+  const marqueModele = [texte(voiture.brand ?? voiture.make, 80), texte(voiture.model, 120)].filter(Boolean).join(" ");
   return {
-    id: texte(voiture.auction_id ?? voiture.id, 80),
-    titre: texte(voiture.car_name_en ?? voiture.title ?? voiture.name, 200),
+    // Préfixé par la source : un même numéro d'enchère peut exister chez OPENLANE et chez eCarsTrade.
+    id: numero && source ? `${source.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${numero}` : numero,
+    titre: texte(voiture.car_name_en ?? voiture.title ?? voiture.name, 200) ?? (marqueModele || null),
     annee: annee(voiture.registration_year ?? voiture.year),
     km: nombre(voiture.mileage_km ?? voiture.mileage ?? voiture.km ?? voiture.odometer),
     carburant: texte(voiture.fuel ?? voiture.fuel_type, 60),
     boite: texte(voiture.gearbox ?? voiture.transmission, 60),
     prixEur,
     prixTnd: prixEur !== null && taux ? Math.round(prixEur * taux) : null,
-    source: texte(voiture.site_name ?? voiture.site, 60),
+    source,
     finEnchere: date(voiture.auction_end ?? voiture.end_date ?? voiture.ends_at ?? voiture.auction_end_date),
     image: image(voiture)
   };
