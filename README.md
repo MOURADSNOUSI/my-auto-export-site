@@ -10,6 +10,31 @@ python3 -m unittest discover tests
 Les tests du Worker (espace acheteur, enchères, administration, MCP, pages véhicules) sont ignorés sans
 `WRANGLER=/chemin/vers/wrangler`.
 
+Tests JavaScript (Vitest, `fetch` simulé) : `npm install`, puis `npm run test:js`.
+
+## Catalogue Europe (TheCarApi)
+
+`GET /api/voitures-europe` renvoie des voitures lues chez TheCarApi (`worker/voitures-europe.js`), sous la forme
+`{ total, voitures: [{ id, titre, annee, km, carburant, boite, prixEur, prixTnd, source, finEnchere, image }] }`.
+
+- **Préfiltre M&Y**, toujours appliqué (constantes en haut du fichier) : sites `openlane,ecarstrade`, année ≥ 2019,
+  150 000 km au plus, 30 000 € au plus, 24 résultats. `mileage_to`, `price_to` et `page` ne sont pas documentés par
+  TheCarApi : à vérifier (`PREFILTRE_A_VERIFIER`, `PARAMETRES_A_VERIFIER`).
+- **Affinages du visiteur** : `brand`, `model`, `fuel`, `year_from`, `price_to`, `page` uniquement (40 caractères au plus,
+  lettres, chiffres, espaces, virgules, points, tirets), sinon 400. `year_from` et `price_to` ne peuvent que resserrer
+  le préfiltre. Tout autre paramètre est ignoré.
+- **Cache** de 15 minutes (Cache API, clé = paramètres triés) pour économiser le quota. Aucune nouvelle tentative en cas
+  d'échec : 5 échecs d'authentification bloquent l'IP 15 minutes chez TheCarApi.
+- **Erreurs** : sans clé, 503 ; si TheCarApi échoue (401/403 clé ou portée, 429 quota…), 502 avec un message en
+  français. Seul le statut est journalisé, jamais la clé ni la réponse.
+
+Configuration :
+- **Clé** : `npx wrangler secret put THECARAPI_KEY` (production). Elle n'est jamais envoyée au navigateur.
+- **`EUR_TND_RATE`** (dinars pour 1 euro) donne `prixTnd = round(prixEur × taux)` ; sans taux valide, `prixTnd` vaut `null`.
+  Le déclarer de préférence comme secret (`npx wrangler secret put EUR_TND_RATE`) : `wrangler.jsonc` n'a pas de `vars`,
+  et une variable saisie dans le tableau de bord Cloudflare est effacée au déploiement suivant par `wrangler deploy`.
+- **En local** : copier `.dev.vars.example` en `.dev.vars` (ignoré par git) et y mettre la clé et le taux.
+
 ## Référencement
 
 Pages véhicules `/vehicules/…`, sitemap dynamique, contrôle SEO quotidien et journal : voir [docs/SEO.md](docs/SEO.md).
