@@ -3,6 +3,7 @@
 import Stripe from "stripe";
 import { estRouteMcp, routeMcp } from "./mcp.js";
 import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, listeIndexable, page404, routeSeo } from "./seo.js";
+import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -123,6 +124,14 @@ async function routeApi(request, env, url, ctx) {
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/catalogue" && method === "GET") {
     return json((await catalogue(request, env)).map((lot) => ({ ...lot, url: cheminVehicule(lot) })));
+  }
+  if (path === "/api/voitures-europe" && method === "GET") {
+    try {
+      return await voituresEurope(request, env, url, ctx);
+    } catch (error) {
+      if (error instanceof ErreurCatalogue) throw new ApiError(error.status, error.message);
+      throw error;
+    }
   }
   const enchere = path.match(/^\/api\/auctions\/([^/]{1,64})$/);
   if (enchere && method === "GET") return detailEnchere(request, env, decodeURIComponent(enchere[1]));
