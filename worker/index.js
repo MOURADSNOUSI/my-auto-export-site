@@ -5,13 +5,18 @@ import {sellerRoutes,routeSeller,sellerMedia,verifiedSellerLots} from './seller.
 import {marketplace} from './marketplace.js';
 import {diagnosticValid,expireOffers,policy} from './marketplace-domain.js';
 import {purgeSeller} from './seller-domain.js';
-import {marketplacePage,detailPage} from './marketplace-pages.js';
+import {marketplacePage} from './marketplace-pages.js';
+import {cheminVehicule,controleQuotidien,estRouteSeo,listeIndexable,page404,routeSeo} from './seo.js';
+import {webhookStripe} from './legacy-deposits.js';
 import { estRouteMcp, routeMcp } from "./mcp.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100000; // maximum accepté par Cloudflare Workers
-export const MAX_LOGIN_FAILURES = 5; // par adresse e-mail sur 15 minutes
+export const MAX_LOGIN_FAILURES = 5; // par adresse e-mail et par IP sur 15 minutes
+const MAX_ECHECS_PAR_IP = 30; // toutes adresses e-mail confondues, sur 15 minutes
+const MAX_ECHECS_PAR_COMPTE = 100; // toutes IP confondues, sur 15 minutes : freine une attaque répartie
+const MAX_INSCRIPTIONS_PAR_IP = 10; // par heure
 const MAX_OFFER_TND = 10_000_000;
 // Version des conditions générales (conditions.html). La changer redemande l'acceptation à tous les acheteurs.
 const CGV_VERSION = "2026-11-01";
@@ -19,20 +24,31 @@ const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes 
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
+export const ENTETES_SECURITE = {
+  "Strict-Transport-Security": "max-age=31536000",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+    + "img-src 'self' https: data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; "
+    + "form-action 'self'; frame-ancestors 'none'"
+};
+
 async function handle(request,env){
  const url=new URL(request.url);
+ if(url.protocol==='http:'&&/(^|\.)myautoexport\.com$/.test(url.hostname)){url.protocol='https:';return Response.redirect(url.toString(),301);}
  try {
   const media=url.pathname.match(/^\/seller-media\/([a-f0-9]{32})$/);
   if(media&&['GET','HEAD'].includes(request.method))return sellerMedia(env,media[1],request.method==='HEAD');
   if(url.pathname.startsWith('/media/')&&['GET','HEAD'].includes(request.method))return servirPhoto(env,url);
   if(estRouteMcp(url.pathname))return routeMcp(request,env,url);
   if(url.pathname.startsWith('/api/'))return await routeApi(request,env,url);
-  const detail=url.pathname.match(/^\/vehicules\/([A-Za-z0-9._-]{1,64})$/);
-  if(detail){const lot=(await catalogue(request,env)).find(l=>l.reference===detail[1]);return detailPage(lot);}
+  if(estRouteSeo(url.pathname)&&['GET','HEAD'].includes(request.method))return routeSeo(request,env,url);
   const aliases={'/mes-vehicules':'/vendre','/vendre':'/vendre','/admin-vendeurs':'/admin-vendeurs'};
   if(aliases[url.pathname])return env.ASSETS.fetch(new Request(new URL(aliases[url.pathname],url),request));
   if(['/mes-offres','/vendeur/offres','/garages','/admin/marketplace','/confidentialite','/conditions-marketplace','/droits-donnees'].includes(url.pathname))return marketplacePage(url.pathname);
-  const asset=await env.ASSETS.fetch(request);
+  const asset=await servirFichier(request,env,url);
   if(legacyAuctionsEnabled(env)&&['/','/index.html'].includes(url.pathname)&&asset.headers.get('Content-Type')?.includes('text/html'))return new Response((await asset.text()).replace('data-proposal-only="true"','data-proposal-only="false"'),{status:asset.status,headers:asset.headers});
   return asset;
  }catch(error){
@@ -45,15 +61,39 @@ async function handle(request,env){
 export default {
  async fetch(request,env){
   const response=await handle(request,env),headers=new Headers(response.headers),path=new URL(request.url).pathname;
-  headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','same-origin');
   if(path.startsWith('/api/')||['/vendre','/mes-vehicules','/mes-offres','/vendeur/offres','/garages','/admin/marketplace'].includes(path)||path.includes('vendeur')){
    headers.set('Cache-Control','private, no-store');headers.set('X-Robots-Tag','noindex, nofollow');
    if(!headers.has('Content-Security-Policy'))headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
   }
+  for(const [key,value] of Object.entries(ENTETES_SECURITE))if(!headers.has(key))headers.set(key,value);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
  },
- async scheduled(event,env,ctx){ctx.waitUntil((async()=>{await expireOffers(env);const p=await policy(env);await purgeSeller(env,p.retention_days);})());}
+ async scheduled(event,env,ctx){ctx.waitUntil(Promise.all([controleQuotidien(event,env),(async()=>{await expireOffers(env);const p=await policy(env);await purgeSeller(env,p.retention_days);})()]));}
 };
+
+async function servirFichier(request, env, url) {
+  const reponse = await env.ASSETS.fetch(request);
+  if (reponse.status === 404 && (request.headers.get("Accept") || "").includes("text/html")) return page404();
+  if (url.pathname === "/admin" || url.pathname === "/admin.html") {
+    const entetes = new Headers(reponse.headers);
+    entetes.set("X-Robots-Tag", "noindex, nofollow");
+    return new Response(reponse.body, { status: reponse.status, headers: entetes });
+  }
+  if (url.pathname !== "/" || !reponse.ok || request.method !== "GET") return reponse;
+  // Accueil : la liste des véhicules est insérée côté serveur, lisible par les moteurs qui n'exécutent pas JavaScript.
+  let liste;
+  try {
+    liste = await listeIndexable(request, env);
+  } catch (error) {
+    console.error('homepage_catalogue_failed');
+    return reponse;
+  }
+  if (!liste) return reponse;
+  return new HTMLRewriter()
+    .on("#tous-vehicules", { element: (element) => element.removeAttribute("hidden") })
+    .on("#liste-vehicules", { element: (element) => element.setInnerContent(liste, { html: true }) })
+    .transform(reponse);
+}
 
 export class ApiError extends Error {
   constructor(status, message) {
@@ -65,7 +105,9 @@ export class ApiError extends Error {
 async function routeApi(request, env, url) {
   const method = request.method;
   const path = url.pathname;
+  if(path==="/api/stripe/webhook"&&method==="POST")return webhookStripe(request,env);
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
+  if(["/api/deposit/card","/api/deposit/transfer"].includes(path)&&method==="POST"){await exigerUtilisateur(request,env);throw new ApiError(410,"Les nouveaux dépôts de garantie sont désactivés pendant le Lot 1.");}
 
   if(proposalRoute(path))return proposals(request,env,url,{json,ApiError,exigerUtilisateur,lireJson,catalogueComplet});
   if(path.startsWith('/api/marketplace/'))return marketplace(request,env,url,{json,ApiError,exigerUtilisateur,lireJson});
@@ -115,6 +157,18 @@ async function lireJson(request) {
     if (body && typeof body === "object" && !Array.isArray(body)) return body;
   } catch(e) {if(e instanceof ApiError)throw e;}
   throw new ApiError(400, "Requête illisible.");
+}
+
+// Adresse IP du visiteur, fournie par Cloudflare. Une adresse IPv6 est ramenée à son /64 : un abonné en dispose souvent
+// d'un entier, qu'il pourrait parcourir pour contourner les limites.
+export function adresseIp(request) {
+  const ip = request.headers.get("CF-Connecting-IP") || "inconnue";
+  if (!ip.includes(":") || ip.includes(".")) return ip;
+  const [tete, queue] = ip.toLowerCase().split("::");
+  const debut = tete ? tete.split(":") : [];
+  const fin = queue ? queue.split(":") : [];
+  const groupes = queue === undefined ? debut : [...debut, ...Array(8 - debut.length - fin.length).fill("0"), ...fin];
+  return `${groupes.slice(0, 4).map((groupe) => groupe.replace(/^0+(?=.)/, "")).join(":")}::/64`;
 }
 
 export function texte(value, max) {
@@ -173,7 +227,7 @@ async function utilisateurConnecte(request, env) {
   const token = lireCookie(request, SESSION_COOKIE);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   return env.DB.prepare(
-    `SELECT users.id, users.email, users.name, users.phone, users.role, users.terms_version, users.created_at FROM sessions
+    `SELECT users.id, users.email, users.name, users.phone, users.role, users.terms_version, users.deposit_tnd, users.created_at FROM sessions
      JOIN users ON users.id = sessions.user_id
      WHERE sessions.token_hash = ? AND sessions.expires_at > ?`
   ).bind(await sha256(token), new Date().toISOString()).first();
@@ -189,7 +243,7 @@ async function exigerUtilisateur(request, env) {
 function profil(user) {
   return {
     id: user.id, email: user.email, name: user.name, phone: user.phone || "", role: user.role || "buyer", createdAt: user.created_at,
-    termsAccepted: user.terms_version === CGV_VERSION, termsVersion: CGV_VERSION
+    termsAccepted: user.terms_version === CGV_VERSION, termsVersion: CGV_VERSION, depositTnd: user.deposit_tnd || 0
   };
 }
 
@@ -209,7 +263,7 @@ async function me(request, env) {
   if (!user) return json({ user: null }, 401);
   const [favorites, offers, vehicles, invoices] = await Promise.all([
     env.DB.prepare("SELECT reference FROM favorites WHERE user_id = ? ORDER BY created_at DESC").bind(user.id).all(),
-    env.DB.prepare("SELECT id, reference, amount_tnd, kind, status, created_at FROM offers WHERE user_id = ? ORDER BY id DESC").bind(user.id).all(),
+    env.DB.prepare("SELECT id, reference, amount_tnd, kind, status, created_at, withdrawn_at FROM offers WHERE user_id = ? ORDER BY id DESC").bind(user.id).all(),
     env.DB.prepare("SELECT id, reference, make, model, trim, status, purchased_at FROM customer_vehicles WHERE user_id = ? ORDER BY purchased_at DESC, id DESC").bind(user.id).all(),
     env.DB.prepare("SELECT id, vehicle_id, invoice_number, issued_at, total_tnd, status, document_key FROM invoices WHERE user_id = ? ORDER BY issued_at DESC, id DESC").bind(user.id).all()
   ]);
@@ -234,7 +288,7 @@ async function me(request, env) {
       const enchere = row.kind === "bid" ? encheres.get(row.reference) : null;
       return {
         id: row.id, reference: row.reference, amountTnd: row.amount_tnd, kind: row.kind,
-        status: enchere ? statutEnchere(row, enchere.meilleureId, enchere.auction) : row.status, createdAt: row.created_at
+        status: row.withdrawn_at ? "withdrawn" : enchere ? statutEnchere(row, enchere.meilleureId, enchere.auction) : row.status, createdAt: row.created_at
       };
     }),
     vehicles: vehicles.results.map((row) => ({
@@ -280,13 +334,24 @@ async function register(request, env) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Adresse e-mail invalide.");
   if (phone && !/^[+0-9 ().-]{6,30}$/.test(phone)) throw new ApiError(400, "Numéro de téléphone invalide.");
   if (password.length < 10 || password.length > 200) throw new ApiError(400, "Le mot de passe doit contenir au moins 10 caractères.");
+  // Place réservée en une requête (pas de course entre comptage et enregistrement) et gardée même si l'adresse e-mail
+  // est déjà prise : les essais d'adresses pour savoir qui est client comptent aussi.
+  const ip = adresseIp(request);
+  const maintenant = new Date();
+  const [, place] = await env.DB.batch([
+    env.DB.prepare("DELETE FROM registrations WHERE at < ?").bind(new Date(maintenant.getTime() - 86400_000).toISOString()),
+    env.DB.prepare(
+      "INSERT INTO registrations (ip, at) SELECT ?, ? WHERE (SELECT COUNT(*) FROM registrations WHERE ip = ? AND at > ?) < ? RETURNING rowid"
+    ).bind(ip, maintenant.toISOString(), ip, new Date(maintenant.getTime() - 3600_000).toISOString(), MAX_INSCRIPTIONS_PAR_IP)
+  ]);
+  if (!place.results.length) throw new ApiError(429, "Trop d'inscriptions depuis cette connexion. Réessaie dans une heure.");
 
   const salt = hex(octetsAleatoires(16));
   const hash = await hacherMotDePasse(password, salt);
   let created;
   try {
     created = await env.DB.prepare(
-      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, terms_version, created_at"
+      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, terms_version, deposit_tnd, created_at"
     ).bind(email, name, phone || null, hash, salt).first();
   } catch (error) {
     if (String(error).includes("UNIQUE")) throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail.");
@@ -298,7 +363,7 @@ async function register(request, env) {
 async function login(request, env) {
   const body = await lireJson(request);
   const email = texte(body.email, 254).toLowerCase();
-  const user = await verifierMotDePasse(env, email, body.password);
+  const user = await verifierMotDePasse(env, email, body.password, adresseIp(request));
   await env.DB.batch([
     env.DB.prepare("DELETE FROM login_failures WHERE email = ?").bind(email),
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?").bind(user.id, new Date().toISOString())
@@ -309,19 +374,38 @@ async function login(request, env) {
 }
 
 // Vérifie e-mail et mot de passe (connexion au site, autorisation d'une application MCP), avec limite d'essais.
-export async function verifierMotDePasse(env, email, motDePasse) {
+// Limites par IP : de faux mots de passe tapés ailleurs ne bloquent pas le titulaire du compte. La limite globale du
+// compte (attaque répartie) ne s'applique pas aux adresses d'où il s'est déjà connecté.
+// L'essai est compté avant le calcul du mot de passe, en une requête : des essais simultanés ne passent pas tous.
+export async function verifierMotDePasse(env, email, motDePasse, ip = "inconnue") {
   const password = typeof motDePasse === "string" ? motDePasse.slice(0, 200) : "";
-  const depuis = new Date(Date.now() - 15 * 60_000).toISOString();
-  const echecs = await env.DB.prepare("SELECT COUNT(*) AS n FROM login_failures WHERE email = ? AND at > ?").bind(email, depuis).first();
-  if (echecs.n >= MAX_LOGIN_FAILURES) throw new ApiError(429, "Trop de tentatives. Réessaie dans 15 minutes.");
+  const maintenant = new Date();
+  const depuis = new Date(maintenant.getTime() - 15 * 60_000).toISOString();
+  const essai = await env.DB.prepare(
+    `INSERT INTO login_failures (email, ip, at) SELECT ?, ?, ?
+     WHERE (SELECT COUNT(*) FROM login_failures WHERE at > ? AND email = ? AND ip = ?) < ?
+       AND (SELECT COUNT(*) FROM login_failures WHERE at > ? AND ip = ?) < ?
+       AND ((SELECT COUNT(*) FROM login_failures WHERE at > ? AND email = ?) < ?
+         OR EXISTS (SELECT 1 FROM login_known_ips WHERE email = ? AND ip = ?))
+     RETURNING rowid`
+  ).bind(email, ip, maintenant.toISOString(), depuis, email, ip, MAX_LOGIN_FAILURES, depuis, ip, MAX_ECHECS_PAR_IP,
+    depuis, email, MAX_ECHECS_PAR_COMPTE, email, ip).first();
+  if (!essai) throw new ApiError(429, "Trop de tentatives. Réessaie dans 15 minutes.");
 
   const user = await env.DB.prepare("SELECT id, role, password_hash, password_salt FROM users WHERE email = ?").bind(email).first();
   // Même calcul que l'adresse existe ou non, pour ne pas révéler les comptes par le temps de réponse.
   const hash = await hacherMotDePasse(password, user ? user.password_salt : "00".repeat(16));
   if (!user || !egaliteConstante(hash, user.password_hash)) {
-    await env.DB.prepare("INSERT INTO login_failures (email, at) VALUES (?, ?)").bind(email, new Date().toISOString()).run();
+    await env.DB.prepare("DELETE FROM login_failures WHERE at < ?").bind(new Date(maintenant.getTime() - 86400_000).toISOString()).run();
     throw new ApiError(401, "E-mail ou mot de passe incorrect.");
   }
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM login_failures WHERE rowid = ?").bind(essai.rowid),
+    env.DB.prepare(
+      "INSERT INTO login_known_ips (email, ip, at) VALUES (?, ?, ?) ON CONFLICT(email, ip) DO UPDATE SET at = excluded.at"
+    ).bind(email, ip, maintenant.toISOString()),
+    env.DB.prepare("DELETE FROM login_known_ips WHERE at < ?").bind(new Date(maintenant.getTime() - 180 * 86400_000).toISOString())
+  ]);
   return { id: user.id, role: user.role };
 }
 
@@ -361,13 +445,13 @@ export async function catalogueComplet(request, env) {
   return Promise.all(checked.map(async item=>{
    if(!item.lot.reference.startsWith('SV-'))return item;
    const row=sellerRows.get(item.lot.reference),valid=row&&row.stage==='published'&&!row.suspended&&await diagnosticValid(env,row.id);
-   return {...item,removed:item.removed||!valid,lot:{...item.lot,url:'/vehicules/'+item.lot.reference}};
+   return {...item,sellerUnavailable:!valid,removed:item.removed||!valid,lot:{...item.lot,url:'/vehicules/'+item.lot.reference}};
   }));
 }
 
 // Lots publics, avec l'état de leur enchère (prix actuel, fin effective…) pour les lots open et upcoming.
 async function catalogue(request, env) {
-  if(!legacyAuctionsEnabled(env))return (await catalogueComplet(request,env)).filter(item=>!item.removed&&(item.offerOwnerAssigned||item.lot.status!=='open'||!item.lot.endsAt||Date.parse(item.lot.endsAt)>Date.now())).map(item=>lot1Public(item.lot));
+  if(!legacyAuctionsEnabled(env))return (await catalogueComplet(request,env)).filter(item=>!item.removed&&(item.offerOwnerAssigned||item.lot.status!=='open'||!item.lot.endsAt||Date.parse(item.lot.endsAt)>Date.now())).map(item=>({...lot1Public(item.lot),url:cheminVehicule(item.lot)}));
   const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
   const maintenant = Date.now();
   return items.filter((item) => !item.removed).map((item) => avecEnchere(item.lot, resumes, maintenant));
@@ -521,7 +605,7 @@ export async function listerOffres(request, env, reference) {
     resumesEncheres(env),
     reference ? etiquettesEncherisseurs(env, reference) : Promise.resolve(null),
     env.DB.prepare(
-      `SELECT offers.id, offers.reference, offers.kind, offers.amount_tnd, offers.status, offers.created_at, offers.user_id,
+      `SELECT offers.id, offers.reference, offers.kind, offers.amount_tnd, offers.status, offers.created_at, offers.withdrawn_at, offers.user_id,
               users.name, users.email, users.phone FROM offers JOIN users ON users.id = offers.user_id
        ${reference ? "WHERE offers.reference = ?" : ""} ORDER BY offers.reference, offers.kind, offers.amount_tnd DESC, offers.created_at ASC LIMIT 1000`
     ).bind(...(reference ? [reference] : [])).all()
@@ -543,7 +627,7 @@ export async function listerOffres(request, env, reference) {
   return {
     lots,
     offers: results.map((row) => ({
-      id: row.id, reference: row.reference, kind: row.kind, amountTnd: row.amount_tnd, status: row.status, createdAt: row.created_at,
+      id: row.id, reference: row.reference, kind: row.kind, amountTnd: row.amount_tnd, status: row.withdrawn_at ? "withdrawn" : row.status, createdAt: row.created_at,
       best: meilleures.get(row.reference) === row.id, bidder: etiquettes?.get(row.user_id) || null,
       name: row.name, email: row.email, phone: row.phone || ""
     }))

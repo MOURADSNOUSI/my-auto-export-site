@@ -2,7 +2,7 @@
 
 ## Résultat et base de travail
 
-Dépôt vérifié via le remote Git : `MOURADSNOUSI/my-auto-export-site` (un seul S à NOUSI). Branche dédiée `feature/lot1-propositions-achat`, fondée sur la marketplace de la PR #10 ; le slogan « Véhicules sans frontières » demandé précédemment est conservé. Les travaux non commités du pied de page dans l'autre worktree ne sont pas incorporés. La PR du Lot 1 doit être relue sur cette base avant toute intégration ; aucune fusion ni production n'est autorisée.
+Dépôt vérifié via le remote Git : `MOURADSNOUSI/my-auto-export-site` (un seul S à NOUSI). Branche dédiée `feature/lot1-propositions-achat`, fondée sur la marketplace de la PR #10 ; le slogan « Véhicules sans frontières » demandé précédemment est conservé. Les travaux non commités du pied de page dans l'autre worktree ne sont pas incorporés. La PR du Lot 1 reste sur cette base, sans fusion automatique. Le déploiement en production a été explicitement demandé le 4 novembre 2026 ; son compte rendu est dans [le rapport de déploiement](DEPLOIEMENT_LOT1.md).
 
 L'acheteur ouvre « Proposer une offre » depuis une carte, une fiche existante ou `/vehicules/:reference`. La fenêtre affiche véhicule/référence, réserve, devise, montant, message facultatif et conditions versionnées. Une session est requise avant envoi. Le vendeur retrouve ses propositions dans `/vendeur/offres` ; l'acheteur les suit et peut annuler une proposition en attente dans `/mes-offres`. Les décisions et échéances produisent un historique et des notifications internes. Aucun e-mail n'est envoyé.
 
@@ -39,7 +39,7 @@ Index : recherches par acheteur/vendeur/véhicule, expiration, une proposition e
 
 ## Exploitation locale et configuration préalable
 
-Le déploiement, les migrations distantes et l'affectation de vendeurs réels nécessitent une autorisation distincte. Sauvegarder et examiner les migrations divergentes de la branche config/agents-ia avant toute intégration. Appliquer la base de la PR #10 puis la migration 0015 uniquement sur une base locale ou de preview autorisée pour validation.
+Le déploiement et les migrations nécessaires ont été autorisés le 4 novembre 2026. L’audit de production, la sauvegarde privée et les migrations manquantes sont décrits dans le rapport de déploiement. Les réserves et propriétaires réels doivent être renseignés par le responsable dans l’interface ; le déploiement du code ne les invente pas.
 
 Sur `/admin/marketplace`, « Affecter le vendeur d'une annonce importée » appelle :
 
