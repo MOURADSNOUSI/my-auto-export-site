@@ -964,7 +964,7 @@
           location.href = url;
         } else {
           const { transfer } = await api("/api/deposit/transfer", { method: "POST", body: { reference: virement.dataset.ref } });
-          info.innerHTML = `<p class="form-success">Virez <strong>${formatTnd(transfer.amountTnd)}</strong> à <strong>${escapeHtml(transfer.beneficiary)}</strong><br>IBAN : <strong>${escapeHtml(transfer.iban)}</strong><br>Libellé : <strong>${escapeHtml(transfer.reference)}</strong><br>Vous pourrez enchérir dès réception du virement.</p>`;
+          info.innerHTML = `<p class="form-success">Virez <strong>${formatTnd(transfer.amountTnd)}</strong> à <strong>${escapeHtml(transfer.beneficiary)}</strong><br>IBAN : <strong>${escapeHtml(transfer.iban)}</strong><br>Libellé (propre à cette demande, à recopier exactement) : <strong>${escapeHtml(transfer.reference)}</strong><br>Virez exactement ce montant : vous pourrez enchérir dès réception du virement.</p>`;
         }
       } catch (error) {
         if (carte) carte.disabled = false;
