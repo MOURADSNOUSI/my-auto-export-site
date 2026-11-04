@@ -146,6 +146,27 @@ acheteur affiche « PDF non disponible » et `/api/invoices/<id>/document` répo
 bucket R2 privé (`npx wrangler r2 bucket create my-auto-export-documents`), le déclarer avec le binding `DOCUMENTS`
 et prévoir l'envoi des PDF depuis l'administration (pas encore développé).
 
+## Dépôt de garantie (caution)
+
+Requis pour enchérir, selon le barème de `DEPOSIT_TIERS` (worker/index.js). Le solde est global au compte.
+
+- **Virement** : chaque demande a son montant, figé à la création, et son propre libellé `CAUTION-<numéro de la demande>`.
+  Redemander un autre montant annule la demande en attente et en crée une nouvelle (nouveau libellé). Dans `/admin`,
+  « Virement reçu » demande le montant lu sur le relevé : s'il diffère de la demande, rien n'est crédité (409) ; corriger
+  alors la caution à la main. Le crédit est atomique et ne peut avoir lieu qu'une fois.
+- **Carte** (Stripe, validée par webhook signé) : débitée en euros au taux `TND_PER_EUR` (dinars pour 1 €). **Il n'y a pas
+  de taux par défaut** : sans `TND_PER_EUR` (nombre > 0), `/api/deposit/card` répond 503 et aucune demande n'est créée.
+  Le propriétaire le déclare de préférence comme secret (`npx wrangler secret put TND_PER_EUR`) : une variable saisie
+  dans le tableau de bord Cloudflare est effacée par le `wrangler deploy` suivant, `wrangler.jsonc` n'ayant pas de `vars`.
+  Il le tient à jour : c'est le taux auquel les clients sont débités. Secrets : `STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET` (`npx wrangler secret put …`) ; virement : `BANK_IBAN`, `BANK_BENEFICIARY`.
+- **Ajustement manuel** (« Modifier la caution » dans les enchères d'un véhicule) : motif obligatoire (2 000 caractères au
+  plus). Chaque ajustement est journalisé dans `deposit_adjustments` (ancien et nouveau solde, motif, administrateur, date) :
+  `npx wrangler d1 execute DB --remote --command "SELECT * FROM deposit_adjustments ORDER BY id DESC LIMIT 50"`
+
+⚠️ Appliquer la migration **avant** de pousser le code, sinon l'ajustement manuel échoue :
+`npx wrangler d1 migrations apply DB --remote` (0016), puis déployer.
+
 ## Sécurité
 
 - **Enchères refusées** : refuser une enchère (par exemple un montant fantaisiste) la retire du prix courant, de l'historique

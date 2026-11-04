@@ -12,6 +12,7 @@ const MAX_ECHECS_PAR_IP = 30; // toutes adresses e-mail confondues, sur 15 minut
 const MAX_ECHECS_PAR_COMPTE = 100; // toutes IP confondues, sur 15 minutes : freine une attaque répartie
 const MAX_INSCRIPTIONS_PAR_IP = 10; // par heure
 const MAX_OFFER_TND = 10_000_000;
+const MAX_MOTIF_CAUTION = 2000; // motif d'un ajustement manuel de caution
 // Version des conditions générales (conditions.html). La changer redemande l'acceptation à tous les acheteurs.
 const CGV_VERSION = "2026-11-01";
 // Barème de la caution selon la valeur du lot (prix de réserve, à défaut mise à prix) : [plafond inclus, caution] en TND.
@@ -23,7 +24,6 @@ export function depotRequis(lot) {
   const valeur = [lot.reservePriceTnd, lot.startingPriceTnd].find((v) => Number.isFinite(v) && v > 0) || 0;
   return DEPOSIT_TIERS.find(([plafond]) => valeur <= plafond)?.[1] ?? DEPOSIT_TOP_TND;
 }
-const DEFAULT_TND_PER_EUR = 3.4;
 const RETRAIT_MIN_MS = 12 * 3_600_000; // une enchère ne peut plus être retirée dans les 12 dernières heures
 const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes repousse la fin de 2 minutes
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
@@ -291,10 +291,12 @@ async function crediterDepot(env, depositId, methode) {
 async function caution_carte(request, env, url) {
   const user = await exigerUtilisateur(request, env);
   if (!env.STRIPE_SECRET_KEY) throw new ApiError(503, "Le paiement par carte n'est pas encore disponible. Utilise le virement bancaire.");
+  // Stripe n'encaisse pas le dinar : la carte est débitée en euros au taux TND_PER_EUR (dinars pour 1 €), déclaré par le
+  // propriétaire. Jamais de taux de secours : sans taux valide, aucune demande n'est créée.
+  const taux = Number(env.TND_PER_EUR);
+  if (!(Number.isFinite(taux) && taux > 0)) throw new ApiError(503, "Paiement par carte indisponible : taux de change non configuré. Utilise le virement bancaire.");
   const montant = await montantARegler(request, env, user, await lireJson(request));
   if (!montant) throw new ApiError(409, "Ton dépôt de garantie couvre déjà ce véhicule.");
-  // Stripe n'encaisse pas le dinar : la carte est débitée en euros au taux TND_PER_EUR (dinars pour 1 €).
-  const taux = Number(env.TND_PER_EUR) > 0 ? Number(env.TND_PER_EUR) : DEFAULT_TND_PER_EUR;
   const centimes = Math.ceil((montant / taux) * 100);
   const depot = await env.DB.prepare("INSERT INTO deposits (user_id, method, amount_tnd, charge_amount, charge_currency) VALUES (?, 'card', ?, ?, 'eur') RETURNING id")
     .bind(user.id, montant, centimes).first();
@@ -362,19 +364,30 @@ async function caution_virement(request, env) {
   if (!env.BANK_IBAN || !env.BANK_BENEFICIARY) throw new ApiError(503, "Le virement bancaire n'est pas encore disponible. Contacte M&Y AUTO EXPORT.");
   const montant = await montantARegler(request, env, user, await lireJson(request));
   if (!montant) throw new ApiError(409, "Ton dépôt de garantie couvre déjà ce véhicule.");
-  let depot = await env.DB.prepare("SELECT id FROM deposits WHERE user_id = ? AND method = 'transfer' AND status = 'pending'").bind(user.id).first();
-  if (depot) {
-    depot = await env.DB.prepare("UPDATE deposits SET amount_tnd = ? WHERE id = ? RETURNING id, amount_tnd").bind(montant, depot.id).first();
-  } else {
-    depot = await env.DB.prepare("INSERT INTO deposits (user_id, method, amount_tnd) VALUES (?, 'transfer', ?) RETURNING id, amount_tnd")
-      .bind(user.id, montant).first();
-  }
+  // Le montant d'une demande est figé : une demande en attente d'un autre montant est annulée et remplacée (nouvelle
+  // référence), celle du même montant est reprise. Une seule transaction : jamais deux demandes en attente.
+  const [, , trouve] = await env.DB.batch([
+    env.DB.prepare("UPDATE deposits SET status = 'cancelled' WHERE user_id = ?1 AND method = 'transfer' AND status = 'pending' AND amount_tnd <> ?2")
+      .bind(user.id, montant),
+    env.DB.prepare(
+      `INSERT INTO deposits (user_id, method, amount_tnd) SELECT ?1, 'transfer', ?2
+       WHERE NOT EXISTS (SELECT 1 FROM deposits WHERE user_id = ?1 AND method = 'transfer' AND status = 'pending')`
+    ).bind(user.id, montant),
+    env.DB.prepare("SELECT id, amount_tnd FROM deposits WHERE user_id = ? AND method = 'transfer' AND status = 'pending' ORDER BY id DESC LIMIT 1")
+      .bind(user.id)
+  ]);
+  const depot = trouve.results[0];
   return json({
     transfer: {
-      amountTnd: depot.amount_tnd, reference: `CAUTION-${user.id}`,
+      id: depot.id, amountTnd: depot.amount_tnd, reference: referenceVirement(depot.id),
       beneficiary: env.BANK_BENEFICIARY, iban: env.BANK_IBAN
     }
   }, 201);
+}
+
+// Libellé à porter sur le virement : propre à chaque demande, donc à un montant unique.
+function referenceVirement(depositId) {
+  return `CAUTION-${depositId}`;
 }
 
 async function listerVirements(env) {
@@ -386,13 +399,21 @@ async function listerVirements(env) {
   return {
     transfers: results.map((row) => ({
       id: row.id, userId: row.user_id, amountTnd: row.amount_tnd, createdAt: row.created_at,
-      reference: `CAUTION-${row.user_id}`, name: row.name, email: row.email, phone: row.phone || ""
+      reference: referenceVirement(row.id), name: row.name, email: row.email, phone: row.phone || ""
     }))
   };
 }
 
-async function deciderVirement(env, id, confirmer) {
+// Confirmer exige le montant réellement reçu : il doit être celui de la demande (figé à sa création).
+async function deciderVirement(env, id, confirmer, body) {
   if (confirmer) {
+    const recu = Number(body.amountTnd);
+    if (!Number.isInteger(recu) || recu <= 0 || recu > MAX_OFFER_TND) throw new ApiError(400, "Indique le montant reçu (nombre entier de dinars).");
+    const depot = await env.DB.prepare("SELECT amount_tnd FROM deposits WHERE id = ? AND method = 'transfer' AND status = 'pending'").bind(id).first();
+    if (!depot) throw new ApiError(404, "Virement introuvable ou déjà traité.");
+    if (depot.amount_tnd !== recu) {
+      throw new ApiError(409, `Montant reçu (${recu} TND) différent de la demande ${referenceVirement(id)} (${depot.amount_tnd} TND) : rien n'est crédité. Corrige la caution à la main, avec un motif, si besoin.`);
+    }
     if (!(await crediterDepot(env, id, "transfer"))) throw new ApiError(404, "Virement introuvable ou déjà traité.");
     return { id, status: "paid" };
   }
@@ -759,15 +780,28 @@ async function routeAdmin(request, env, path, method, ctx) {
   }
   const caution = path.match(/^\/api\/admin\/users\/(\d+)\/deposit$/);
   if (caution && method === "POST") {
-    const amount = Number((await lireJson(request)).amountTnd);
+    const body = await lireJson(request);
+    const amount = Number(body.amountTnd);
     if (!Number.isInteger(amount) || amount < 0 || amount > MAX_OFFER_TND) throw new ApiError(400, "Montant invalide (nombre entier de dinars).");
-    const row = await env.DB.prepare("UPDATE users SET deposit_tnd = ? WHERE id = ? RETURNING id, deposit_tnd").bind(amount, Number(caution[1])).first();
+    const motif = typeof body.reason === "string" ? body.reason.trim() : "";
+    if (!motif || motif.length > MAX_MOTIF_CAUTION) throw new ApiError(400, `Motif obligatoire (${MAX_MOTIF_CAUTION} caractères au plus).`);
+    // Journal puis solde dans la même transaction : l'ancienne valeur est lue juste avant l'écriture, sans fenêtre.
+    const acheteur = Number(caution[1]);
+    const [, maj] = await env.DB.batch([
+      env.DB.prepare("INSERT INTO deposit_adjustments (user_id, previous_tnd, new_tnd, reason, actor_id) SELECT id, deposit_tnd, ?, ?, ? FROM users WHERE id = ?")
+        .bind(amount, motif, user.id, acheteur),
+      env.DB.prepare("UPDATE users SET deposit_tnd = ? WHERE id = ? RETURNING id, deposit_tnd").bind(amount, acheteur)
+    ]);
+    const row = maj.results[0];
     if (!row) throw new ApiError(404, "Acheteur introuvable.");
     return json({ userId: row.id, depositTnd: row.deposit_tnd });
   }
   if (path === "/api/admin/deposits" && method === "GET") return json(await listerVirements(env));
   const virement = path.match(/^\/api\/admin\/deposits\/(\d+)\/(confirm|cancel)$/);
-  if (virement && method === "POST") return json(await deciderVirement(env, Number(virement[1]), virement[2] === "confirm"));
+  if (virement && method === "POST") {
+    const body = virement[2] === "confirm" ? await lireJson(request) : {};
+    return json(await deciderVirement(env, Number(virement[1]), virement[2] === "confirm", body));
+  }
   if (path === "/api/admin/photos" && method === "POST") return envoyerPhoto(request, env);
   const photo = path.match(/^\/api\/admin\/photos\/(vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp))$/);
   if (photo && method === "DELETE") {
