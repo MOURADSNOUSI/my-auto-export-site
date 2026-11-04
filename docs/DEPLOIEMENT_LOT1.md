@@ -57,3 +57,5 @@ Chromium vérifie la production à 1440 et 390 px, avec la CSP réelle : slogan 
 La Citroën C5 `7753628` n’a toujours pas de réserve publique et ne reçoit pas encore d’offres. Cette donnée métier et l’affectation du vendeur restent à renseigner par l’administrateur. Les champs sont utilisables ; les contrôles d’envoi restent actifs.
 
 L’aperçu local 8787 reçoit également les six migrations historiques manquantes pour conserver sa compatibilité ; son compte administrateur et ses données restent séparés de la production.
+
+Le contrôle GitHub « Workers Builds: my-auto-export-site » du commit `4b9d2c8` est **SUCCESS**. La branche et la PR #11 sont actualisées sans fusion ; la version active demeure celle vérifiée ci-dessus.
