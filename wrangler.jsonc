@@ -1,7 +1,9 @@
 {
 	"name": "my-auto-export-site",
-	"compatibility_date": "2026-10-01",
+	"keep_vars": true,
+    "compatibility_date": "2026-10-01",
 	"main": "worker/main.js",
+    "vars": {"LEGACY_AUCTIONS_ENABLED":"false"},
 	"assets": {
 		"directory": "./my-auto-export",
 		"binding": "ASSETS",
@@ -17,10 +19,15 @@
 			"migrations_dir": "migrations"
 		}
 	],
-	// Le bucket SELLER_DOCUMENTS devra être créé séparément et rester privé avant mise en service autorisée.
+	// Documents vendeurs privés : aucun accès public au bucket.
     // Photos envoyées depuis /admin.html (créé avec `npx wrangler r2 bucket create my-auto-export-photos`).
 	// Le Worker lit env.PHOTOS ; en local, `wrangler dev` utilise un stockage local, pas celui de production.
 	// Pas de binding DOCUMENTS : le téléchargement des factures PDF reste désactivé (voir README, « Factures PDF »).
+    "triggers":{"crons":["0 5 * * *","0 6 * * *"]},
+    "previews":{
+        "d1_databases":[{"binding":"DB","database_name":"my-auto-export-preview","database_id":"a658cc29-3472-4c95-b877-080b77335edf"}],
+        "r2_buckets":[{"binding":"PHOTOS","bucket_name":"my-auto-export-photos-preview"},{"binding":"SELLER_DOCUMENTS","bucket_name":"my-auto-export-seller-private-preview"}]
+    },
 	"r2_buckets": [
         {"binding":"SELLER_DOCUMENTS","bucket_name":"my-auto-export-seller-private"},
 		{

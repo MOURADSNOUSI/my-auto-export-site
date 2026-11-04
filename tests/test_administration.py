@@ -26,6 +26,7 @@ def config_de_test(dossier):
     """wrangler.jsonc avec chemins absolus et un stockage R2 local, pour tester l'envoi de photos."""
     texte = "\n".join(ligne for ligne in (PROJET / "wrangler.jsonc").read_text().splitlines() if not ligne.strip().startswith("//"))
     config = json.loads(texte)
+    config.setdefault("vars",{})["LEGACY_AUCTIONS_ENABLED"]="true"
     config["main"] = str(PROJET / config["main"])
     config["assets"]["directory"] = str(PROJET / config["assets"]["directory"])
     for base in config["d1_databases"]:
@@ -110,7 +111,7 @@ class AdministrationTest(unittest.TestCase):
         return set_cookie.split(";")[0]
 
     def page_admin(self, email="admin@example.com"):
-        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        context = self.browser.new_context(bypass_csp=True,viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
         page.goto(self.base + "/admin.html")
@@ -154,7 +155,7 @@ class AdministrationTest(unittest.TestCase):
         self.assertEqual(len(lot["photos"]), 2)
         self.assertTrue(all(p["url"].startswith("/media/vehicules/MY-ADM-1/") and p["authorized"] for p in lot["photos"]))
 
-        site = self.browser.new_page()
+        site = self.browser.new_page(bypass_csp=True)
         self.addCleanup(site.close)
         site.goto(self.base + "/")
         site.wait_for_function("catalogueEtat === 'ready'")

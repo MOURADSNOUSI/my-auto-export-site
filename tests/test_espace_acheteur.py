@@ -36,7 +36,7 @@ class EspaceAcheteurTest(unittest.TestCase):
                        cwd=PROJET, check=True, capture_output=True)
         port = port_libre()
         cls.base = f"http://localhost:{port}"
-        cls.serveur = subprocess.Popen([WRANGLER, "dev", "--local", "--port", str(port), "--persist-to", persist],
+        cls.serveur = subprocess.Popen([WRANGLER, "dev", "--local", "--var", "LEGACY_AUCTIONS_ENABLED:true", "--port", str(port), "--persist-to", persist],
                                        cwd=PROJET, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(90):
             try:
@@ -59,7 +59,7 @@ class EspaceAcheteurTest(unittest.TestCase):
         cls.tmp.cleanup()
 
     def nouvelle_page(self):
-        context = self.browser.new_context()
+        context = self.browser.new_context(bypass_csp=True)
         self.addCleanup(context.close)
         page = context.new_page()
         page.goto(self.base + "/")

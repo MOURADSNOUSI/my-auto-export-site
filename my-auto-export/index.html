@@ -1,18 +1,20 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-proposal-only="true">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10231b">
   <meta name="theme-color" content="#101513">
-  <meta name="description" content="M&Y AUTO EXPORT — véhicules européens livrés en Tunisie : stock, enchères et prix fixes, prix affichés en dinars tunisiens.">
-  <title>M&Y AUTO EXPORT — Véhicules européens livrés en Tunisie</title>
+  <meta name="description" content="M&Y AUTO EXPORT : achat et import de véhicules d'occasion sélectionnés en Europe et livrés en Tunisie. Stock, enchères en ligne et achat direct, prix affichés en dinars tunisiens (TND).">
+  <title>M&Y AUTO EXPORT — Achat et import de véhicules européens en Tunisie</title>
   <link rel="canonical" href="https://www.myautoexport.com/">
   <link rel="icon" href="/logo.png" type="image/png">
+  <link rel="preload" as="image" href="/photos/web/MY-0001-1.webp" type="image/webp" fetchpriority="high">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="M&Y AUTO EXPORT">
   <meta property="og:locale" content="fr_TN">
   <meta property="og:url" content="https://www.myautoexport.com/">
-  <meta property="og:title" content="M&Y AUTO EXPORT — Véhicules européens livrés en Tunisie">
+  <meta property="og:title" content="M&Y AUTO EXPORT — Achat et import de véhicules européens en Tunisie">
   <meta property="og:description" content="Véhicules sélectionnés en Europe, en vente directe ou aux enchères, avec des prix affichés en dinars tunisiens.">
   <meta property="og:image" content="https://www.myautoexport.com/logo.png">
   <meta name="twitter:card" content="summary">
@@ -51,8 +53,8 @@
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 76px; }
-    body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.5; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 76px; }
+    body { margin: 0; overflow-x: clip; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.5; }
     button, input, select, textarea { font: inherit; }
     button, a, select { -webkit-tap-highlight-color: transparent; }
     a { color: inherit; text-decoration: none; }
@@ -99,6 +101,11 @@
     .hero h1 { max-width: 620px; margin: 0; font-size: 50px; line-height: 1.08; font-weight: 800; letter-spacing: -.5px; }
     .hero-lead { max-width: 500px; margin: 18px 0 0; color: var(--ink-soft); font-size: 21px; line-height: 1.45; }
     .hero-lead strong { color: var(--ink); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+    .hero-cta { display: inline-flex; min-height: 48px; align-items: center; padding: 0 26px; border: 2px solid var(--green); border-radius: 30px; background: var(--green); color: white; font-size: 15px; font-weight: 750; }
+    .hero-cta:hover { background: var(--green-dark); border-color: var(--green-dark); }
+    .hero-cta-secondary { background: var(--surface); color: var(--green); }
+    .hero-cta-secondary:hover { background: var(--green-pale); color: var(--green-dark); }
     .hero-search { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: center; max-width: 880px; margin-top: 36px; padding: 10px 10px 10px 8px; border-radius: 48px; background: var(--surface); box-shadow: 0 10px 40px #10151324, 0 0 0 1px #10151310; }
     .hero-search label { display: grid; padding: 4px 18px; border-right: 1px solid var(--line); }
     .hero-search label span { color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -175,6 +182,11 @@
     .lot-status.open { background: #b8402f; }
     .lot-body { display: flex; min-width: 0; flex-direction: column; gap: 10px; padding: 14px 18px; }
     .lot-title { margin: 0; font-size: 17px; line-height: 1.3; }
+    .lot-title a { color: inherit; text-decoration: none; }
+    .lot-title a:hover, .lot-title a:focus-visible { text-decoration: underline; }
+    .liste-vehicules { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .liste-vehicules a { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); text-decoration: none; }
+    .liste-vehicules small { color: var(--muted); }
     .lot-meta { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
     .lot-specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; margin: 0; padding: 10px 0; border-block: 1px solid var(--line); list-style: none; }
     .lot-specs li { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 13px; }
@@ -224,7 +236,10 @@
     .side-panel { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     .side-panel h2 { margin: 0 0 10px; font-size: 18px; }
     .side-panel p { margin: 0; color: var(--muted); font-size: 14px; }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 20px; margin-top: 18px; }
+    .deposit-faq { margin-top: 18px; font-size: 13px; color: var(--ink-soft); }
+    .deposit-faq summary { cursor: pointer; color: var(--green); font-weight: 700; }
+    .deposit-faq p { margin: 8px 0 0; }
     .step { padding-top: 11px; border-top: 2px solid var(--gold); }
     .step b { display: block; margin-bottom: 5px; color: var(--green); font-size: 14px; }
     .step span { color: var(--ink-soft); font-size: 13px; }
@@ -243,6 +258,8 @@
     .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 16px 0; }
     .auth-tabs button { min-height: 38px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--muted); font-size: 12px; font-weight: 700; }
     .auth-tabs button[aria-pressed="true"] { border-color: #b7d4c5; background: var(--green-pale); color: #1d5e49; }
+    .deposit-box { display: grid; gap: 8px; }
+    .form-submit.secondary { background: transparent; color: var(--ink); border: 1px solid currentColor; }
     .form-error { margin: 12px 0 0; padding: 8px 10px; border-radius: 4px; background: #fbeaea; color: #8f2a2a; font-size: 12px; }
     .form-success { margin: 12px 0 0; padding: 8px 10px; border-radius: 4px; background: var(--green-pale); color: #1d5e49; font-size: 12px; }
     .auth-form .form-submit { margin-top: 14px; }
@@ -326,6 +343,7 @@
     .offer-status { padding: 2px 7px; border-radius: 3px; background: var(--gold-pale); color: #725b2d; font-size: 10px; font-weight: 750; }
     .offer-status.accepted { background: var(--green-pale); color: var(--green); }
     .offer-status.refused { background: #fbeaea; color: #8f2a2a; }
+    .offer-status.withdrawn { background: #e6eae7; color: var(--muted); }
     .admin-link { display: inline-flex; align-items: center; margin-right: 8px; border-color: var(--green); color: var(--green); }
     .logout-button { margin-top: 18px; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 12px; font-weight: 700; }
     .lot-dialog { width: min(880px, calc(100% - 28px)); }
@@ -401,6 +419,10 @@
       .brand-name small { font-size: 10px; }
       .account-chip { margin-left: 2px; padding-left: 8px; }
       .icon-button { width: 38px; height: 38px; }
+      .header-tools { gap: 0; }
+      .account-chip { margin-left: 0; padding-left: 4px; }
+      .account-chip small { display: none; }
+      .account-chip strong { font-size: 13px; }
       #nav-search { display: none; }
       .main-nav { padding-inline: 14px; }
       .hero-inner { padding: 34px 0 30px; }
@@ -424,6 +446,11 @@
       .account-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .footer-inner { align-items: start; flex-direction: column; gap: 5px; }
     }
+    /* iOS zoome sur tout champ dont la police est inférieure à 16 px */
+    @media (hover: none) and (pointer: coarse), (max-width: 920px) {
+      input, select, textarea, .field, .select-field, .offer-row input, .form-field input, .form-field textarea { font-size: 16px; }
+      .footer-inner { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+    }
     @media (max-width: 359px) {
       .brand-name { display: none; }
     }
@@ -435,8 +462,11 @@
       html { scroll-behavior: auto; }
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
-  .seller-banner{margin:1rem auto;padding:1.4rem;background:#edf4ff;border:1px solid #b6cff7;border-radius:14px;max-width:1240px}.seller-banner a{display:inline-block;color:#144da2;font-weight:700;margin:.4rem .6rem .4rem 0}
+
+.seller-banner{margin:1rem auto;padding:1.4rem;background:#edf4ff;border:1px solid #b6cff7;border-radius:14px;max-width:1240px}.seller-banner a{display:inline-block;color:#144da2;font-weight:700;margin:.4rem .6rem .4rem 0}
 </style>
+<link rel="stylesheet" href="/proposal-dialog.css">
+<script type="module" src="/proposal-dialog.js"></script>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -463,7 +493,7 @@
     <div class="shell header-inner">
       <a class="brand" href="#accueil" aria-label="M&Y AUTO EXPORT, accueil">
         <img src="logo.png" alt="Logo M&Y AUTO EXPORT">
-        <span class="brand-name">M&Y AUTO EXPORT<small>Véhicules européens · Tunisie</small></span>
+        <span class="brand-name">M&Y AUTO EXPORT<small>Véhicules sans frontières</small></span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
         <a href="#ventes" data-nav="all" aria-current="true">Tous les véhicules <span class="nav-count" id="nav-count-all">0</span></a>
@@ -491,10 +521,11 @@
   </header>
 
   <section class="hero" id="accueil" aria-labelledby="page-title">
-    <img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" onerror="this.remove()">
+    <picture><source srcset="/photos/web/MY-0001-1.webp" type="image/webp"><img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" width="960" height="1280" fetchpriority="high" decoding="async" onerror="this.remove()"></picture>
     <div class="shell hero-inner">
-      <h1 id="page-title">Votre véhicule européen ou américain, livré en Tunisie</h1>
-      <p class="hero-lead"><strong id="hero-total">Des véhicules</strong> sélectionnés en Europe, en vente directe ou aux enchères, avec des prix affichés en dinars tunisiens.</p>
+      <h1 id="page-title">Votre prochaine voiture, au meilleur prix, livrée chez vous !</h1>
+      <p class="hero-lead"><strong id="hero-total">Des véhicules</strong> sélectionnés en Europe et aux États-Unis. Proposez une offre privée au vendeur, dans la devise de l’annonce.</p>
+      <div class="hero-actions"><a class="hero-cta" href="#ventes">Voir les véhicules</a><a class="hero-cta hero-cta-secondary" href="#contact">Nous contacter</a></div>
       <form class="hero-search" id="hero-search" role="search" aria-label="Recherche rapide">
         <label><span>Marque</span><select id="hero-make"><option value="">Toutes</option></select></label>
         <label><span>Modèle</span><select id="hero-model"><option value="">Tous</option></select></label>
@@ -597,6 +628,11 @@
         <h2>Vous cherchez un modèle précis ?</h2>
         <p>Décrivez votre recherche : marque, budget, année. L'équipe vous prévient dès qu'un véhicule correspondant arrive.</p>
       </article>
+    </section>
+    <section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title" hidden>
+      <div class="section-title"><h2 id="tous-vehicules-title">Tous nos véhicules</h2><a class="text-action" href="/vehicules">Voir la liste complète</a></div>
+      <!-- Rempli par le Worker (worker/seo.js) : liens vers chaque fiche, lisibles sans JavaScript. -->
+      <ul class="liste-vehicules" id="liste-vehicules"></ul>
     </section>
   </main>
 
@@ -839,11 +875,14 @@
       upcoming: (lot) => lot.status === "upcoming",
       stock: (lot) => lot.status === "stock",
       auction: (lot) => lot.status === "open" || lot.status === "upcoming",
-      fixed: (lot) => lot.status === "stock" && (prixLot(lot) != null || Number.isFinite(lot.buyNowPriceTnd)),
+      fixed: (lot) => lot.status === "stock" && (lot.proposalMode || prixLot(lot) != null || Number.isFinite(lot.buyNowPriceTnd)),
       exclusive: (lot) => !lot.sourceUrl
     };
 
+    const PROPOSALS_ONLY=document.documentElement.dataset.proposalOnly==='true';
+    if(PROPOSALS_ONLY){const auctionLink=document.querySelector('[data-nav="auction"]');auctionLink.setAttribute('aria-disabled','true');auctionLink.title='Les enchères sont désactivées pendant le Lot 1';auctionLink.style.opacity='.5';}
     function choisirOnglet(onglet) {
+      if(PROPOSALS_ONLY&&onglet==='auction')return;
       activeTab = onglet;
       document.querySelectorAll("[data-nav]").forEach((link) => link.setAttribute("aria-current", String(link.dataset.nav === onglet)));
       updateView();
@@ -869,6 +908,8 @@
     }
 
     function prixEnchere(lot) {
+      if(PROPOSALS_ONLY){const minor=lot.publicReserveMinor??lot.reservePriceMinor??(Number.isSafeInteger(lot.reservePriceTnd)?lot.reservePriceTnd*1000:null),currency=lot.currency||'TND';return `<dl class="price-lines"><div><dt>Prix de réserve</dt><dd>${minor!=null?new Intl.NumberFormat('fr-FR',{style:'currency',currency,minimumFractionDigits:currency==='TND'?3:2}).format(minor/(currency==='TND'?1000:100)):'À renseigner par le vendeur'}</dd></div></dl>`;}
+
       const lignes = [
         ["Mise à prix", lot.auction?.currentBidTnd != null ? lot.startingPriceTnd : null],
         ["Prix de réserve", lot.reservePriceTnd],
@@ -904,6 +945,7 @@
 
     // Ligne d'état sur la carte : temps restant, nombre d'enchères, réserve.
     function resumeEnchere(lot) {
+      if(PROPOSALS_ONLY)return '';
       const a = lot.auction;
       if (!a) return "";
       if (a.status === "upcoming") return `<p class="auction-line">${icone("gavel")}Enchères bientôt ouvertes</p>`;
@@ -912,6 +954,7 @@
     }
 
     function panneauEnchere(lot, encheres = null) {
+      if(PROPOSALS_ONLY)return '';
       const a = lot.auction;
       if (!a || !compte.disponible) return "";
       const historique = encheres == null ? `<p class="account-empty">Chargement de l'historique…</p>`
@@ -978,6 +1021,7 @@
     }
 
     function suivreEnchere(reference) {
+      if(PROPOSALS_ONLY)return;
       arreterSuiviEnchere();
       rafraichirEnchere(reference);
       suiviEnchere = setInterval(() => rafraichirEnchere(reference), 8000);
@@ -1010,6 +1054,7 @@
     }
 
     function boutonAchat(lot) {
+      if(PROPOSALS_ONLY)return `<button type="button" class="buy-now" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`;
       return Number.isFinite(lot.buyNowPriceTnd)
         ? `<button class="buy-now" type="button" data-buynow="${escapeHtml(lot.reference)}">Acheter maintenant · ${formatTnd(lot.buyNowPriceTnd)}</button>`
         : "";
@@ -1162,7 +1207,7 @@
       const user = compte.user;
       const favoris = [...watchlist].map((reference) => lots.find((lot) => lot.reference === reference)).filter(Boolean);
       const statuts = {
-        pending: "En attente de confirmation", accepted: "Acceptée · l'équipe vous contacte", refused: "Refusée",
+        pending: "En attente de confirmation", accepted: "Acceptée · l'équipe vous contacte", refused: "Refusée", withdrawn: "Retirée",
         leading: "Vous menez", outbid: "Surenchérie", won: "Remportée", lost: "Perdue", reserve_not_met: "Réserve non atteinte"
       };
       const statutsVehicule = { purchased: "Acheté", in_preparation: "En préparation", ready_for_pickup: "Prêt à enlever", picked_up: "Enlevé" };
@@ -1181,19 +1226,20 @@
         <div class="dialog-head"><div><span class="lot-meta">Page personnelle · Acheteur</span><h2 id="account-title">${escapeHtml(user.name)} ${numeroMembre(user)}</h2>
           <p class="account-meta">${escapeHtml(user.email)}${user.phone ? ` · ${escapeHtml(user.phone)}` : ""} · membre depuis le ${date(user.createdAt)}</p></div>
           <button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
+        ${user.depositTnd>0?`<p class="deposit-history"><strong>Solde du dépôt de garantie existant : ${formatTnd(user.depositTnd)}</strong><br>Pour toute question ou demande de restitution, <a href="mailto:contact@myautoexport.com?subject=D%C3%A9p%C3%B4t%20de%20garantie">contactez l’équipe</a>.</p>`:""}
         <nav class="account-nav" aria-label="Rubriques de l'espace acheteur">${vues.map(([id, label, count], index) => `<button type="button" data-account-view="${id}" aria-pressed="${index === 0}"><span>${count}</span>${label}</button>`).join("")}</nav>
         <section class="account-panel" data-account-panel="vehicles">
           <h3>Mes véhicules (${compte.vehicles.length})</h3><p>Véhicules rattachés à ton compte acheteur.</p>
           ${compte.vehicles.length ? `<ul class="account-list">${compte.vehicles.map((vehicle) => `<li><span><strong>${escapeHtml(`${vehicle.make} ${vehicle.model} ${vehicle.trim || ""}`.trim())}</strong><br><span class="muted">Réf. ${escapeHtml(vehicle.reference)} · ${statutsVehicule[vehicle.status] || "Statut à confirmer"}${vehicle.purchasedAt ? ` · ${date(vehicle.purchasedAt)}` : ""}</span></span></li>`).join("")}</ul>` : `<p class="account-empty">Aucun véhicule n'est encore associé à ce compte.</p>`}
         </section>
         <section class="account-panel hidden" data-account-panel="offers">
-          <h3>Mes offres (${compte.offers.length})</h3><p>Suivi des offres transmises à M&Y AUTO EXPORT.</p>
+          <h3>Mes offres</h3><p><a href="/mes-offres">Consulter mes propositions d’achat</a></p><p>Suivi des offres transmises à M&Y AUTO EXPORT.</p>
           ${compte.offers.length ? `<ul class="account-list">${compte.offers.map((offer) => {
             const lot = lots.find((item) => item.reference === offer.reference);
             return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
               <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Enchère"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
               <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span></li>`;
-          }).join("")}</ul>` : `<p class="account-empty">Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères.</p>`}
+          }).join("")}</ul>` : `<p class="account-empty">Aucune opération historique. Proposez une offre privée depuis la fiche du véhicule.</p>`}
         </section>
         <section class="account-panel hidden" data-account-panel="favorites">
           <h3>Mes favoris (${favoris.length})</h3><p>Lots suivis depuis le catalogue.</p>
@@ -1251,7 +1297,7 @@
       return `<article class="lot-card">
         <div class="lot-photo"><span class="lot-status ${escapeHtml(lot.status)}">${statutLot(lot)}</span>${photos.length ? `<button class="photo-open" type="button" data-detail="${escapeHtml(lot.reference)}" aria-label="Voir les photos de ${escapeHtml(titreLot(lot))}"><img src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(lot.make)} ${escapeHtml(lot.model)}" loading="lazy">${photos.length > 1 ? `<span class="photo-count">${photos.length} photos</span>` : ""}</button>` : `<div class="photo-missing"><strong>Photo à confirmer</strong><span>Visuel autorisé non fourni</span></div>`}</div>
         <div class="lot-body">
-          <div><h2 class="lot-title">${escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
+          <div><h2 class="lot-title">${lot.url?`<a href="${escapeHtml(lot.url)}">${escapeHtml(titreLot(lot))}</a>`:escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
           <ul class="lot-specs">${caracteristiques.map(([nom, texte]) => `<li>${icone(nom === "gear" ? "sliders" : nom)}<span title="${escapeHtml(texte)}">${escapeHtml(texte)}</span></li>`).join("")}</ul>
           ${resumeEnchere(lot)}
           ${enlevementLot(lot)}
@@ -1260,7 +1306,7 @@
         <div class="lot-side">
           <div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>
           ${lot.diagnosticVerified?'<p>Diagnostic vérifié par M&Y AUTO EXPORT</p>':''}${prixEnchere(lot)}${boutonAchat(lot)}
-          ${lot.auction?.status === "live" && compte.disponible ? `<button class="bid-now" type="button" data-bid-open="${escapeHtml(lot.reference)}">Enchérir<small>minimum ${formatTnd(lot.auction.minNextBidTnd)}</small></button>` : ""}
+          ${!PROPOSALS_ONLY && lot.auction?.status === "live" && compte.disponible ? `<button class="bid-now" type="button" data-bid-open="${escapeHtml(lot.reference)}">Enchérir<small>minimum ${formatTnd(lot.auction.minNextBidTnd)}</small></button>` : ""}
           <div class="lot-actions"><button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}" aria-pressed="${isWatched}" aria-label="${isWatched ? "Retirer des favoris" : "Ajouter aux favoris"}">${icone("heart")}</button></div>
         </div>
       </article>`;
@@ -1291,7 +1337,7 @@
         <div class="lot-actions">${lot.marketplace?`<a href="/vehicules/${escapeHtml(lot.reference)}">Consulter et faire une offre privée</a>`:lienLot(lot)}</div>`;
       document.getElementById("lot-dialog-body").dataset.photos = JSON.stringify(photos.map((photo) => photo.url));
       if (!lotDialog.open) lotDialog.showModal();
-      if (lot.auction && compte.disponible) suivreEnchere(reference);
+      if (!PROPOSALS_ONLY && lot.auction && compte.disponible) suivreEnchere(reference);
       else arreterSuiviEnchere();
     }
 
@@ -1621,7 +1667,7 @@
     });
 
     updateView();
-    chargerCatalogue().then(chargerCompte);
+    chargerCatalogue().then(chargerCompte).finally(()=>{const ref=new URLSearchParams(location.search).get("lot");if(ref)ouvrirFiche(ref);});
   </script>
 </body>
 </html>

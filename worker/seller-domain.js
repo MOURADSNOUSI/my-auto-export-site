@@ -1,3 +1,4 @@
+import {toMinor,moneyValid} from './marketplace-domain.js';
 import {financial,policy,diagnosticValid,publicMarketplaceLot} from './marketplace-domain.js';
 import {PHOTO_KINDS,REQUIRED_PHOTOS,FILE_LABELS,SYSTEMS,TECH_FIELDS,HISTORY_FIELDS,validDate,sanitizeExtra} from '../my-auto-export/seller-schema.js';
 export {PHOTO_KINDS,FILE_LABELS,SYSTEMS,validDate};
@@ -16,6 +17,8 @@ export function normalize(src,fail) {
   data[key]=src[key]==null||src[key]===''?null:Number(src[key]);
   if(data[key]!==null && (!Number.isInteger(data[key]) || data[key]<0 || data[key]>100000000)) fail(400,`Nombre invalide : ${key}`);
  }
+ let reserve=null;try{if(src.publicReserveAmount)reserve=toMinor(src.publicReserveAmount,src.priceCurrency||'TND');else if(src.reservePriceMinor!=null)reserve=src.reservePriceMinor;}catch{fail(400,'Prix de réserve public invalide pour la devise.');}
+ if(reserve!==null&&!moneyValid(reserve))fail(400,'Prix de réserve public positif requis.');if(reserve!==null)data.reservePriceMinor=reserve;
  data.saleType='sale';if(src.saleType&&src.saleType!=='sale')fail(400,'La phase 1 propose uniquement la vente avec offres privées.');
  for(const k of ['priceAmount','priceTnd','reservePriceTnd','auctionStart','auctionEnd'])delete data[k];
  data.observations=Object.fromEntries(Object.keys(SYSTEMS).map(key=>[key,text(src.observations?.[key],2000)]));
@@ -35,6 +38,7 @@ export async function missing(env,row,files) {
  if(d.firstRegistrationDate&&!validDate(d.firstRegistrationDate,true))errors.push('Date de première immatriculation valide et non future');
  const f=await financial(env,row.id),rulesPolicy=await policy(env);
  if(!f)errors.push('Prix demandé et devise');
+ if(d.allowOffers&&!moneyValid(d.reservePriceMinor))errors.push('Prix de réserve public pour recevoir des propositions');
  if(rulesPolicy.identity_required&&!files.some(x=>x.kind==='identity'))errors.push('Pièce d’identification selon la procédure validée');
  const diag=await env.DB.prepare('SELECT valid_until FROM seller_diagnostics WHERE submission_id=?').bind(row.id).first();
  if(!validDate(diag?.valid_until||'')||diag.valid_until<now().slice(0,10))errors.push('Validité du diagnostic');
@@ -65,7 +69,7 @@ export async function publicLot(env,row,files) {
  if(!await financial(env,row.id))throw new Error('publication-price');
  const photos=files.filter(f=>PHOTO_KINDS.includes(f.kind)).sort((a,b)=>b.is_primary-a.is_primary||a.position-b.position||a.created_at.localeCompare(b.created_at));
  const lot={reference:reference(row.id),make:d.make,model:d.model,year:d.year,mileageKm:d.mileageKm,fuel:d.fuel,
-  status:'stock',createdAt:now(),
+  status:'stock',createdAt:now(),reservePriceMinor:d.reservePriceMinor,
   photos:photos.map(f=>({url:`/seller-media/${f.id}`,authorized:true})),equipment:d.equipment||[],description:d.description||'',allowSellerOffers:d.saleType==='sale'&&d.allowOffers===true,
   diagnostic:{garage:g.name,date:d.diagnosticDate,summary:row.public_summary,notice:'Le diagnostic de garage ne remplace pas les obligations légales de contrôle technique et ne garantit pas l’absence de défaut.'},
   damages:(d.damages||[]).map(x=>({zone:x.zone,type:x.type,severity:x.severity,description:x.description,photos:x.photoIds.map(id=>`/seller-media/${id}`)}))

@@ -30,9 +30,10 @@ class MarketplaceDomainTest(unittest.TestCase):
         self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())
         self.assertEqual(db.execute('SELECT contract_enabled FROM marketplace_policy').fetchone()[0],0)
         db.execute("INSERT INTO seller_submissions(id,user_id,created_at,updated_at) VALUES('s',1,'2026-01-01','2026-01-01')")
-        insert="INSERT INTO vehicle_offers(id,submission_id,buyer_id,seller_id,amount_minor,currency,status,expires_at,rules_version,rules_snapshot,intention_at,created_at,updated_at) VALUES(?,'s',2,1,100000,'TND',?,'2099','v','{}','2026','2026','2026')"
-        db.execute(insert,('a','accepted_by_seller'))
-        with self.assertRaises(sqlite3.IntegrityError):db.execute(insert,('b','accepted_by_seller'))
+        db.execute("INSERT INTO vehicles(reference,data) VALUES('SV-s','{}')")
+        insert="INSERT INTO vehicle_offers(id,vehicle_id,submission_id,buyer_id,seller_id,amount_minor,currency,reserve_price_at_submission,status,expires_at,rules_version,rules_snapshot,intention_at,created_at,updated_at) VALUES(?,'SV-s','s',2,1,100000,'TND',100000,?,'2099','v','{}','2026','2026','2026')"
+        db.execute(insert,('a','accepted'))
+        with self.assertRaises(sqlite3.IntegrityError):db.execute(insert,('b','accepted'))
         with self.assertRaises(sqlite3.IntegrityError):db.execute("UPDATE vehicle_offers SET amount_minor=1 WHERE id='a'")
         self.assertEqual(db.execute('SELECT COUNT(*) FROM notifications').fetchone()[0],1)
 
@@ -45,3 +46,21 @@ class MarketplaceDomainTest(unittest.TestCase):
         for(const type of ['image/png','image/jpeg','image/webp']){let failed=false;try{stripMetadata(new Uint8Array([1,2,3]),type);}catch{failed=true;}if(!failed)throw Error(type);}
         """
         subprocess.run(['node','--input-type=module','-e',script],cwd=ROOT,check=True,capture_output=True,text=True)
+
+    def test_lot1_migration_preserves_previous_offers_events_and_transactions(self):
+        db=sqlite3.connect(':memory:');self.addCleanup(db.close);db.execute('PRAGMA foreign_keys=ON')
+        for p in sorted((ROOT/'migrations').glob('*.sql')):
+            if p.name<'0015':db.executescript(p.read_text())
+        db.execute("INSERT INTO users(id,email,name,password_hash,password_salt) VALUES(1,'a@test','A','h','s'),(2,'b@test','B','h','s')")
+        db.execute("INSERT INTO seller_submissions(id,user_id,created_at,updated_at) VALUES('s',1,'2026','2026')")
+        db.execute("INSERT INTO seller_financials(submission_id,currency,asking_minor,minimum_minor) VALUES('s','TND',100000,90000)")
+        db.execute("INSERT INTO vehicle_offers(id,submission_id,buyer_id,seller_id,amount_minor,currency,status,expires_at,rules_version,rules_snapshot,intention_at,created_at,updated_at) VALUES('old','s',2,1,50000,'TND','contract_confirmed','2099','old','{}','2026','2026','2026')")
+        db.execute("INSERT INTO transactions(id,offer_id,amount_minor,currency,status,buyer_confirmed_at,seller_confirmed_at,created_at,updated_at) VALUES('tx','old',50000,'TND','contract_confirmed','2026','2026','2026','2026')")
+        before=db.execute('SELECT COUNT(*) FROM offer_events').fetchone()[0];db.commit()
+        db.executescript('BEGIN;'+(ROOT/'migrations/0015_propositions_lot1.sql').read_text()+'COMMIT;')
+        self.assertEqual(db.execute("SELECT status,historical_status,reserve_price_at_submission FROM vehicle_offers WHERE id='old'").fetchone(),('accepted','contract_confirmed',None))
+        self.assertEqual(db.execute("SELECT offer_id,status FROM transactions WHERE id='tx'").fetchone(),('old','contract_confirmed'))
+        self.assertEqual(db.execute('SELECT COUNT(*) FROM offer_events').fetchone()[0],before+1)
+        self.assertEqual(db.execute("SELECT minimum_minor FROM seller_financials WHERE submission_id='s'").fetchone()[0],90000)
+        self.assertEqual(db.execute("SELECT removed FROM vehicles WHERE reference='SV-s'").fetchone()[0],1)
+        self.assertFalse(db.execute('PRAGMA foreign_key_check').fetchall())
