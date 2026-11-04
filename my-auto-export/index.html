@@ -250,7 +250,8 @@
     .text-action:hover { border-color: var(--green); color: var(--green); }
 
     footer { padding: 26px 0; background: var(--dark); color: #d6ddd8; }
-    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 13px; }
+    .footer-note { flex: 1 0 100%; margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+    .footer-inner { flex-wrap: wrap; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 13px; }
     .footer-inner strong { color: white; }
 
     /* --- Fenêtres : fiche, connexion, page personnelle --- */
@@ -645,7 +646,8 @@
   </main>
 
   <footer>
-    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span></div>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules à votre critère</span><span>Prix en dinars tunisiens · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span>
+      <p class="footer-note">Dépôt de garantie : somme déposée sur votre compte client, retirable à chaque enchère. C'est une caution d'engagement à l'achat en cas d'enchère remportée, sous réserve de la loi tunisienne.</p></div>
   </footer>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
