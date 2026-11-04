@@ -186,3 +186,25 @@ renvoyés qu'à Claude (claude.ai, claude.com) ou à une adresse locale (`localh
 Claude est invité à demander confirmation avant toute modification, mais c'est le réglage d'autorisation des outils
 dans Claude (« Toujours demander ») qui l'impose : à garder pour `accepter_offre`, `refuser_offre`, `retirer_vehicule`
 et `enregistrer_vehicule`.
+
+## Marketplace vendeurs et diagnostic obligatoire (issue #5)
+
+`/vendre` propose huit étapes de dépôt, les brouillons, photos, dommages, diagnostics et documents
+privés. `/admin` contient le lien **Annonces vendeurs à valider** vers `/admin-vendeurs`.
+La soumission exige huit photos, les pièces obligatoires, un diagnostic PDF et un garage agréé valide.
+L'administrateur vérifie réellement le diagnostic, son VIN et le dossier ; **l'approbation et la
+publication sont deux actions distinctes**. Les enchères restent à venir jusqu'à leur activation
+administrative dans le système existant.
+
+Documentation : [guide technique et fonctionnel](docs/ESPACE_VENDEUR.md),
+[audit préalable](docs/AUDIT_ESPACE_VENDEUR.md), [validation finale](docs/VALIDATION_ESPACE_VENDEUR.md),
+[cahier des charges fourni](docs/ESPACE_VENDEUR_CAHIER_DES_CHARGES.md).
+Le guide décrit les API, migrations 0011/0012/0013, contrôles, stockage R2 privé, accès temporaires,
+règles documentaires, conservation et instructions de déploiement soumis à autorisation.
+
+```
+WRANGLER=/chemin/vers/wrangler python3 -m unittest discover -s tests -p 'test_vendeur.py' -v
+```
+
+Les tests sont locaux ; aucune base de production n'est utilisée. Un rapport téléversé n'est jamais
+authentifié automatiquement. Le filtre de formats/PDF ne constitue pas un antivirus complet.

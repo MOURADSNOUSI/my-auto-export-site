@@ -1,3 +1,4 @@
+import { sellerMedia } from "./seller.js";
 // Référencement : pages véhicules rendues par le Worker, sitemap dynamique, liste indexable de l'accueil,
 // page 404 et contrôle SEO (après chaque publication et chaque jour à 07:00, heure de Paris).
 // Les pages sont calculées à chaque requête depuis le catalogue (lots.json + administration) : ajouter, modifier
@@ -42,7 +43,7 @@ const nombreFr = (n) => new Intl.NumberFormat("fr-TN").format(n);
 const tnd = (n) => `${new Intl.NumberFormat("fr-TN", { maximumFractionDigits: 2 }).format(n)} TND`;
 
 function photoAffichable(url) {
-  return typeof url === "string" && (url.startsWith("https://") || /^photos\/[^/]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url));
+  return typeof url === "string" && (url.startsWith("https://") || /^\/seller-media\/[a-f0-9]{32}$/.test(url) || /^photos\/[^/]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url));
 }
 
 // Mêmes règles que la page d'accueil (photosLot) : seules les photos autorisées sont publiées.
@@ -278,6 +279,13 @@ export async function routeSeo(request, env, url) {
   return pageVehicule(request, env, url);
 }
 
+function diagnosticVendeur(lot) {
+  if (!lot.diagnosticVerified || !lot.diagnostic) return "";
+  const d = lot.diagnostic;
+  const zones = {bumpers:"Pare-chocs",hood:"Capot",doors:"Portières",fenders:"Ailes",roof:"Toit",trunk:"Coffre",wheels:"Jantes",glass:"Vitrages"};
+  return `<section class="carte" style="margin-top:16px"><h2>Diagnostic vérifié par M&amp;Y AUTO EXPORT</h2><p><strong>${escapeHtml(d.garage)}</strong> · ${escapeHtml(d.date)}</p><p>${escapeHtml(d.summary)}</p><p class="note">${escapeHtml(d.notice)}</p>${lot.description ? `<h3>Description</h3><p>${escapeHtml(lot.description)}</p>` : ""}<h3>Équipements</h3><ul>${(lot.equipment || []).map(v=>`<li>${escapeHtml(v)}</li>`).join("") || "<li>Aucun équipement renseigné.</li>"}</ul><h3>Dommages déclarés</h3>${(lot.damages || []).map(x=>`<article><strong>${escapeHtml(zones[x.zone] || x.zone)} · ${escapeHtml(x.type)} · ${escapeHtml(x.severity)}</strong><p>${escapeHtml(x.description)}</p>${(x.photos || []).filter(photoAffichable).map(url=>`<img src="${escapeHtml(url)}" alt="Photo du dommage déclaré" loading="lazy" style="width:120px;max-width:100%">`).join("")}</article>`).join("") || "<p>Aucun dommage déclaré.</p>"}</section>`;
+}
+
 async function pageVehicule(request, env, url) {
   const items = await lotsAvecEtat(request, env);
   const demande = url.pathname.toLowerCase();
@@ -338,7 +346,7 @@ async function pageVehicule(request, env, url) {
           ${lot.sourceUrl ? `<p><a href="${escapeHtml(lot.sourceUrl)}" rel="nofollow noopener noreferrer" target="_blank">Fiche fournisseur ↗</a></p>` : ""}
         </section>
       </div>
-    </div>`;
+    </div>${diagnosticVendeur(lot)}`;
 
   return reponseHtml(gabarit({
     titre: titrePage(lot),
@@ -418,6 +426,7 @@ export function heureParis(date) {
 
 // Code HTTP du lien (0 si injoignable).
 async function statutLien(env, url) {
+  if (/^\/seller-media\/[a-f0-9]{32}$/.test(url)) return (await sellerMedia(env, url.split("/")[2], true)).status;
   if (url.startsWith("photos/")) return (await env.ASSETS.fetch(new Request(`${SITE}/${url}`, { method: "HEAD" }))).status;
   if (url.startsWith("/media/")) return env.PHOTOS && await env.PHOTOS.head(decodeURIComponent(url.slice("/media/".length))) ? 200 : 404;
   return (await fetch(url, { method: "HEAD", redirect: "follow" })).status;
