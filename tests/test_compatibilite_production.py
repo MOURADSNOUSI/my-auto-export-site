@@ -7,7 +7,10 @@ import urllib.error
 import urllib.request
 import uuid
 from playwright.sync_api import sync_playwright, expect
-import test_vendeur as fixtures
+try:
+    import test_vendeur as fixtures
+except ImportError:
+    import tests.test_vendeur as fixtures
 
 
 class ProductionCompatibilityTest(fixtures.SellerFixture):

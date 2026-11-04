@@ -3,7 +3,10 @@ import json
 import uuid
 from datetime import datetime,timezone
 from playwright.sync_api import sync_playwright,expect
-import test_vendeur as fixtures
+try:
+    import test_vendeur as fixtures
+except ImportError:
+    import tests.test_vendeur as fixtures
 
 ERROR='Votre offre doit être supérieure ou égale au prix de réserve de ce véhicule.'
 
