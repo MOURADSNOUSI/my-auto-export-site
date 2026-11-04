@@ -91,11 +91,11 @@ prétend pas remplacer une analyse juridique et aucune règle nationale n'est in
 
 ## Données et migrations
 
-- **0011_dossiers_vendeurs.sql** : profils, garages, dossiers et fichiers.
-- **0012_marketplace_vendeurs.sql** : type/numéro professionnel, validité des garages, `stage`, jetons
+- **0014_dossiers_vendeurs.sql** : profils, garages, dossiers et fichiers.
+- **0015_marketplace_vendeurs.sql** : type/numéro professionnel, validité des garages, `stage`, jetons
   de mutation et purge, métadonnées de photos, diagnostics, dommages, événements de validation,
   revendications uniques du VIN, tentatives d'envoi, accès temporaires, file de suppression.
-- **0013_regles_documents_vendeurs.sql** : exigences complémentaires par pays/type de vendeur.
+- **0016_regles_documents_vendeurs.sql** : exigences complémentaires par pays/type de vendeur.
 
 0012 conserve le statut historique pour compatibilité et introduit `stage` comme source de vérité.
 Les anciens `pending` deviennent `submitted`, les anciens `approved` déjà publiés deviennent `published`.
