@@ -48,4 +48,12 @@ Les champs montant et message restent éditables pour préparer une proposition.
 
 **134 tests Python réussis en 434,653 s**, sans test ignoré. Le premier passage a révélé un écart de retrait des annonces à diagnostic expiré et des fixtures historiques à adapter à la CSP et aux limites OAuth ; ces points sont corrigés, puis la suite complète a été relancée avec succès.
 
-Simulation finale Wrangler réussie : 208,12 KiB, gzip 55,67 KiB. Les cinq migrations sont appliquées en production : 18 migrations enregistrées, aucune violation de clé étrangère, comptes et dépôts conservés. La publication du Worker et ses vérifications HTTP/navigateur sont en cours.
+Simulation finale Wrangler réussie : 208,12 KiB, gzip 55,67 KiB. Les cinq migrations sont appliquées en production : 18 migrations enregistrées, aucune violation de clé étrangère, comptes et dépôts conservés. Le Worker est publié depuis le commit `ce78c64` : version **`57fc059f-98f9-4193-bd0a-d98d7e7d21cf`**, sur **https://www.myautoexport.com**. Démarrage Worker : 2 ms. Les deux crons SEO sont conservés. La version précédente `f25d7329-e4de-40cd-a4b4-cb6fc6a9f6eb` et le point de restauration D1 sont enregistrés pour le retour arrière ; les migrations ajoutées restent compatibles avec l’ancien Worker.
+
+Après publication, les quinze lectures HTTP attendues passent : accueil, portail vendeur, espaces d’offres, catalogue, règles, fiche canonique et sitemap. Les API privées refusent les visiteurs anonymes (401), les enchères répondent 410 et une référence de média privé inexistante répond 404. Le client Python urllib reçoit un 403 ; les vérifications passent avec curl et Chromium, les clients utilisés pour la validation finale.
+
+Chromium vérifie la production à 1440 et 390 px, avec la CSP réelle : slogan et lien `#accueil`, absence de débordement, montant et message éditables, valeurs conservées, aucune erreur JavaScript et aucune requête d’écriture. Aucune proposition réelle, création de compte, connexion de test ni paiement n’est envoyé en production. Les captures de production restent locales.
+
+La Citroën C5 `7753628` n’a toujours pas de réserve publique et ne reçoit pas encore d’offres. Cette donnée métier et l’affectation du vendeur restent à renseigner par l’administrateur. Les champs sont utilisables ; les contrôles d’envoi restent actifs.
+
+L’aperçu local 8787 reçoit également les six migrations historiques manquantes pour conserver sa compatibilité ; son compte administrateur et ses données restent séparés de la production.
