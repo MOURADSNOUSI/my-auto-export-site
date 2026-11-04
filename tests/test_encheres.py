@@ -250,14 +250,14 @@ class EncheresTest(unittest.TestCase):
         cookie, user_id = self.nouvel_acheteur("virement@ex.com")
         self.assertEqual(self.requete("/api/offers", {"reference": "ENC-V", "amount": 100000}, "POST", cookie)[0], 403)
         statut, data, _ = self.requete("/api/deposit/transfer", {"reference": "ENC-V"}, "POST", cookie)
-        self.assertEqual((statut, data["transfer"]["amountTnd"], data["transfer"]["reference"]), (201, 2000, f"CAUTION-{user_id}"), "barème : 100 000 TND → 2 000")
+        self.assertEqual((statut, data["transfer"]["amountTnd"], data["transfer"]["reference"]), (201, 2000, f"CAUTION-{data['transfer']['id']}"), "barème : 100 000 TND → 2 000")
         self.assertEqual(self.requete("/api/offers", {"reference": "ENC-V", "amount": 100000}, "POST", cookie)[0], 403, "pas avant validation")
         admin = self.cookies["admin@ex.com"]
         attente = self.requete("/api/admin/deposits", cookie=admin)[1]["transfers"]
         depot = next(t for t in attente if t["userId"] == user_id)
-        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {}, "POST", cookie)[0], 403, "réservé à l'admin")
-        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {}, "POST", admin)[0], 200)
-        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {}, "POST", admin)[0], 404, "pas de double crédit")
+        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {"amountTnd": 2000}, "POST", cookie)[0], 403, "réservé à l'admin")
+        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {"amountTnd": 2000}, "POST", admin)[0], 200)
+        self.assertEqual(self.requete(f"/api/admin/deposits/{depot['id']}/confirm", {"amountTnd": 2000}, "POST", admin)[0], 404, "pas de double crédit")
         self.assertEqual(self.requete("/api/me", cookie=cookie)[1]["user"]["depositTnd"], 2000)
         self.assertEqual(self.requete("/api/offers", {"reference": "ENC-V", "amount": 100000}, "POST", cookie)[0], 201)
         self.creer_lot("ENC-V2", reservePriceTnd=300000)
@@ -293,11 +293,11 @@ class EncheresTest(unittest.TestCase):
         self.assertEqual(statut, 403, data)
         user_id = self.requete("/api/me", cookie=cookie)[1]["user"]["id"]
         admin = self.cookies["admin@ex.com"]
-        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 1999}, "POST", admin)[0], 200)
+        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 1999, "reason": "Test"}, "POST", admin)[0], 200)
         self.assertEqual(self.requete("/api/offers", {"reference": "ENC-10", "amount": 100000}, "POST", cookie)[0], 403)
-        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": -1}, "POST", admin)[0], 400)
-        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 2000}, "POST", cookie)[0], 403)
-        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 2000}, "POST", admin)[0], 200)
+        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": -1, "reason": "Test"}, "POST", admin)[0], 400)
+        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 2000, "reason": "Test"}, "POST", cookie)[0], 403)
+        self.assertEqual(self.requete(f"/api/admin/users/{user_id}/deposit", {"amountTnd": 2000, "reason": "Test"}, "POST", admin)[0], 200)
         self.assertEqual(self.requete("/api/offers", {"reference": "ENC-10", "amount": 100000}, "POST", cookie)[0], 201)
         self.assertEqual(self.requete("/api/terms", {"version": CGV_VERSION}, "POST")[0], 401)
 

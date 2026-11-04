@@ -1,0 +1,5 @@
+# Variables locales pour `wrangler dev` : copier ce fichier en .dev.vars (ignoré par git) et remplacer les valeurs factices.
+# En production, la clé se déclare avec `npx wrangler secret put THECARAPI_KEY` (jamais dans le code ni dans wrangler.jsonc).
+THECARAPI_KEY=cle-factice-a-remplacer
+# Dinars pour 1 euro, utilisé pour afficher prixTnd. Valeur factice de test, pas un taux réel.
+EUR_TND_RATE=1

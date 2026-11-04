@@ -460,7 +460,7 @@
       const { transfers } = await api("/api/admin/deposits");
       $("transfers").classList.toggle("hidden", !transfers.length);
       $("transfers-list").innerHTML = transfers.map((t) => `<li><span><strong>${escapeHtml(t.name)}</strong> · ${escapeHtml(t.email)}${t.phone ? ` · ${escapeHtml(t.phone)}` : ""} · ${tnd(t.amountTnd)} · libellé ${escapeHtml(t.reference)}</span>
-        <button class="button small primary" type="button" data-transfer="${t.id}" data-ok="1">Virement reçu</button>
+        <button class="button small primary" type="button" data-transfer="${t.id}" data-ok="1" data-amount="${t.amountTnd}" data-ref="${escapeHtml(t.reference)}">Virement reçu</button>
         <button class="button small danger" type="button" data-transfer="${t.id}">Annuler</button></li>`).join("");
     }
 
@@ -468,9 +468,15 @@
       const bouton = event.target.closest("[data-transfer]");
       if (!bouton) return;
       const confirmer = Boolean(bouton.dataset.ok);
-      if (!confirm(confirmer ? "Confirmer la réception du virement ? L'acheteur pourra enchérir immédiatement." : "Annuler cette demande de virement ?")) return;
+      let body = {};
+      if (confirmer) {
+        // Montant lu sur le relevé bancaire, à saisir (pas de valeur proposée) : le serveur refuse s'il diffère de la demande.
+        const saisie = prompt(`Montant réellement reçu sur le relevé pour le libellé ${bouton.dataset.ref} (TND) ?\nDemande : ${tnd(Number(bouton.dataset.amount))}. L'acheteur pourra enchérir immédiatement.`);
+        if (saisie === null || !saisie.trim()) return;
+        body = { amountTnd: Number(saisie.replace(/[\s ]/g, "")) };
+      } else if (!confirm("Annuler cette demande de virement ?")) return;
       try {
-        await api(`/api/admin/deposits/${bouton.dataset.transfer}/${confirmer ? "confirm" : "cancel"}`, { method: "POST", body: {} });
+        await api(`/api/admin/deposits/${bouton.dataset.transfer}/${confirmer ? "confirm" : "cancel"}`, { method: "POST", body });
         await chargerVirements();
       } catch (error) {
         alert(error.message);
@@ -478,10 +484,14 @@
     });
 
     async function modifierCaution(userId, actuel) {
-      const saisie = prompt("Montant de la caution reçue (TND) :", actuel);
+      const saisie = prompt("Nouveau solde de caution (TND) :", actuel);
       if (saisie === null) return;
+      // Motif obligatoire : il est journalisé avec l'ancien et le nouveau solde.
+      const motif = prompt("Motif de l'ajustement (obligatoire, 2000 caractères au plus) :", "");
+      if (motif === null) return;
+      if (!motif.trim()) return alert("Le motif est obligatoire.");
       try {
-        await api(`/api/admin/users/${userId}/deposit`, { method: "POST", body: { amountTnd: Number(saisie) } });
+        await api(`/api/admin/users/${userId}/deposit`, { method: "POST", body: { amountTnd: Number(saisie), reason: motif.trim() } });
         await afficherEncheres($("bids-dialog").dataset.reference);
       } catch (error) {
         $("decision-error").textContent = error.message;

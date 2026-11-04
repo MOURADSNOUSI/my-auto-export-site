@@ -10,6 +10,31 @@ python3 -m unittest discover tests
 Les tests du Worker (espace acheteur, enchères, administration, MCP, pages véhicules) sont ignorés sans
 `WRANGLER=/chemin/vers/wrangler`.
 
+Tests JavaScript (Vitest, `fetch` simulé) : `npm install`, puis `npm run test:js`.
+
+## Catalogue Europe (TheCarApi)
+
+`GET /api/voitures-europe` renvoie des voitures lues chez TheCarApi (`worker/voitures-europe.js`), sous la forme
+`{ total, voitures: [{ id, titre, annee, km, carburant, boite, prixEur, prixTnd, source, finEnchere, image }] }`.
+
+- **Préfiltre M&Y**, toujours appliqué (constantes en haut du fichier) : sites `openlane,ecarstrade`, année ≥ 2019,
+  150 000 km au plus, 30 000 € au plus, 24 résultats. `mileage_to`, `price_to` et `page` ne sont pas documentés par
+  TheCarApi : à vérifier (`PREFILTRE_A_VERIFIER`, `PARAMETRES_A_VERIFIER`).
+- **Affinages du visiteur** : `brand`, `model`, `fuel`, `year_from`, `price_to`, `page` uniquement (40 caractères au plus,
+  lettres, chiffres, espaces, virgules, points, tirets), sinon 400. `year_from` et `price_to` ne peuvent que resserrer
+  le préfiltre. Tout autre paramètre est ignoré.
+- **Cache** de 15 minutes (Cache API, clé = paramètres triés) pour économiser le quota. Aucune nouvelle tentative en cas
+  d'échec : 5 échecs d'authentification bloquent l'IP 15 minutes chez TheCarApi.
+- **Erreurs** : sans clé, 503 ; si TheCarApi échoue (401/403 clé ou portée, 429 quota…), 502 avec un message en
+  français. Seul le statut est journalisé, jamais la clé ni la réponse.
+
+Configuration :
+- **Clé** : `npx wrangler secret put THECARAPI_KEY` (production). Elle n'est jamais envoyée au navigateur.
+- **`EUR_TND_RATE`** (dinars pour 1 euro) donne `prixTnd = round(prixEur × taux)` ; sans taux valide, `prixTnd` vaut `null`.
+  Le déclarer de préférence comme secret (`npx wrangler secret put EUR_TND_RATE`) : `wrangler.jsonc` n'a pas de `vars`,
+  et une variable saisie dans le tableau de bord Cloudflare est effacée au déploiement suivant par `wrangler deploy`.
+- **En local** : copier `.dev.vars.example` en `.dev.vars` (ignoré par git) et y mettre la clé et le taux.
+
 ## Référencement
 
 Pages véhicules `/vehicules/…`, sitemap dynamique, contrôle SEO quotidien et journal : voir [docs/SEO.md](docs/SEO.md).
@@ -145,6 +170,27 @@ Le téléchargement des factures est **désactivé** : `wrangler.jsonc` ne décl
 acheteur affiche « PDF non disponible » et `/api/invoices/<id>/document` répond 503. Pour l'activer, il faudra créer un
 bucket R2 privé (`npx wrangler r2 bucket create my-auto-export-documents`), le déclarer avec le binding `DOCUMENTS`
 et prévoir l'envoi des PDF depuis l'administration (pas encore développé).
+
+## Dépôt de garantie (caution)
+
+Requis pour enchérir, selon le barème de `DEPOSIT_TIERS` (worker/index.js). Le solde est global au compte.
+
+- **Virement** : chaque demande a son montant, figé à la création, et son propre libellé `CAUTION-<numéro de la demande>`.
+  Redemander un autre montant annule la demande en attente et en crée une nouvelle (nouveau libellé). Dans `/admin`,
+  « Virement reçu » demande le montant lu sur le relevé : s'il diffère de la demande, rien n'est crédité (409) ; corriger
+  alors la caution à la main. Le crédit est atomique et ne peut avoir lieu qu'une fois.
+- **Carte** (Stripe, validée par webhook signé) : débitée en euros au taux `TND_PER_EUR` (dinars pour 1 €). **Il n'y a pas
+  de taux par défaut** : sans `TND_PER_EUR` (nombre > 0), `/api/deposit/card` répond 503 et aucune demande n'est créée.
+  Le propriétaire le déclare de préférence comme secret (`npx wrangler secret put TND_PER_EUR`) : une variable saisie
+  dans le tableau de bord Cloudflare est effacée par le `wrangler deploy` suivant, `wrangler.jsonc` n'ayant pas de `vars`.
+  Il le tient à jour : c'est le taux auquel les clients sont débités. Secrets : `STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET` (`npx wrangler secret put …`) ; virement : `BANK_IBAN`, `BANK_BENEFICIARY`.
+- **Ajustement manuel** (« Modifier la caution » dans les enchères d'un véhicule) : motif obligatoire (2 000 caractères au
+  plus). Chaque ajustement est journalisé dans `deposit_adjustments` (ancien et nouveau solde, motif, administrateur, date) :
+  `npx wrangler d1 execute DB --remote --command "SELECT * FROM deposit_adjustments ORDER BY id DESC LIMIT 50"`
+
+⚠️ Appliquer la migration **avant** de pousser le code, sinon l'ajustement manuel échoue :
+`npx wrangler d1 migrations apply DB --remote` (0016), puis déployer.
 
 ## Sécurité
 
