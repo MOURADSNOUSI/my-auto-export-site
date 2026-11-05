@@ -1,5 +1,27 @@
 # my-auto-export-site
 
+## Un compte, deux profils séparés
+
+L'identité (nom, e-mail et téléphone), le mot de passe et la session sont
+communs. À l'inscription, choisir **Acheteur**, **Vendeur** ou **Acheteur et Vendeur**.
+Le choix n'accorde aucun droit d'administration. Sans choix explicite via l'API,
+le profil Acheteur reste la valeur par défaut pour les intégrations existantes.
+
+- **Espace Acheteur** : favoris, propositions envoyées, achats, factures et caution.
+- **Espace Vendeur** : coordonnées commerciales, dossiers, diagnostics, documents
+  et offres reçues. Modifier ces coordonnées ne modifie pas l'identité commune.
+- Une personne peut activer l'autre profil plus tard depuis ses espaces, sans
+  nouvelle inscription ni second mot de passe. L'activation Vendeur ne remplace
+  pas le dossier complet, le diagnostic ni la validation de ses annonces.
+- `POST /api/account/profiles` avec `{"profile":"buyer"}` ou
+  `{"profile":"seller"}` active uniquement le profil de l'utilisateur connecté.
+  Cette route ne désactive aucun profil et ne modifie ni identité ni rôle.
+- `GET /api/me` expose `user.profiles.buyer` et `user.profiles.seller`.
+  Les API métier refusent l'accès si le profil correspondant n'est pas activé.
+- La migration `0018_profils_acheteur_vendeur.sql` conserve tous les comptes,
+  active le profil Acheteur existant et reconnaît les vendeurs déjà enregistrés.
+  Appliquer cette migration avant de publier le code.
+
 ## Lot 1 — propositions d’achat
 
 ### Mode actuel : offres libres

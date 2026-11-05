@@ -33,6 +33,11 @@ function eventList(r){return `<ol class="audit-list">${(r.events||[]).map(e=>`<l
 async function refresh(){
  let user;try{({user}=await api('/api/me'));}catch(e){$('auth').hidden=false;return;}
  $('auth').hidden=Boolean(user);$('logout').hidden=!user;if(!user)return;
+ if(!admin){
+  $('activate-seller').hidden=user.profiles.seller;
+  $('profile-section').hidden=true;$('workspace').hidden=true;$('editor').hidden=true;
+  if(!user.profiles.seller)return;
+ }
  caps=(await api('/api/marketplace/me')).capabilities;marketplaceRules=await api('/api/marketplace/rules');
  if(admin&&!caps.moderator){message('Accès de contrôle requis.');return;}
  garages=(await api(prefix+'garages')).garages;
@@ -199,6 +204,7 @@ function renderAdmin(detail){
  $('archive-submission')?.addEventListener('click',safely(async()=>{await api(prefix+'submissions/'+current.id+'/archive',{method:'POST',body:{revision:current.revision}});await refresh();await openSubmission(current.id);}));
 }
 for(const kind of ['login','register'])$(kind+'-form')?.addEventListener('submit',safely(async()=>{await api('/api/'+kind,{method:'POST',body:Object.fromEntries(new FormData($(kind+'-form')))});$(kind+'-form').reset();message();await refresh();}));
+$('activate-seller-button')?.addEventListener('click',safely(async()=>{await api('/api/account/profiles',{method:'POST',body:{profile:'seller'}});await refresh();message('Profil Vendeur activé. Votre espace Acheteur reste séparé.');}));
 $('logout').onclick=safely(async()=>{await api('/api/logout',{method:'POST'});location.reload();});
 $('profile-form')?.addEventListener('submit',safely(async()=>{await api(prefix+'profile',{method:'PUT',body:Object.fromEntries(new FormData($('profile-form')))});message('Coordonnées enregistrées.');}));
 $('document-rule-form')?.addEventListener('submit',safely(async()=>{const d=Object.fromEntries(new FormData($('document-rule-form')));d.countryCode=d.countryCode.toUpperCase();d.required=d.required==='true';await api(prefix+'document-rules',{method:'POST',body:d});await refresh();message('Règle documentaire enregistrée.');}));

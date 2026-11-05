@@ -673,6 +673,7 @@
         <button class="form-submit" type="submit">Se connecter</button>
       </form>
       <form id="register-form" class="auth-form" hidden>
+        <div class="form-field"><label for="register-account-type">Je souhaite</label><select id="register-account-type" name="accountType" class="select-field"><option value="buyer">Acheter un véhicule</option><option value="seller">Vendre un véhicule</option><option value="both">Acheter et vendre</option></select><p class="form-footnote">Une seule connexion, deux espaces séparés. Vous pourrez activer l'autre profil plus tard.</p></div>
         <div class="form-grid">
           <div class="form-field full"><label for="register-name">Nom et prénom</label><input id="register-name" name="name" autocomplete="name" minlength="2" maxlength="80" required></div>
           <div class="form-field"><label for="register-email">E-mail</label><input id="register-email" name="email" type="email" autocomplete="email" required></div>
@@ -1176,6 +1177,7 @@
         }
       } catch {}
       afficherCompte();
+      if (new URLSearchParams(location.search).get("espace") === "acheteur") ouvrirEspace();
     }
 
     // Au moment de la connexion, les favoris gardés dans le navigateur rejoignent ceux du compte.
@@ -1184,7 +1186,7 @@
       compte.vehicles = data.vehicles || [];
       compte.offers = data.offers || [];
       compte.invoices = data.invoices || [];
-      if (compte.user) {
+      if (compte.user?.profiles.buyer) {
         const favoris = data.favorites || [];
         const locaux = [...watchlist].filter((reference) => !favoris.includes(reference));
         watchlist = new Set([...favoris, ...locaux]);
@@ -1214,7 +1216,7 @@
     function afficherCompte() {
       const user = compte.user;
       document.getElementById("account-label").innerHTML = user
-        ? `<strong><span class="account-dot on" aria-hidden="true"></span>${escapeHtml(user.name.split(" ")[0])} ${numeroMembre(user)}</strong><small>Acheteur</small>`
+        ? `<strong><span class="account-dot on" aria-hidden="true"></span>${escapeHtml(user.name.split(" ")[0])} ${numeroMembre(user)}</strong><small>${user.profiles.buyer && user.profiles.seller ? "Acheteur · Vendeur" : user.profiles.seller ? "Vendeur" : "Acheteur"}</small>`
         : `<strong><span class="account-dot" aria-hidden="true"></span>Se connecter</strong><small>Créer un compte</small>`;
       document.getElementById("account-button").setAttribute("aria-label", user ? `Mon espace acheteur, ${user.name}` : "Se connecter ou créer un compte");
       majCompteurs();
@@ -1266,6 +1268,12 @@
         return;
       }
       const user = compte.user;
+      const profils = `<nav class="account-nav" aria-label="Mes espaces"><button type="button" ${user.profiles.buyer ? 'data-buyer-space aria-current="page"' : 'data-enable-profile="buyer"'}>${user.profiles.buyer ? "Espace Acheteur" : "Activer mon profil Acheteur"}</button>${user.profiles.seller ? '<a class="text-action" href="/mes-vehicules">Espace Vendeur</a>' : '<button type="button" data-enable-profile="seller">Activer mon profil Vendeur</button>'}</nav><p class="form-footnote">Une connexion commune, des offres et dossiers séparés par espace.</p>`;
+      if (!user.profiles.buyer) {
+        document.getElementById("account-body").innerHTML = `<div class="dialog-head"><h2 id="account-title">Mes espaces</h2><button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>${profils}<p>Votre profil Vendeur est actif. Retrouvez vos annonces, diagnostics et offres reçues dans votre espace Vendeur.</p><button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
+        if (!accountDialog.open) accountDialog.showModal();
+        return;
+      }
       const favoris = [...watchlist].map((reference) => lots.find((lot) => lot.reference === reference)).filter(Boolean);
       const statuts = {
         pending: "En attente de confirmation", accepted: "Acceptée · l'équipe vous contacte", refused: "Refusée", withdrawn: "Retirée",
@@ -1288,6 +1296,8 @@
           <p class="account-meta">${escapeHtml(user.email)}${user.phone ? ` · ${escapeHtml(user.phone)}` : ""} · membre depuis le ${date(user.createdAt)}</p></div>
           <button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
         ${user.depositTnd>0?`<p class="deposit-history"><strong>Solde du dépôt de garantie existant : ${formatTnd(user.depositTnd)}</strong><br>Pour toute question ou demande de restitution, <a href="mailto:contact@myautoexport.com?subject=D%C3%A9p%C3%B4t%20de%20garantie">contactez l’équipe</a>.</p>`:""}
+        ${profils}
+        <p><a class="text-action" href="/mes-offres">Mes propositions d'achat</a></p>
         <nav class="account-nav" aria-label="Rubriques de l'espace acheteur">${vues.map(([id, label, count], index) => `<button type="button" data-account-view="${id}" aria-pressed="${index === 0}"><span>${count}</span>${label}</button>`).join("")}</nav>
         <section class="account-panel" data-account-panel="vehicles">
           <h3>Mes véhicules (${compte.vehicles.length})</h3><p>Véhicules rattachés à ton compte acheteur.</p>
@@ -1727,6 +1737,20 @@
       });
     });
     accountDialog.addEventListener("click", async (event) => {
+      const activation = event.target.closest("[data-enable-profile]");
+      if (activation) {
+        activation.disabled = true;
+        try {
+          appliquerCompte(await api("/api/account/profiles", { method: "POST", body: { profile: activation.dataset.enableProfile } }));
+          if (activation.dataset.enableProfile === "seller") location.href = "/mes-vehicules";
+          else ouvrirEspace();
+        } catch (error) {
+          alert(error.message);
+          activation.disabled = false;
+        }
+        return;
+      }
+      if (event.target.closest("[data-buyer-space]")) { ouvrirEspace(); return; }
       const detail = event.target.closest("[data-detail]");
       if (detail) {
         accountDialog.close();
@@ -1778,6 +1802,7 @@
     });
 
     updateView();
+    window.addEventListener("account-profiles-changed", chargerCompte);
     chargerCatalogue().then(chargerCompte).finally(() => {
       // Lien depuis une page véhicule (/?lot=REF) : ouvre directement sa fiche, avec enchère et achat.
       const reference = new URLSearchParams(location.search).get("lot");

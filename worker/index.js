@@ -181,6 +181,7 @@ async function routeApi(request, env, url, ctx) {
     return response;
   }
   if (path === "/api/me" && method === "GET") return me(request, env);
+  if (path === "/api/account/profiles" && method === "POST") return activerProfil(request, env);
   if (path === "/api/catalogue" && method === "GET") {
     return json((await catalogue(request, env)).map((lot) => ({ ...lot, url: cheminVehicule(lot) })));
   }
@@ -309,7 +310,7 @@ async function utilisateurConnecte(request, env) {
   const token = lireCookie(request, SESSION_COOKIE);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
   return env.DB.prepare(
-    `SELECT users.id, users.email, users.name, users.phone, users.role, users.terms_version, users.deposit_tnd, users.created_at FROM sessions
+    `SELECT users.id, users.email, users.name, users.phone, users.role, users.terms_version, users.deposit_tnd, users.created_at, users.buyer_enabled, users.seller_enabled FROM sessions
      JOIN users ON users.id = sessions.user_id
      WHERE sessions.token_hash = ? AND sessions.expires_at > ?`
   ).bind(await sha256(token), new Date().toISOString()).first();
@@ -317,7 +318,7 @@ async function utilisateurConnecte(request, env) {
 
 async function exigerUtilisateur(request, env) {
   const user = await utilisateurConnecte(request, env);
-  if (!user) throw new ApiError(401, "Connecte-toi à ton espace acheteur.");
+  if (!user) throw new ApiError(401, "Connecte-toi à ton compte.");
   if(await env.DB.prepare('SELECT 1 FROM marketplace_suspensions WHERE user_id=?').bind(user.id).first())throw new ApiError(403,'Compte suspendu. Contacter la plateforme.');
   return user;
 }
@@ -326,8 +327,24 @@ function profil(user) {
   return {
     id: user.id, email: user.email, name: user.name, phone: user.phone || "", role: user.role || "buyer", createdAt: user.created_at,
     termsAccepted: user.terms_version === CGV_VERSION, termsVersion: CGV_VERSION,
-    depositTnd: user.deposit_tnd || 0
+    depositTnd: user.deposit_tnd || 0,
+    profiles: { buyer: Boolean(user.buyer_enabled), seller: Boolean(user.seller_enabled) }
   };
+}
+
+async function activerProfil(request, env) {
+  const user = await exigerUtilisateur(request, env);
+  const body = await lireJson(request);
+  if (!["buyer", "seller"].includes(body.profile)) throw new ApiError(400, "Choisis le profil Acheteur ou Vendeur.");
+  const colonne = body.profile === "buyer" ? "buyer_enabled" : "seller_enabled";
+  await env.DB.prepare(`UPDATE users SET ${colonne}=1 WHERE id=?`).bind(user.id).run();
+  return me(request, env);
+}
+
+async function exigerAcheteur(request, env) {
+  const user = await exigerUtilisateur(request, env);
+  if (!user.buyer_enabled) throw new ApiError(403, "Active ton profil Acheteur pour accéder à cet espace.");
+  return user;
 }
 
 async function accepterConditions(request, env) {
@@ -362,7 +379,7 @@ async function crediterDepot(env, depositId, methode) {
 }
 
 async function caution_carte(request, env, url) {
-  const user = await exigerUtilisateur(request, env);
+  const user = await exigerAcheteur(request, env);
   if (!env.STRIPE_SECRET_KEY) throw new ApiError(503, "Le paiement par carte n'est pas encore disponible. Utilise le virement bancaire.");
   // Stripe n'encaisse pas le dinar : la carte est débitée en euros au taux TND_PER_EUR (dinars pour 1 €), déclaré par le
   // propriétaire. Jamais de taux de secours : sans taux valide, aucune demande n'est créée.
@@ -433,7 +450,7 @@ async function webhookStripe(request, env) {
 }
 
 async function caution_virement(request, env) {
-  const user = await exigerUtilisateur(request, env);
+  const user = await exigerAcheteur(request, env);
   if (!env.BANK_IBAN || !env.BANK_BENEFICIARY) throw new ApiError(503, "Le virement bancaire n'est pas encore disponible. Contacte M&Y AUTO EXPORT.");
   const montant = await montantARegler(request, env, user, await lireJson(request));
   if (!montant) throw new ApiError(409, "Ton dépôt de garantie couvre déjà ce véhicule.");
@@ -544,7 +561,7 @@ async function me(request, env) {
 }
 
 async function telechargerFacture(request, env, invoiceId) {
-  const user = await exigerUtilisateur(request, env);
+  const user = await exigerAcheteur(request, env);
   const invoice = await env.DB.prepare(
     "SELECT invoice_number, document_key FROM invoices WHERE id = ? AND user_id = ?"
   ).bind(invoiceId, user.id).first();
@@ -571,6 +588,8 @@ async function register(request, env) {
   const email = texte(body.email, 254).toLowerCase();
   const phone = texte(body.phone, 30);
   const password = typeof body.password === "string" ? body.password : "";
+  const choix = body.accountType ?? "buyer";
+  if (!["buyer", "seller", "both"].includes(choix)) throw new ApiError(400, "Choisis Acheteur, Vendeur ou les deux.");
   if (name.length < 2) throw new ApiError(400, "Indique ton nom.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Adresse e-mail invalide.");
   if (phone && !/^[+0-9 ().-]{6,30}$/.test(phone)) throw new ApiError(400, "Numéro de téléphone invalide.");
@@ -592,8 +611,8 @@ async function register(request, env) {
   let created;
   try {
     created = await env.DB.prepare(
-      "INSERT INTO users (email, name, phone, password_hash, password_salt) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, terms_version, deposit_tnd, created_at"
-    ).bind(email, name, phone || null, hash, salt).first();
+      "INSERT INTO users (email, name, phone, password_hash, password_salt, buyer_enabled, seller_enabled) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, email, name, phone, role, terms_version, deposit_tnd, created_at, buyer_enabled, seller_enabled"
+    ).bind(email, name, phone || null, hash, salt, choix !== "seller" ? 1 : 0, choix !== "buyer" ? 1 : 0).first();
   } catch (error) {
     if (String(error).includes("UNIQUE")) throw new ApiError(409, "Un compte existe déjà avec cette adresse e-mail.");
     throw error;
@@ -794,7 +813,7 @@ function retraitPossible(auction, maintenant) {
 }
 
 async function retirerOffre(request, env, offreId) {
-  const user = await exigerUtilisateur(request, env);
+  const user = await exigerAcheteur(request, env);
   const offre = await env.DB.prepare("SELECT id, reference, kind, status FROM offers WHERE id = ? AND user_id = ?").bind(offreId, user.id).first();
   if (!offre) throw new ApiError(404, "Offre introuvable.");
   if (offre.kind !== "bid") throw new ApiError(400, "Un achat immédiat n'est pas révocable : seule une enchère d'une vente ouverte peut être retirée.");
@@ -1132,7 +1151,7 @@ async function servirPhoto(env, url) {
 }
 
 async function toggleFavorite(request, env, reference, ajouter) {
-  const user = await exigerUtilisateur(request, env);
+  const user = await exigerAcheteur(request, env);
   if (ajouter) {
     if (!(await chargerLot(request, env, reference))) throw new ApiError(404, "Lot introuvable.");
     await env.DB.prepare("INSERT OR IGNORE INTO favorites (user_id, reference) VALUES (?, ?)").bind(user.id, reference).run();
@@ -1143,7 +1162,7 @@ async function toggleFavorite(request, env, reference, ajouter) {
 }
 
 async function createOffer(request, env) {
-  const user = await exigerUtilisateur(request, env);
+  const user = await exigerAcheteur(request, env);
   if(!legacyAuctionsEnabled(env))throw new ApiError(410,"Utilisez Proposer une offre ; les enchères et achats automatiques sont désactivés pendant le Lot 1.");
   const body = await lireJson(request);
   const reference = texte(body.reference, 64);
