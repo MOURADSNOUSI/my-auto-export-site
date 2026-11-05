@@ -1,6 +1,16 @@
 
 # Coordination des tâches — my-auto-export-site
 
+## Branche principale et déploiement
+
+2026-11-05 — Copilot : renommage GitHub de `main` en `master`, demandé et confirmé
+par l'utilisateur pour ce dépôt uniquement. Branche par défaut et `origin/HEAD`
+vérifiés ; travail local des autres agents préservé. Consignes mises à jour dans
+`AGENTS.md` et `README.md` : production uniquement depuis `master` synchronisée et
+propre, avec autorisation explicite. Aucun déploiement manuel effectué ; réglage
+de la branche de production Cloudflare Workers Builds non vérifié. Documentation
+uniquement, aucun test applicatif relancé.
+
 ## Source de vérité
 
 Le dépôt est connecté à GitHub : les issues du dépôt

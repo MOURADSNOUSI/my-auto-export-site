@@ -80,6 +80,26 @@ https ne prouve aucun droit de publication. Une fois le droit confirmé par écr
 
 ## Espace acheteur (comptes, favoris, offres)
 
+### Branche de production
+
+La branche principale de ce dépôt est désormais `master` (anciennement `main`).
+Tout déploiement de production doit partir de `master`, à jour avec `origin/master`,
+sans modification locale ni commit non poussé, et après autorisation explicite.
+Dans Cloudflare Workers Builds, sélectionner `master` comme branche de production ;
+les branches de développement sont réservées aux aperçus.
+
+Avant un déploiement autorisé, depuis un arbre de travail propre :
+
+```bash
+git fetch origin
+git switch master
+git pull --ff-only origin master
+git status --short --branch
+```
+
+Si le changement de branche est bloqué par des modifications locales, les préserver
+et utiliser un worktree séparé ; ne pas les effacer ou les committer avec le déploiement.
+
 Le site est servi par un Worker Cloudflare (`worker/index.js`, point d'entrée `worker/main.js`) avec une base D1 (`migrations/`).
 Mise en service, une seule fois, depuis une machine avec Node.js 20 ou plus :
 

@@ -21,6 +21,11 @@ Application M&Y AUTO EXPORT.
 8. Ne jamais déployer, publier ou effectuer une action externe sans validation explicite de l'utilisateur.
 9. Ne jamais exposer de secrets ou de clés API ; ne pas les ajouter aux instructions, issues ou comptes rendus.
 
+## Déploiement de ce dépôt
+- La branche principale est `master` (anciennement `main`). Créer les nouvelles branches depuis `origin/master`.
+- Déployer en production uniquement depuis `master`, synchronisée avec `origin/master`, sans modification locale ni commit non poussé. Ne jamais déployer une branche de travail ou une PR.
+- Une autorisation explicite reste nécessaire avant chaque déploiement. La configuration Cloudflare Workers Builds doit cibler `master` pour la production ; les autres branches servent uniquement aux aperçus.
+
 ## Contexte des dépôts
 - Ce dépôt (`my-auto-export-site`) contient le Worker Cloudflare, le catalogue, les migrations et les tests du site.
 - Le dépôt d'automatisation `my-auto-agent` est distinct et possède ses propres instructions, son suivi et ses issues. Ne pas modifier cet autre dépôt dans le cadre d'une issue de celui-ci sans l'indiquer explicitement.
