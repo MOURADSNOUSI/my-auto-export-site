@@ -3,6 +3,40 @@
 
 ## Branche principale et déploiement
 
+2026-11-06 — Profils Acheteur et Vendeur séparés, suivi #5 — Copilot,
+branche `feature/profils-acheteur-vendeur` depuis `master`.
+Implémentation locale : une identité et une connexion communes, choix Acheteur,
+Vendeur ou les deux à l'inscription, activation ultérieure indépendante, espaces
+et autorisations métier séparés sans attribution de privilèges administrateur.
+Les coordonnées commerciales vendeur ne remplacent pas l'identité commune.
+Fichiers : `worker/index.js`, `worker/seller.js`, `worker/proposals.js`,
+`worker/marketplace.js`, `migrations/0018_profils_acheteur_vendeur.sql`,
+interfaces compte/vendeur/propositions, `tests/test_profils_comptes.py`,
+`tests/test_migration_lot1_d1.py` et `README.md`.
+Validation : suite complète de 189 tests Python réussie ; après synchronisation
+du bandeau compte lors de l'activation dans la fenêtre d'offre et ajout du test
+des sélecteurs d'inscription, 8 tests profils ciblés réussis. Les 28 tests Vitest,
+le bundle Wrangler en simulation et `git diff --check` réussissent également.
+Parcours mobiles à 390 px, permissions API et migration des comptes existants
+vérifiés. Migration 0018 locale uniquement ; aucun commit, publication de branche,
+PR ni déploiement effectué. Validation utilisateur requise avant publication ;
+compte rendu GitHub #5 non publié à ce stade.
+
+Prévisualisation locale des profils (2026-11-06), demandée par l'utilisateur :
+serveur lancé sur `http://127.0.0.1:8795`, stockage D1/R2 isolé dans
+`.wrangler/profils-local`, migrations locales appliquées jusqu'à 0018 et aucune
+migration restante. Accueil, espace vendeur et catalogue API vérifiés HTTP 200.
+Premier lancement abandonné après conflit de port ; relance réussie avec ports
+HTTP 8795 et inspecteur 9245. Le serveur existant sur 8787 est préservé.
+Aucun déploiement ni changement de données en production.
+
+Intégration des profils (2026-11-06) : l'utilisateur autorise explicitement la
+fusion dans `master` et le déploiement en production. Contrôle préalable :
+`origin/master` à `500c101`, sans nouveau commit distant ; seules les
+modifications de cette tâche sont présentes. Publication, migration distante
+0018 et déploiement depuis `master` propre et synchronisée en cours ; résultat
+final à consigner dans le suivi GitHub #5 après vérification.
+
 2026-11-05 — Offres libres, suivi #5 — Copilot, branche
 `feature/offres-libres` depuis `master`, sur demande explicite : enchères, achat
 immédiat et nouveaux dépôts désactivés ; montant positif libre sans réserve ;

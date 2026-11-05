@@ -32,10 +32,13 @@ export async function proposals(request,env,url,h){
   if(method==='GET'){
    const side=url.searchParams.get('side')||'buyer',offset=Number(url.searchParams.get('offset')||0);if(!Number.isSafeInteger(offset)||offset<0||offset>100000)fail(400,'Page invalide.');
    if(!['buyer','seller','admin'].includes(side))fail(400,'Vue inconnue.');if(side==='admin'&&!caps.moderator)fail(403,'Accès de contrôle requis.');
+   if(side==='buyer'&&!user.buyer_enabled)fail(403,'Activez votre profil Acheteur pour consulter vos offres.');
+   if(side==='seller'&&!user.seller_enabled)fail(403,'Activez votre profil Vendeur pour consulter les offres reçues.');
    const rows=await q(`SELECT * FROM vehicle_offers WHERE ${side==='admin'?'1=1':side==='seller'?'seller_id=?':'buyer_id=?'} ORDER BY created_at DESC,id DESC LIMIT 100 OFFSET ?`,...(side==='admin'?[]:[user.id]),offset).all();
    if(side==='admin')await audit(env,user,'proposals.private_read','offers');return json({offers:rows.results.map(present),nextOffset:rows.results.length===100?offset+100:null});
   }
   if(method==='POST'){
+   if(!user.buyer_enabled)fail(403,'Activez votre profil Acheteur pour proposer une offre.');
    const gate=await q('INSERT INTO marketplace_api_attempts(user_id,at) SELECT ?,? WHERE (SELECT COUNT(*) FROM marketplace_api_attempts WHERE user_id=? AND at>?)<10',user.id,now(),user.id,new Date(Date.now()-60000).toISOString()).run();if(!gate.meta.changes)fail(429,'Trop de propositions rapprochées. Réessayez dans une minute.');
    const b=await lireJson(request);if(!/^[A-Za-z0-9._-]{1,64}$/.test(b.reference||'')||!moneyValid(b.amountMinor)||!['TND','EUR'].includes(b.currency))fail(400,'Montant positif entier en unités mineures et devise valide requis.');
    if(b.confirmIntent!==true||b.rulesVersion!==rules.version)fail(428,'Confirmez votre intention après lecture des conditions actuelles.');

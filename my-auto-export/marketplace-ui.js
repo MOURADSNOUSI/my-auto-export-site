@@ -11,8 +11,16 @@ const select=(name,label,items)=>`<label>${label}<select name="${name}">${items.
 const form=(id,title,fields,button)=>`<form id="${id}" class="stack"><h2>${title}</h2>${fields}<button>${button}</button></form>`;
 let rules,me;
 async function offers(offset=0){
- const side=location.pathname==='/vendeur/offres'?(new URLSearchParams(location.search).get('administration')==='1'?'admin':'seller'):'buyer',data=await api('/offers?side='+side+'&offset='+offset);
+ const side=location.pathname==='/vendeur/offres'?(new URLSearchParams(location.search).get('administration')==='1'?'admin':'seller'):'buyer';
+ if(side!=='admin'&&!me.profiles[side]){
+  const label=side==='buyer'?'Acheteur':'Vendeur';
+  $('#app').innerHTML=`<h2>Espace ${label}</h2><p>Une seule connexion, deux espaces distincts. Activez votre profil ${label} pour accéder à cette rubrique.</p><button id="activate-profile">Activer mon profil ${label}</button>`;
+  $('#activate-profile').onclick=run(async()=>{const r=await fetch('/api/account/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:side})});const account=await r.json();if(!r.ok)throw new Error(account.error||'Activation impossible.');me.profiles=account.user.profiles;await offers(offset);});
+  return;
+ }
+ const data=await api('/offers?side='+side+'&offset='+offset);
  $('#app').innerHTML='<p>Propositions privées : décision manuelle du vendeur ou de M&Y, finalisation hors plateforme.</p>'+data.offers.map(o=>`<article><h2><a href="/vehicules/${esc(o.vehicle_id)}">Véhicule ${esc(o.vehicle_id)}</a></h2><p><strong>${esc(amount(o.amount_minor,o.currency))}</strong></p><p>${o.free_submission?'Offre à montant libre':`Réserve à l’envoi : ${o.reserve_price_at_submission!==null?esc(amount(o.reserve_price_at_submission,o.currency)):'Non enregistrée (historique)'}`}</p><p>Destinataire : ${o.seller_id===null?'Administration M&Y':'Vendeur'}</p><p>Message : ${esc(o.buyer_message||'—')}</p><p>${esc(t(o.status))}</p><p>Envoyée le ${esc(new Date(o.created_at).toLocaleString('fr-FR'))} · Valable jusqu’au ${esc(new Date(o.expires_at).toLocaleString('fr-FR'))}</p><div class="actions">${(side==='seller'||side==='admin'&&o.seller_id===null&&o.buyer_id!==me.userId)&&o.status==='pending'?`<button data-action="decision" data-decision="accept" data-id="${o.id}" data-revision="${o.revision}">Accepter l’offre</button><button data-action="decision" data-decision="reject" data-id="${o.id}" data-revision="${o.revision}">Refuser l’offre</button>`:''}${side==='buyer'&&o.status==='pending'&&o.rules_snapshot.withdrawalAllowed?`<button data-action="cancel" data-id="${o.id}">Annuler la proposition</button>`:''}<button data-events="${o.id}">Historique</button><button data-dispute="${o.id}">Signaler un litige</button></div><div id="action-${o.id}"></div></article>`).join('')+(offset?'<button id="previous-offers">Page précédente</button>':'')+(data.nextOffset!==null?'<button id="next-offers">Page suivante</button>':'');
+ if(side!=='admin')$('#app').insertAdjacentHTML('afterbegin',`<nav aria-label="Mes espaces"><a href="/?espace=acheteur">Espace Acheteur</a> · <a href="/mes-vehicules">Espace Vendeur</a></nav><h2>${side==='buyer'?"Espace Acheteur · Mes propositions d'achat":"Espace Vendeur · Offres reçues"}</h2>`);
  if(!data.offers.length)$('#app').insertAdjacentHTML('afterbegin','<p>'+t('empty')+'</p>');
  $('#previous-offers')?.addEventListener('click',run(()=>offers(Math.max(0,offset-100))));
  $('#next-offers')?.addEventListener('click',run(()=>offers(data.nextOffset)));

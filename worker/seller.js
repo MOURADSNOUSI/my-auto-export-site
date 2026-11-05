@@ -59,10 +59,14 @@ export async function routeSeller(request,env,url,h){
   if(method==='PUT'){
    const b=await lireJson(request),name=text(b.name),phone=text(b.phone,50),address=text(b.address,500),type=b.sellerType||'individual',number=text(b.professionalNumber,80);
    if(!name||!phone||!address||!['individual','professional'].includes(type)||(type==='professional'&&!number))fail(400,'Coordonnées complètes et numéro professionnel le cas échéant requis.');
-   await query(`INSERT INTO seller_profiles(user_id,name,phone,address,updated_at,seller_type,professional_number) VALUES(?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name,phone=excluded.phone,address=excluded.address,updated_at=excluded.updated_at,seller_type=excluded.seller_type,professional_number=excluded.professional_number`,user.id,name,phone,address,now(),type,number).run();
+   await env.DB.batch([
+    query(`INSERT INTO seller_profiles(user_id,name,phone,address,updated_at,seller_type,professional_number) VALUES(?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name,phone=excluded.phone,address=excluded.address,updated_at=excluded.updated_at,seller_type=excluded.seller_type,professional_number=excluded.professional_number`,user.id,name,phone,address,now(),type,number),
+    query('UPDATE users SET seller_enabled=1 WHERE id=?',user.id)
+   ]);
    return json({profile:await query('SELECT * FROM seller_profiles WHERE user_id=?',user.id).first()});
   }
  }
+ if(!admin&&!user.seller_enabled)fail(403,'Active ton profil Vendeur pour accéder à cet espace.');
  if(path==='garages'){
   if(method==='GET')return json({garages:(await query(`SELECT * FROM partner_garages ${admin?'':"WHERE active=1 AND valid_until>=? AND professional_number<>''"} ORDER BY name`,...(admin?[]:[now().slice(0,10)])).all()).results});
   if(method==='POST'&&admin){

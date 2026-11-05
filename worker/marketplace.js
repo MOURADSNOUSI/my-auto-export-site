@@ -14,7 +14,7 @@ export async function marketplace(request,env,url,h){
  const body=()=>lireJson(request);
  const reason=b=>{if(typeof b.reason!=='string'||!b.reason.trim()||b.reason.length>2000)fail(400,'Motif requis (2000 caractères maximum).');return b.reason.trim();};
  await expireOffers(env);
- if(path==='/me'&&method==='GET')return json({capabilities:caps,userId:user.id});
+ if(path==='/me'&&method==='GET')return json({capabilities:caps,userId:user.id,profiles:{buyer:!!user.buyer_enabled,seller:!!user.seller_enabled}});
  if(path==='/policy'){
   admin();if(method==='GET')return json({policy:rules});
   if(method==='PUT'){
