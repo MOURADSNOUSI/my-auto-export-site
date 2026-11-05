@@ -82,7 +82,8 @@ class PagesVehiculesTest(unittest.TestCase):
         port = port_libre()
         cls.base = f"http://localhost:{port}"
         cls.serveur = subprocess.Popen(
-            [WRANGLER, "dev", "--local", "--port", str(port), "--persist-to", cls.persist, "-c", cls.config, "--test-scheduled"],
+            [WRANGLER, "dev", "--local", "--port", str(port), "--persist-to", cls.persist, "-c", cls.config,
+             "--var", "LEGACY_AUCTIONS_ENABLED:true", "--var", "FREE_OFFERS_ENABLED:false", "--test-scheduled"],
             cwd=PROJET, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(90):
             try:

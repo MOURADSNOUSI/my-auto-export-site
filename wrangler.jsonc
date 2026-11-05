@@ -51,7 +51,7 @@
 	// LEGACY_AUCTIONS_ENABLED : "true" garde les enchères, l'achat immédiat et les dépôts de garantie actifs ; "false"
 	// passe le site en « propositions seules » (Lot 1, worker/proposal-domain.js). Choix du propriétaire.
 	// SELLER_RETENTION_DAYS : repli si marketplace_policy.retention_days est absent.
-	"vars": {"SELLER_RETENTION_DAYS": "180", "LEGACY_AUCTIONS_ENABLED": "true"},
+	"vars": {"SELLER_RETENTION_DAYS": "180", "LEGACY_AUCTIONS_ENABLED": "false", "FREE_OFFERS_ENABLED": "true"},
 	// 02:30 UTC : expiration des offres privées et purge des dossiers vendeurs inactifs (marketplace).
 	// Contrôle SEO quotidien à 07:00, heure de Paris (worker/seo.js). Le Cron est en UTC : 05:00 UTC en été,
 	// 06:00 UTC en hiver ; le Worker n'exécute que celui qui tombe à 07:00 à Paris. Inclus dans le plan gratuit.

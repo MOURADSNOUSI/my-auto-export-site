@@ -3,7 +3,7 @@ import { sellerRoutes, routeSeller, sellerMedia, verifiedSellerLots, purgeSeller
 // les pages de référencement (worker/seo.js) et la marketplace (offres privées, propositions d'achat du Lot 1).
 import Stripe from "stripe";
 import { proposalRoute, proposals } from "./proposals.js";
-import { legacyAuctionsEnabled, lot1Public } from "./proposal-domain.js";
+import { legacyAuctionsEnabled, lot1Public, freeOffersEnabled } from "./proposal-domain.js";
 import { marketplace } from "./marketplace.js";
 import { diagnosticValid, expireOffers, policy } from "./marketplace-domain.js";
 import { marketplacePage } from "./marketplace-pages.js";
@@ -132,9 +132,12 @@ async function servirFichier(request, env, url, alias) {
   }
   if (!["/", "/index.html"].includes(url.pathname) || !reponse.ok || request.method !== "GET") return reponse;
   // Mode « propositions seules » (LEGACY_AUCTIONS_ENABLED à "false") : l'accueil masque enchères et achat immédiat.
-  // Par défaut (wrangler.jsonc), les enchères restent actives et la page est servie telle quelle.
+  // Le mode de production est configuré dans wrangler.jsonc.
   const accueil = legacyAuctionsEnabled(env) ? reponse : new HTMLRewriter()
-    .on("html", { element: (element) => element.setAttribute("data-proposal-only", "true") })
+    .on("html", { element: (element) => {
+      element.setAttribute("data-proposal-only", "true");
+      element.setAttribute("data-free-offers", String(freeOffersEnabled(env)));
+    } })
     .transform(reponse);
   if (url.pathname !== "/") return accueil;
   // Accueil : la liste des véhicules est insérée côté serveur, lisible par les moteurs qui n'exécutent pas JavaScript.
@@ -691,7 +694,7 @@ export async function catalogueComplet(request, env) {
 
 // Lots publics, avec l'état de leur enchère (prix actuel, fin effective…) pour les lots open et upcoming.
 async function catalogue(request, env) {
-  if(!legacyAuctionsEnabled(env))return (await catalogueComplet(request,env)).filter(item=>!item.removed&&(item.offerOwnerAssigned||item.lot.status!=='open'||!item.lot.endsAt||Date.parse(item.lot.endsAt)>Date.now())).map(item=>({...lot1Public(item.lot),url:cheminVehicule(item.lot)}));
+  if(!legacyAuctionsEnabled(env))return (await catalogueComplet(request,env)).filter(item=>!item.removed&&(freeOffersEnabled(env)||item.offerOwnerAssigned||item.lot.status!=='open'||!item.lot.endsAt||Date.parse(item.lot.endsAt)>Date.now())).map(item=>({...lot1Public(item.lot),url:cheminVehicule(item.lot)}));
   const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
   const maintenant = Date.now();
   return items.filter((item) => !item.removed).map((item) => avecEnchere(item.lot, resumes, maintenant));

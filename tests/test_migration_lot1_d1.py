@@ -28,6 +28,10 @@ class Lot1MigrationD1Test(unittest.TestCase):
             run('migrations','apply','DB')
             result=json.loads(run('execute','DB','--command',"SELECT o.id,o.status,o.historical_status,o.reserve_price_at_submission,t.id AS tx,t.status AS tx_status FROM vehicle_offers o JOIN transactions t ON t.offer_id=o.id",'--json'))[0]['results'][0]
             self.assertEqual(result,{'id':'old','status':'accepted','historical_status':'contract_confirmed','reserve_price_at_submission':None,'tx':'tx','tx_status':'contract_confirmed'})
+            shutil.copyfile(ROOT/'migrations/0017_offres_libres.sql',migrations/'0017_offres_libres.sql')
+            run('migrations','apply','DB')
+            result=json.loads(run('execute','DB','--command',"SELECT o.id,o.status,o.historical_status,o.free_submission,t.id AS tx,t.status AS tx_status FROM vehicle_offers o JOIN transactions t ON t.offer_id=o.id",'--json'))[0]['results'][0]
+            self.assertEqual(result,{'id':'old','status':'accepted','historical_status':'contract_confirmed','free_submission':0,'tx':'tx','tx_status':'contract_confirmed'})
             self.assertEqual(json.loads(run('execute','DB','--command','PRAGMA foreign_key_check','--json'))[0]['results'],[])
 
     def test_production_registry_with_paid_deposit_then_lot1_migrations(self):
@@ -50,5 +54,5 @@ class Lot1MigrationD1Test(unittest.TestCase):
             row=json.loads(run('execute','DB','--command',"SELECT u.id,u.role,u.password_hash,u.deposit_tnd,d.status,d.charge_amount,s.token_hash FROM users u JOIN deposits d ON d.user_id=u.id JOIN sessions s ON s.user_id=u.id",'--json'))[0]['results'][0]
             self.assertEqual(row,{'id':1,'role':'admin','password_hash':'unchanged-hash','deposit_tnd':2000,'status':'paid','charge_amount':58824,'token_hash':'test-session-hash'})
             row=json.loads(run('execute','DB','--command',"SELECT COUNT(*) AS n FROM d1_migrations",'--json'))[0]['results'][0]
-            self.assertEqual(row['n'],19)  # 0001–0016 de main et de la marketplace, dont 0016_journal_caution
+            self.assertEqual(row['n'],20)  # 0001–0017, dont les migrations historiques aux préfixes partagés.
             self.assertEqual(json.loads(run('execute','DB','--command','PRAGMA foreign_key_check','--json'))[0]['results'],[])
