@@ -55,6 +55,8 @@ class CatalogueTest(unittest.TestCase):
             if path == "/lots.json":
                 payload = body if isinstance(body, str) else json.dumps(body)
                 route.fulfill(status=status, body=payload, content_type="application/json")
+            elif path in ["/", "/index.html"]:
+                route.fulfill(body=(SITE_DIR / "index.html").read_text().replace('data-proposal-only="true"','data-proposal-only="false"'),content_type="text/html")
             elif (SITE_DIR / path.lstrip("/")).is_file():
                 route.fulfill(path=SITE_DIR / path.lstrip("/"))
             else:

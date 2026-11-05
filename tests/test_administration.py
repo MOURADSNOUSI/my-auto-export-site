@@ -26,6 +26,7 @@ def config_de_test(dossier):
     """wrangler.jsonc avec chemins absolus et un stockage R2 local, pour tester l'envoi de photos."""
     texte = "\n".join(ligne for ligne in (PROJET / "wrangler.jsonc").read_text().splitlines() if not ligne.strip().startswith("//"))
     config = json.loads(texte)
+    config.setdefault("vars",{})["LEGACY_AUCTIONS_ENABLED"]="true"
     config["main"] = str(PROJET / config["main"])
     config["assets"]["directory"] = str(PROJET / config["assets"]["directory"])
     for base in config["d1_databases"]:

@@ -1,7 +1,12 @@
-import { sellerRoutes, routeSeller, sellerMedia, verifiedSellerLots, purgeSeller, preserveSellerPublicFields } from "./seller.js";
-// Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*), le serveur MCP (worker/mcp.js)
-// et les pages de référencement (worker/seo.js).
+import { sellerRoutes, routeSeller, sellerMedia, verifiedSellerLots, purgeSeller } from "./seller.js";
+// Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*), le serveur MCP (worker/mcp.js),
+// les pages de référencement (worker/seo.js) et la marketplace (offres privées, propositions d'achat du Lot 1).
 import Stripe from "stripe";
+import { proposalRoute, proposals } from "./proposals.js";
+import { legacyAuctionsEnabled, lot1Public } from "./proposal-domain.js";
+import { marketplace } from "./marketplace.js";
+import { diagnosticValid, expireOffers, policy } from "./marketplace-domain.js";
+import { marketplacePage } from "./marketplace-pages.js";
 import { estRouteMcp, routeMcp } from "./mcp.js";
 import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, listeIndexable, page404, routeSeo } from "./seo.js";
 import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
@@ -45,18 +50,37 @@ export const ENTETES_SECURITE = {
     + "form-action 'self'; frame-ancestors 'none'"
 };
 
+// Pages de la marketplace rendues par le Worker (worker/marketplace-pages.js).
+const PAGES_MARKETPLACE = ["/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/confidentialite", "/conditions-marketplace", "/droits-donnees"];
+// Pages privées : jamais en cache partagé ni indexées.
+const PAGES_PRIVEES = ["/vendre", "/vendre.html", "/mes-vehicules", "/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/admin-vendeurs", "/admin-vendeurs.html"];
+// CSP des pages privées qui n'en fixent pas déjà une : pas de script en ligne.
+const CSP_PAGES_PRIVEES = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; "
+  + "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
+
 export default {
   async fetch(request, env, ctx) {
     const reponse = new Response(...corps(await repondre(request, env, ctx)));
+    const path = new URL(request.url).pathname;
+    if (path.startsWith("/api/") || PAGES_PRIVEES.includes(path)) {
+      reponse.headers.set("Cache-Control", "private, no-store");
+      reponse.headers.set("X-Robots-Tag", "noindex, nofollow");
+      if (!path.startsWith("/api/") && !reponse.headers.has("Content-Security-Policy")) reponse.headers.set("Content-Security-Policy", CSP_PAGES_PRIVEES);
+    }
     for (const [cle, valeur] of Object.entries(ENTETES_SECURITE)) {
       if (!reponse.headers.has(cle)) reponse.headers.set(cle, valeur);
     }
     return reponse;
   },
 
+  // 02:30 UTC : expiration des offres privées et diagnostics, puis purge des dossiers vendeurs inactifs.
+  // 05:00 et 06:00 UTC : contrôle SEO (seul celui de 07:00 à Paris s'exécute).
   async scheduled(controller, env) {
-    if (controller.cron === "30 2 * * *") await purgeSeller(env, env.SELLER_RETENTION_DAYS || 180);
-    else await controleQuotidien(controller, env);
+    if (controller.cron === "30 2 * * *") {
+      await expireOffers(env);
+      const regles = await policy(env);
+      await purgeSeller(env, regles?.retention_days ?? (env.SELLER_RETENTION_DAYS || 180));
+    } else await controleQuotidien(controller, env);
   }
 };
 
@@ -79,38 +103,53 @@ async function repondre(request, env, ctx) {
   if (url.pathname.startsWith("/media/") && lecture) return servirPhoto(env, url);
   if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
   if (estRouteSeo(url.pathname) && lecture) return routeSeo(request, env, url);
-  if (!url.pathname.startsWith("/api/")) return servirFichier(request, env, url);
+  if (!url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/mes-vehicules" && lecture) return servirFichier(request, env, url, "/vendre");
+    if (PAGES_MARKETPLACE.includes(url.pathname) && lecture) return marketplacePage(url.pathname);
+    return servirFichier(request, env, url);
+  }
   try {
     return await routeApi(request, env, url, ctx);
   } catch (error) {
     if (error instanceof ApiError) return json({ error: error.message }, error.status);
-    console.error(error);
+    if (String(error).includes("marketplace_one") || String(error).includes("UNIQUE constraint failed: vehicle_offers")) {
+      return json({ error: "Une offre incompatible existe déjà." }, 409);
+    }
+    // Le message et la pile d'une erreur D1/R2 peuvent contenir des données privées.
+    console.error("worker_request_failed");
     return json({ error: "Erreur interne, réessaie plus tard." }, 500);
   }
 }
 
-async function servirFichier(request, env, url) {
-  const reponse = await env.ASSETS.fetch(request);
+// alias : autre fichier servi à cette adresse (/mes-vehicules sert l'espace vendeur /vendre).
+async function servirFichier(request, env, url, alias) {
+  const reponse = await env.ASSETS.fetch(alias ? new Request(new URL(alias, url), request) : request);
   if (reponse.status === 404 && (request.headers.get("Accept") || "").includes("text/html")) return page404();
   if (["/admin", "/admin.html", "/vendre", "/vendre.html", "/admin-vendeurs", "/admin-vendeurs.html"].includes(url.pathname)) {
     const entetes = new Headers(reponse.headers);
     entetes.set("X-Robots-Tag", "noindex, nofollow");
     return new Response(reponse.body, { status: reponse.status, headers: entetes });
   }
-  if (url.pathname !== "/" || !reponse.ok || request.method !== "GET") return reponse;
+  if (!["/", "/index.html"].includes(url.pathname) || !reponse.ok || request.method !== "GET") return reponse;
+  // Mode « propositions seules » (LEGACY_AUCTIONS_ENABLED à "false") : l'accueil masque enchères et achat immédiat.
+  // Par défaut (wrangler.jsonc), les enchères restent actives et la page est servie telle quelle.
+  const accueil = legacyAuctionsEnabled(env) ? reponse : new HTMLRewriter()
+    .on("html", { element: (element) => element.setAttribute("data-proposal-only", "true") })
+    .transform(reponse);
+  if (url.pathname !== "/") return accueil;
   // Accueil : la liste des véhicules est insérée côté serveur, lisible par les moteurs qui n'exécutent pas JavaScript.
   let liste;
   try {
     liste = await listeIndexable(request, env);
   } catch (error) {
-    console.error(error);
-    return reponse;
+    console.error("homepage_catalogue_failed");
+    return accueil;
   }
-  if (!liste) return reponse;
+  if (!liste) return accueil;
   return new HTMLRewriter()
     .on("#tous-vehicules", { element: (element) => element.removeAttribute("hidden") })
     .on("#liste-vehicules", { element: (element) => element.setInnerContent(liste, { html: true }) })
-    .transform(reponse);
+    .transform(accueil);
 }
 
 export class ApiError extends Error {
@@ -126,6 +165,12 @@ async function routeApi(request, env, url, ctx) {
   if (path === "/api/stripe/webhook" && method === "POST") return webhookStripe(request, env);
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
+  if (!legacyAuctionsEnabled(env) && ["/api/deposit/card", "/api/deposit/transfer"].includes(path) && method === "POST") {
+    await exigerUtilisateur(request, env);
+    throw new ApiError(410, "Les nouveaux dépôts de garantie sont désactivés tant que les enchères le sont.");
+  }
+  if (proposalRoute(path)) return proposals(request, env, url, {json, ApiError, exigerUtilisateur, lireJson, catalogueComplet});
+  if (path.startsWith("/api/marketplace/")) return marketplace(request, env, url, {json, ApiError, exigerUtilisateur, lireJson});
   if (sellerRoutes(path)) {
     const response = await routeSeller(request, env, url, {json, ApiError, exigerUtilisateur, lireJson, sha256, CGV_VERSION});
     const publication = path.match(/^\/api\/admin\/seller\/submissions\/([a-f0-9]{32})\/(publish|archive)$/);
@@ -183,9 +228,13 @@ async function lireJson(request) {
     throw new ApiError(415, "Format attendu : JSON.");
   }
   try {
-    const body = await request.json();
-    if (body && typeof body === "object") return body;
-  } catch {}
+    if(Number(request.headers.get('Content-Length'))>262144)throw new ApiError(413,'JSON trop volumineux.');
+    const reader=request.body?.getReader();if(!reader)throw new Error();const chunks=[];let size=0;
+    while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>262144){await reader.cancel();throw new ApiError(413,'JSON trop volumineux.');}chunks.push(value);}
+    const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length;}
+    const body = JSON.parse(new TextDecoder().decode(bytes));
+    if (body && typeof body === "object" && !Array.isArray(body)) return body;
+  } catch(e) {if(e instanceof ApiError)throw e;}
   throw new ApiError(400, "Requête illisible.");
 }
 
@@ -266,6 +315,7 @@ async function utilisateurConnecte(request, env) {
 async function exigerUtilisateur(request, env) {
   const user = await utilisateurConnecte(request, env);
   if (!user) throw new ApiError(401, "Connecte-toi à ton espace acheteur.");
+  if(await env.DB.prepare('SELECT 1 FROM marketplace_suspensions WHERE user_id=?').bind(user.id).first())throw new ApiError(403,'Compte suspendu. Contacter la plateforme.');
   return user;
 }
 
@@ -453,7 +503,7 @@ async function me(request, env) {
     env.DB.prepare("SELECT id, reference, make, model, trim, status, purchased_at FROM customer_vehicles WHERE user_id = ? ORDER BY purchased_at DESC, id DESC").bind(user.id).all(),
     env.DB.prepare("SELECT id, vehicle_id, invoice_number, issued_at, total_tnd, status, document_key FROM invoices WHERE user_id = ? ORDER BY issued_at DESC, id DESC").bind(user.id).all()
   ]);
-  const references = [...new Set(offers.results.filter((row) => row.kind === "bid").map((row) => row.reference))];
+  const references = !legacyAuctionsEnabled(env)?[]:[...new Set(offers.results.filter((row) => row.kind === "bid").map((row) => row.reference))];
   const encheres = new Map();
   if (references.length) {
     const [lots, meilleures] = await Promise.all([
@@ -616,22 +666,32 @@ async function lotsFichier(request, env) {
 export async function catalogueComplet(request, env) {
   const [fichier, base] = await Promise.all([
     lotsFichier(request, env),
-    env.DB.prepare("SELECT reference, data, removed, updated_at FROM vehicles").all()
+    env.DB.prepare("SELECT reference, data, removed, updated_at,EXISTS(SELECT 1 FROM vehicle_offer_owners ow WHERE ow.vehicle_id=vehicles.reference) AS offer_owner_assigned FROM vehicles").all()
   ]);
   const lignes = new Map(base.results.map((row) => [row.reference, row]));
   const resultat = fichier.map((lot) => {
     const row = lignes.get(lot.reference);
     lignes.delete(lot.reference);
-    return row ? { lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at } : { lot, source: "fichier", removed: false };
+    return row ? { lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at,offerOwnerAssigned:Boolean(row.offer_owner_assigned) } : { lot, source: "fichier", removed: false };
   });
   for (const row of lignes.values()) {
-    resultat.push({ lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at });
+    resultat.push({ lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at,offerOwnerAssigned:Boolean(row.offer_owner_assigned) });
   }
-  return verifiedSellerLots(env, resultat);
+  // Annonces vendeur : visibles seulement publiées, diagnostic valide et vendeur non suspendu.
+  const rows = await env.DB.prepare("SELECT s.id, s.stage, x.user_id AS suspended FROM seller_submissions s LEFT JOIN marketplace_suspensions x ON x.user_id = s.user_id").all();
+  const sellerRows = new Map(rows.results.map((r) => ["SV-" + r.id, r]));
+  const checked = await verifiedSellerLots(env, resultat);
+  return Promise.all(checked.map(async (item) => {
+    if (!item.lot.reference.startsWith("SV-")) return item;
+    const row = sellerRows.get(item.lot.reference);
+    const valid = Boolean(row && row.stage === "published" && !row.suspended && await diagnosticValid(env, row.id));
+    return { ...item, sellerUnavailable: !valid, removed: item.removed || !valid };
+  }));
 }
 
 // Lots publics, avec l'état de leur enchère (prix actuel, fin effective…) pour les lots open et upcoming.
 async function catalogue(request, env) {
+  if(!legacyAuctionsEnabled(env))return (await catalogueComplet(request,env)).filter(item=>!item.removed&&(item.offerOwnerAssigned||item.lot.status!=='open'||!item.lot.endsAt||Date.parse(item.lot.endsAt)>Date.now())).map(item=>({...lot1Public(item.lot),url:cheminVehicule(item.lot)}));
   const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
   const maintenant = Date.now();
   return items.filter((item) => !item.removed).map((item) => avecEnchere(item.lot, resumes, maintenant));
@@ -695,6 +755,7 @@ async function etiquettesEncherisseurs(env, reference) {
 }
 
 async function detailEnchere(request, env, reference) {
+  if(!legacyAuctionsEnabled(env))throw new ApiError(410,"Les enchères sont désactivées pendant le Lot 1.");
   const lot = await chargerLot(request, env, reference);
   if (!lot?.auction) throw new ApiError(404, "Aucune enchère pour ce lot.");
   const [user, etiquettes, { results }] = await Promise.all([
@@ -760,6 +821,7 @@ async function exigerAdmin(request, env) {
 
 async function routeAdmin(request, env, path, method, ctx) {
   const user = await exigerAdmin(request, env);
+  if (path.includes("/auctions/") && !legacyAuctionsEnabled(env)) throw new ApiError(410, "Les enchères sont désactivées pendant le Lot 1.");
   if (path === "/api/admin/seo" && method === "GET") {
     const { results } = await env.DB.prepare("SELECT ran_at, declencheur, ok, resume FROM seo_journal ORDER BY id DESC LIMIT 30").all();
     return json({ controles: results.map((row) => ({ ranAt: row.ran_at, declencheur: row.declencheur, ok: Boolean(row.ok), ...JSON.parse(row.resume) })) });
@@ -767,7 +829,7 @@ async function routeAdmin(request, env, path, method, ctx) {
   if (path === "/api/admin/vehicles" && method === "GET") {
     const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
     const maintenant = Date.now();
-    const vehicles = items.map((item) => ({ ...item, auction: etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant) }));
+    const vehicles = items.map((item) => ({ ...item, auction: legacyAuctionsEnabled(env)?etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant):null }));
     return json({ vehicles, photosEnabled: Boolean(env.PHOTOS) });
   }
   const encheres = path.match(/^\/api\/admin\/auctions\/([^/]{1,64})$/);
@@ -851,7 +913,7 @@ export async function listerOffres(request, env, reference) {
     lots[item.lot.reference] = {
       title: `${item.lot.make} ${item.lot.model} ${item.lot.trim || ""}`.trim(),
       removed: item.removed,
-      auction: etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant)
+      auction: legacyAuctionsEnabled(env)?etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant):null
     };
   }
   const meilleures = new Map();
@@ -871,6 +933,7 @@ export async function listerOffres(request, env, reference) {
 // Accepter une offre : les autres offres en attente du véhicule sont refusées, le véhicule rejoint « Mes véhicules »
 // de l'acheteur et, si demandé, il est retiré du site. Refuser : l'offre seule passe en « refusée ».
 export async function deciderOffre(request, env, user, offreId, accepter, retirerDuSite = true) {
+  if(!legacyAuctionsEnabled(env))throw new ApiError(410,"Les décisions du module historique sont désactivées pendant le Lot 1.");
   const offre = await env.DB.prepare("SELECT id, user_id, reference, kind, amount_tnd, status FROM offers WHERE id = ?").bind(offreId).first();
   if (!offre) throw new ApiError(404, "Offre introuvable.");
   if (offre.status !== "pending") throw new ApiError(409, "Cette offre a déjà été traitée.");
@@ -1009,8 +1072,8 @@ function validerVehicule(body, reference) {
 // ctx absent (outil MCP) : le contrôle SEO est attendu avant la réponse au lieu de tourner en arrière-plan.
 export async function enregistrerVehicule(env, user, reference, body, ctx) {
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Référence invalide (lettres, chiffres, . _ - ; 40 caractères maximum).");
+  if(reference.startsWith('SV-'))throw new ApiError(409,'Les annonces vendeur passent par la validation marketplace.');
   const lot = validerVehicule(body, reference);
-  await preserveSellerPublicFields(env, lot, (message) => { throw new ApiError(409, message); });
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 0, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET data = excluded.data, removed = 0, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
@@ -1078,8 +1141,10 @@ async function toggleFavorite(request, env, reference, ajouter) {
 
 async function createOffer(request, env) {
   const user = await exigerUtilisateur(request, env);
+  if(!legacyAuctionsEnabled(env))throw new ApiError(410,"Utilisez Proposer une offre ; les enchères et achats automatiques sont désactivés pendant le Lot 1.");
   const body = await lireJson(request);
   const reference = texte(body.reference, 64);
+  if(reference.startsWith('SV-'))throw new ApiError(409,'Utiliser les offres privées marketplace.');
   const kind = body.kind === "buy_now" ? "buy_now" : "bid";
   if (user.terms_version !== CGV_VERSION) {
     throw new ApiError(428, "Accepte les conditions générales de vente avant d'enchérir ou d'acheter.");

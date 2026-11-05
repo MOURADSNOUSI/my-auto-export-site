@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-proposal-only="false">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -463,7 +463,11 @@
       html { scroll-behavior: auto; }
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
-  </style>
+
+.seller-banner{margin:1rem auto;padding:1.4rem;background:#edf4ff;border:1px solid #b6cff7;border-radius:14px;max-width:1240px}.seller-banner a{display:inline-block;color:#144da2;font-weight:700;margin:.4rem .6rem .4rem 0}
+</style>
+<link rel="stylesheet" href="/proposal-dialog.css">
+<script type="module" src="/proposal-dialog.js"></script>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -490,7 +494,7 @@
     <div class="shell header-inner">
       <a class="brand" href="#accueil" aria-label="M&Y AUTO EXPORT, accueil">
         <img src="logo.png" alt="Logo M&Y AUTO EXPORT">
-        <span class="brand-name">M&Y AUTO EXPORT<small>Votre voiture sans frontières</small></span>
+        <span class="brand-name">M&Y AUTO EXPORT<small>Véhicules sans frontières</small></span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
         <a href="/vendre">Vendre mon véhicule</a>
@@ -548,6 +552,8 @@
   </section>
 
   <main class="shell">
+<section class="seller-banner"><h2>Vendez votre véhicule sur M&amp;Y AUTO EXPORT</h2><p>Déposez un dossier privé. Publication après vérification du diagnostic par notre équipe.</p><a href="/vendre">Déposer mon véhicule</a> · <a href="/mes-vehicules">Espace vendeur</a> · <a href="/mes-offres">Mes offres privées</a></section>
+
     <section class="block" id="arrivages" aria-labelledby="recent-title" hidden>
       <div class="section-title"><h2 id="recent-title">Arrivages récents</h2>
         <div class="track-buttons"><button type="button" data-scroll="-1" aria-label="Précédents">‹</button><button type="button" data-scroll="1" aria-label="Suivants">›</button></div>
@@ -885,11 +891,14 @@
       upcoming: (lot) => lot.status === "upcoming",
       stock: (lot) => lot.status === "stock",
       auction: (lot) => lot.status === "open" || lot.status === "upcoming",
-      fixed: (lot) => lot.status === "stock" && (prixLot(lot) != null || Number.isFinite(lot.buyNowPriceTnd)),
+      fixed: (lot) => lot.status === "stock" && (lot.proposalMode || prixLot(lot) != null || Number.isFinite(lot.buyNowPriceTnd)),
       exclusive: (lot) => !lot.sourceUrl
     };
 
+    const PROPOSALS_ONLY=document.documentElement.dataset.proposalOnly==='true';
+    if(PROPOSALS_ONLY){const auctionLink=document.querySelector('[data-nav="auction"]');auctionLink.setAttribute('aria-disabled','true');auctionLink.title='Les enchères sont désactivées pendant le Lot 1';auctionLink.style.opacity='.5';const accroche=document.querySelector('.hero-lead');if(accroche)accroche.textContent='Des véhicules sélectionnés en Europe et aux États-Unis. Proposez une offre privée au vendeur, dans la devise de l’annonce.';}
     function choisirOnglet(onglet) {
+      if(PROPOSALS_ONLY&&onglet==='auction')return;
       activeTab = onglet;
       document.querySelectorAll("[data-nav]").forEach((link) => link.setAttribute("aria-current", String(link.dataset.nav === onglet)));
       updateView();
@@ -897,6 +906,7 @@
 
     // Mise à prix d'enchère en priorité, sinon prix indicatif.
     function prixLot(lot) {
+      if(lot.marketplace)return lot.currency==="TND"?lot.priceMinor/1000:null;
       return lot.startingPriceTnd ?? lot.indicativePriceTnd ?? null;
     }
 
@@ -905,6 +915,7 @@
     }
 
     function libellePrix(lot) {
+      if(lot.marketplace)return {label:'Prix demandé',value:new Intl.NumberFormat('fr-FR',{style:'currency',currency:lot.currency,minimumFractionDigits:lot.currency==='TND'?3:2}).format(lot.priceMinor/(lot.currency==='TND'?1000:100))};
       if (lot.auction?.currentBidTnd != null) {
         return { label: lot.auction.status === "ended" ? "Dernière enchère" : "Enchère actuelle", value: formatTnd(lot.auction.currentBidTnd) };
       }
@@ -913,6 +924,8 @@
     }
 
     function prixEnchere(lot) {
+      if(PROPOSALS_ONLY){const minor=lot.publicReserveMinor??lot.reservePriceMinor??(Number.isSafeInteger(lot.reservePriceTnd)?lot.reservePriceTnd*1000:null),currency=lot.currency||'TND';return `<dl class="price-lines"><div><dt>Prix de réserve</dt><dd>${minor!=null?new Intl.NumberFormat('fr-FR',{style:'currency',currency,minimumFractionDigits:currency==='TND'?3:2}).format(minor/(currency==='TND'?1000:100)):'À renseigner par le vendeur'}</dd></div></dl>`;}
+
       const lignes = [
         ["Mise à prix", lot.auction?.currentBidTnd != null ? lot.startingPriceTnd : null],
         ["Prix de réserve", lot.reservePriceTnd],
@@ -948,6 +961,7 @@
 
     // Ligne d'état sur la carte : temps restant, nombre d'enchères, réserve.
     function resumeEnchere(lot) {
+      if(PROPOSALS_ONLY)return '';
       const a = lot.auction;
       if (!a) return "";
       if (a.status === "upcoming") return `<p class="auction-line">${icone("gavel")}Enchères bientôt ouvertes</p>`;
@@ -976,6 +990,7 @@
     });
 
     function panneauEnchere(lot, encheres = null) {
+      if(PROPOSALS_ONLY)return '';
       const a = lot.auction;
       if (!a || !compte.disponible) return "";
       const historique = encheres == null ? `<p class="account-empty">Chargement de l'historique…</p>`
@@ -1053,6 +1068,7 @@
     }
 
     function suivreEnchere(reference) {
+      if(PROPOSALS_ONLY)return;
       arreterSuiviEnchere();
       rafraichirEnchere(reference);
       suiviEnchere = setInterval(() => rafraichirEnchere(reference), 8000);
@@ -1085,6 +1101,7 @@
     }
 
     function boutonAchat(lot) {
+      if(PROPOSALS_ONLY||lot.marketplace)return `<button type="button" class="buy-now" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`;
       return Number.isFinite(lot.buyNowPriceTnd)
         ? `<button class="buy-now" type="button" data-buynow="${escapeHtml(lot.reference)}">Acheter maintenant · ${formatTnd(lot.buyNowPriceTnd)}</button>`
         : "";
@@ -1268,20 +1285,21 @@
         <div class="dialog-head"><div><span class="lot-meta">Page personnelle · Acheteur</span><h2 id="account-title">${escapeHtml(user.name)} ${numeroMembre(user)}</h2>
           <p class="account-meta">${escapeHtml(user.email)}${user.phone ? ` · ${escapeHtml(user.phone)}` : ""} · membre depuis le ${date(user.createdAt)}</p></div>
           <button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
+        ${user.depositTnd>0?`<p class="deposit-history"><strong>Solde du dépôt de garantie existant : ${formatTnd(user.depositTnd)}</strong><br>Pour toute question ou demande de restitution, <a href="mailto:contact@myautoexport.com?subject=D%C3%A9p%C3%B4t%20de%20garantie">contactez l’équipe</a>.</p>`:""}
         <nav class="account-nav" aria-label="Rubriques de l'espace acheteur">${vues.map(([id, label, count], index) => `<button type="button" data-account-view="${id}" aria-pressed="${index === 0}"><span>${count}</span>${label}</button>`).join("")}</nav>
         <section class="account-panel" data-account-panel="vehicles">
           <h3>Mes véhicules (${compte.vehicles.length})</h3><p>Véhicules rattachés à ton compte acheteur.</p>
           ${compte.vehicles.length ? `<ul class="account-list">${compte.vehicles.map((vehicle) => `<li><span><strong>${escapeHtml(`${vehicle.make} ${vehicle.model} ${vehicle.trim || ""}`.trim())}</strong><br><span class="muted">Réf. ${escapeHtml(vehicle.reference)} · ${statutsVehicule[vehicle.status] || "Statut à confirmer"}${vehicle.purchasedAt ? ` · ${date(vehicle.purchasedAt)}` : ""}</span></span></li>`).join("")}</ul>` : `<p class="account-empty">Aucun véhicule n'est encore associé à ce compte.</p>`}
         </section>
         <section class="account-panel hidden" data-account-panel="offers">
-          <h3>Mes offres (${compte.offers.length})</h3><p>Suivi des offres transmises à M&Y AUTO EXPORT.</p>
+          <h3>Mes offres</h3><p><a href="/mes-offres">Consulter mes propositions d’achat</a></p><p>Suivi des offres transmises à M&Y AUTO EXPORT.</p>
           ${compte.offers.length ? `<ul class="account-list">${compte.offers.map((offer) => {
             const lot = lots.find((item) => item.reference === offer.reference);
             return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
               <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Enchère"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
               <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span>
               ${offer.canWithdraw ? `<button type="button" class="text-action" data-withdraw="${offer.id}">Retirer mon offre</button>` : offer.kind === "buy_now" ? `<small class="muted">Achat immédiat : non révocable</small>` : ""}</li>`;
-          }).join("")}</ul>` : `<p class="account-empty">Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères.</p>`}
+          }).join("")}</ul>` : `<p class="account-empty">${PROPOSALS_ONLY ? "Aucune opération historique. Proposez une offre privée depuis la fiche du véhicule." : "Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères."}</p>`}
         </section>
         <section class="account-panel hidden" data-account-panel="favorites">
           <h3>Mes favoris (${favoris.length})</h3><p>Lots suivis depuis le catalogue.</p>
@@ -1348,8 +1366,8 @@
         </div>
         <div class="lot-side">
           <div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>
-          ${prixEnchere(lot)}${boutonAchat(lot)}
-          ${lot.auction?.status === "live" && compte.disponible ? `<button class="bid-now" type="button" data-bid-open="${escapeHtml(lot.reference)}">Enchérir<small>minimum ${formatTnd(lot.auction.minNextBidTnd)}</small></button>` : ""}
+          ${lot.diagnosticVerified?'<p>Diagnostic vérifié par M&Y AUTO EXPORT</p>':''}${prixEnchere(lot)}${boutonAchat(lot)}
+          ${!PROPOSALS_ONLY && lot.auction?.status === "live" && compte.disponible ? `<button class="bid-now" type="button" data-bid-open="${escapeHtml(lot.reference)}">Enchérir<small>minimum ${formatTnd(lot.auction.minNextBidTnd)}</small></button>` : ""}
           <div class="lot-actions"><button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}" aria-pressed="${isWatched}" aria-label="${isWatched ? "Retirer des favoris" : "Ajouter aux favoris"}">${icone("heart")}</button></div>
         </div>
       </article>`;
@@ -1407,12 +1425,12 @@
         <h3 class="fiche-section">Enlèvement</h3>
         ${enlevementLot(lot)}
         ${lot.auction && compte.disponible ? "" : `<div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>`}
-        ${prixEnchere(lot)}${boutonAchat(lot)}
+        ${lot.diagnosticVerified?'<p>Diagnostic vérifié par M&Y AUTO EXPORT</p>':''}${prixEnchere(lot)}${boutonAchat(lot)}
         ${panneauEnchere(lot)}
-        <div class="lot-actions">${lienLot(lot)}</div>`;
+        <div class="lot-actions">${lot.marketplace?`<a href="/vehicules/${escapeHtml(lot.reference)}">Consulter et faire une offre privée</a>`:lienLot(lot)}</div>`;
       document.getElementById("lot-dialog-body").dataset.photos = JSON.stringify(photos.map((photo) => photo.url));
       if (!lotDialog.open) lotDialog.showModal();
-      if (lot.auction && compte.disponible) suivreEnchere(reference);
+      if (!PROPOSALS_ONLY && lot.auction && compte.disponible) suivreEnchere(reference);
       else arreterSuiviEnchere();
     }
 

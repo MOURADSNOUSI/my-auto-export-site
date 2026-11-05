@@ -1,7 +1,7 @@
 // Contrat commun au navigateur et au Worker. Les valeurs inconnues sont rejetées côté serveur.
 export const PHOTO_KINDS = ['front','rear','left','right','interior','dashboard','engine','trunk','defects','exterior'];
-export const REQUIRED_PHOTOS = ['front','rear','left','right','interior','dashboard','engine','trunk'];
-export const FILE_LABELS = {front:'Avant',rear:'Arrière',left:'Côté gauche',right:'Côté droit',interior:'Intérieur',dashboard:'Tableau de bord et kilométrage',engine:'Compartiment moteur',trunk:'Coffre',defects:'Dommages visibles',exterior:'Extérieur',registration:'Certificat d’immatriculation',ownership:'Justificatif de propriété ou de droit de vente',diagnostic:'Diagnostic PDF',roadworthiness:'Contrôle technique',service_book:'Carnet d’entretien',invoice:'Facture',other:'Autre justificatif'};
+export const REQUIRED_PHOTOS = ['front','rear','left','right','interior','dashboard'];
+export const FILE_LABELS = {identity:'Identification privée',front:'Avant',rear:'Arrière',left:'Côté gauche',right:'Côté droit',interior:'Intérieur',dashboard:'Tableau de bord et kilométrage',engine:'Compartiment moteur',trunk:'Coffre',defects:'Dommages visibles',exterior:'Extérieur',registration:'Certificat d’immatriculation',ownership:'Justificatif de propriété ou de droit de vente',diagnostic:'Diagnostic PDF',roadworthiness:'Contrôle technique',service_book:'Carnet d’entretien',invoice:'Facture',other:'Autre justificatif'};
 export const SYSTEMS = {engine:'Moteur',transmission:'Boîte de vitesses',brakes:'Freinage',suspension:'Suspension',steering:'Direction',electronics:'Électronique',battery:'Batterie',body:'Carrosserie',tyres:'Pneumatiques',defects:'Défauts constatés'};
 export const ZONES = {bumpers:'Pare-chocs',hood:'Capot',doors:'Portières',fenders:'Ailes',roof:'Toit',trunk:'Coffre',wheels:'Jantes',glass:'Vitrages'};
 export const DAMAGE_TYPES = ['rayure','bosse','fissure','impact','corrosion','autre'];

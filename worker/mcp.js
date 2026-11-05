@@ -55,7 +55,7 @@ export async function routeMcp(request, env, url) {
   } catch (error) {
     if (error instanceof ErreurOAuth) return avecCors(json({ error: error.code, error_description: error.message }, error.status));
     if (error instanceof ApiError) return avecCors(json({ error: error.message }, error.status));
-    console.error(error);
+    console.error("mcp_request_failed");
     return json({ error: "Erreur interne, réessaie plus tard." }, 500);
   }
 }

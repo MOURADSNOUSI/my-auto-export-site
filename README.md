@@ -1,5 +1,13 @@
 # my-auto-export-site
 
+## Lot 1 — propositions d’achat
+
+Le bouton « Proposer une offre » et le contrôle de réserve officiel sont décrits dans [le rapport du Lot 1](docs/LOT1_PROPOSITIONS.md), avec les fichiers modifiés, les migrations et les tests. Depuis l’intégration avec `main`, les enchères restent actives par défaut (`LEGACY_AUCTIONS_ENABLED="true"` dans `wrangler.jsonc`) : les annonces vendeur et celles dont le vendeur est affecté reçoivent des propositions privées, les autres gardent enchères et achat immédiat. La valeur `"false"` passe le site en « propositions seules » (enchères, achat immédiat et nouveaux dépôts de garantie désactivés). Une réserve publique et un propriétaire vendeur explicite sont nécessaires avant l’envoi ; le minimum vendeur reste privé. Le déploiement explicitement demandé le 4 novembre 2026 est suivi dans [le rapport de déploiement](docs/DEPLOIEMENT_LOT1.md).
+
+## Marketplace phase 1 (branche de développement)
+
+Parcours vendeur, diagnostics privés et offres d’achat : [audit](docs/PHASE1_AUDIT.md), [installation et exploitation](docs/PHASE1_EXPLOITATION.md), [compte rendu et tests](docs/PHASE1_RAPPORT.md). Les confirmations contractuelles sont désactivées par défaut en attente de validation juridique. L’autorisation de déploiement du 4 novembre 2026 couvre le Lot 1 ; la confirmation contractuelle reste désactivée.
+
 ## Tests
 
 ```

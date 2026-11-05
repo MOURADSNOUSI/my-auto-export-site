@@ -1,3 +1,5 @@
+import {toMinor,moneyValid} from './marketplace-domain.js';
+import {financial,policy,diagnosticValid,publicMarketplaceLot} from './marketplace-domain.js';
 import {PHOTO_KINDS,REQUIRED_PHOTOS,FILE_LABELS,SYSTEMS,TECH_FIELDS,HISTORY_FIELDS,validDate,sanitizeExtra} from '../my-auto-export/seller-schema.js';
 export {PHOTO_KINDS,FILE_LABELS,SYSTEMS,validDate};
 export const COUNTRY_CODES = new Set('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' '));
@@ -11,11 +13,14 @@ export function normalize(src,fail) {
  const data=sanitizeExtra(src,fail);
  for(const key of ['make','model','vin','licensePlate','firstRegistrationDate','location','originCountry','diagnosticDate']) data[key]=text(src[key]);
  data.vin=data.vin.toUpperCase();data.originCountry=data.originCountry.toUpperCase();data.firstRegistrationCountry=data.firstRegistrationCountry.toUpperCase();
- for(const key of ['year','mileageKm','priceTnd','garageId']) {
+ for(const key of ['year','mileageKm','garageId']) {
   data[key]=src[key]==null||src[key]===''?null:Number(src[key]);
   if(data[key]!==null && (!Number.isInteger(data[key]) || data[key]<0 || data[key]>100000000)) fail(400,`Nombre invalide : ${key}`);
  }
- data.saleType=text(src.saleType,20);if(data.saleType && !['sale','auction'].includes(data.saleType))fail(400,'Type de vente invalide.');
+ let reserve=null;try{if(src.publicReserveAmount)reserve=toMinor(src.publicReserveAmount,src.priceCurrency||'TND');else if(src.reservePriceMinor!=null)reserve=src.reservePriceMinor;}catch{fail(400,'Prix de réserve public invalide pour la devise.');}
+ if(reserve!==null&&!moneyValid(reserve))fail(400,'Prix de réserve public positif requis.');if(reserve!==null)data.reservePriceMinor=reserve;
+ data.saleType='sale';if(src.saleType&&src.saleType!=='sale')fail(400,'La phase 1 propose uniquement la vente avec offres privées.');
+ for(const k of ['priceAmount','priceTnd','reservePriceTnd','auctionStart','auctionEnd'])delete data[k];
  data.observations=Object.fromEntries(Object.keys(SYSTEMS).map(key=>[key,text(src.observations?.[key],2000)]));
  return data;
 }
@@ -31,20 +36,21 @@ export async function missing(env,row,files) {
  if(!COUNTRY_CODES.has(d.originCountry))errors.push('Pays d’origine valide');
  if(d.firstRegistrationCountry&&!COUNTRY_CODES.has(d.firstRegistrationCountry))errors.push('Pays de première immatriculation valide');
  if(d.firstRegistrationDate&&!validDate(d.firstRegistrationDate,true))errors.push('Date de première immatriculation valide et non future');
- const price=d.priceAmount ?? d.priceTnd;
- if(!Number.isFinite(price)||price<=0)errors.push('Prix demandé / de départ');
- if(d.saleType==='auction'){
-  if(!d.auctionStart||!d.auctionEnd||!Number.isFinite(Date.parse(d.auctionStart))||!Number.isFinite(Date.parse(d.auctionEnd))||Date.parse(d.auctionEnd)<=Date.parse(d.auctionStart)) errors.push('Dates souhaitées de début et de fin des enchères');
- }
+ const f=await financial(env,row.id),rulesPolicy=await policy(env);
+ if(!f)errors.push('Prix demandé et devise');
+ if(d.allowOffers&&!moneyValid(d.reservePriceMinor))errors.push('Prix de réserve public pour recevoir des propositions');
+ if(rulesPolicy.identity_required&&!files.some(x=>x.kind==='identity'))errors.push('Pièce d’identification selon la procédure validée');
+ const diag=await env.DB.prepare('SELECT valid_until FROM seller_diagnostics WHERE submission_id=?').bind(row.id).first();
+ if(!validDate(diag?.valid_until||'')||diag.valid_until<now().slice(0,10))errors.push('Validité du diagnostic');
  const g=await env.DB.prepare('SELECT * FROM partner_garages WHERE id=? AND active=1 AND valid_until>=?').bind(d.garageId||0,now().slice(0,10)).first();
- if(!g?.professional_number)errors.push('Garage agréé actif, numéro professionnel et agrément non expiré');
+ if(!g?.professional_number)errors.push('Partenaire validé actif et autorisation non expirée');
  if(!validDate(d.diagnosticDate||'',true))errors.push('Date du diagnostic valide et non future');
  if(!d.diagnosticReference)errors.push('Référence du diagnostic');
  if(!d.diagnosticVin||d.diagnosticVin!==d.vin)errors.push('Le VIN déclaré du rapport doit correspondre au VIN du véhicule (confirmation humaine obligatoire)');
  if(!Number.isInteger(d.diagnosticMileageKm)||d.diagnosticMileageKm<0)errors.push('Kilométrage relevé au diagnostic');
  for(const [key,label]of Object.entries(SYSTEMS))if(!d.observations?.[key])errors.push(`Diagnostic : ${label}`);
  const photos=files.filter(f=>PHOTO_KINDS.includes(f.kind));
- if(photos.length<8)errors.push('Au moins 8 photos du véhicule');
+ if(photos.length<rulesPolicy.min_photos)errors.push(`Au moins ${rulesPolicy.min_photos} photos du véhicule`);
  for(const kind of REQUIRED_PHOTOS)if(!photos.some(f=>f.kind===kind))errors.push(`Photo : ${FILE_LABELS[kind]}`);
  const required=['registration','ownership','diagnostic'];
  // Règle déclarative explicite : aucune règle juridique nationale n'est déduite automatiquement.
@@ -58,13 +64,12 @@ export async function missing(env,row,files) {
  }
  return errors;
 }
-export async function publicLot(env,row,files,priceTnd) {
+export async function publicLot(env,row,files) {
  const d=JSON.parse(row.data),g=await env.DB.prepare('SELECT name FROM partner_garages WHERE id=?').bind(d.garageId).first();
- const price=d.priceCurrency==='EUR'?priceTnd:(d.priceAmount??d.priceTnd);
- if(!Number.isFinite(price)||price<=0||price>100000000)throw new Error('publication-price');
+ if(!await financial(env,row.id))throw new Error('publication-price');
  const photos=files.filter(f=>PHOTO_KINDS.includes(f.kind)).sort((a,b)=>b.is_primary-a.is_primary||a.position-b.position||a.created_at.localeCompare(b.created_at));
  const lot={reference:reference(row.id),make:d.make,model:d.model,year:d.year,mileageKm:d.mileageKm,fuel:d.fuel,
-  status:d.saleType==='auction'?'upcoming':'stock',indicativePriceTnd:price,createdAt:now(),
+  status:'stock',createdAt:now(),reservePriceMinor:d.reservePriceMinor,
   photos:photos.map(f=>({url:`/seller-media/${f.id}`,authorized:true})),equipment:d.equipment||[],description:d.description||'',allowSellerOffers:d.saleType==='sale'&&d.allowOffers===true,
   diagnostic:{garage:g.name,date:d.diagnosticDate,summary:row.public_summary,notice:'Le diagnostic de garage ne remplace pas les obligations légales de contrôle technique et ne garantit pas l’absence de défaut.'},
   damages:(d.damages||[]).map(x=>({zone:x.zone,type:x.type,severity:x.severity,description:x.description,photos:x.photoIds.map(id=>`/seller-media/${id}`)}))
@@ -74,10 +79,9 @@ export async function publicLot(env,row,files,priceTnd) {
  for(const [source,target] of [['powerHp','powerHp'],['displacementCc','engineCc'],['doors','doors'],['seats','seats']])if(Number.isFinite(d[source])&&d[source]>0)lot[target]=d[source];
  if(d.condition)lot.condition={'Neuf':'new','Occasion':'used','Accidenté':'accident','Endommagé':'damaged'}[d.condition];
  lot.specs=[...TECH_FIELDS,...HISTORY_FIELDS.filter(f=>['mechanicalCondition','runningCondition','knownAccidents','majorRepairs','serviceHistory'].includes(f[0]))].filter(([k])=>d[k]!==null&&d[k]!==undefined&&d[k]!=='').map(([k,l])=>k==='powerKw'?['Puissance',`${d[k]} kW`]:[l,String(d[k])]);
- if(d.saleType==='auction'){lot.startingPriceTnd=price;if(d.reservePriceTnd)lot.reservePriceTnd=d.reservePriceTnd;lot.endsAt=d.auctionEnd;}
- const visible=JSON.stringify(lot).toUpperCase();
+ const publicData=await publicMarketplaceLot(env,row,lot),visible=JSON.stringify(publicData).toUpperCase();
  if([d.vin,d.licensePlate].filter(v=>v&&v.length>=4).some(v=>visible.includes(v.toUpperCase())))throw new Error('private-identifiers');
- return lot;
+ return publicData;
 }
 export async function drainDeletions(env) {
  if(!env.SELLER_DOCUMENTS)return 0;
@@ -90,16 +94,16 @@ export async function drainDeletions(env) {
 export async function purgeSeller(env,days=180) {
  const retention=Number.isFinite(Number(days))?Math.max(30,Number(days)):180;
  const cutoff=new Date(Date.now()-retention*86400000).toISOString();
- const {results}=await env.DB.prepare("SELECT id FROM seller_submissions WHERE stage IN ('draft','rejected','archived') AND updated_at<? AND purged_at IS NULL LIMIT 20").bind(cutoff).all();
+ const {results}=await env.DB.prepare("SELECT id FROM seller_submissions WHERE stage IN ('draft','rejected','archived') AND updated_at<? AND purged_at IS NULL AND NOT EXISTS(SELECT 1 FROM vehicle_offers WHERE submission_id=seller_submissions.id) AND NOT EXISTS(SELECT 1 FROM moderation_reports WHERE submission_id=seller_submissions.id) LIMIT 20").bind(cutoff).all();
  await env.DB.prepare('DELETE FROM seller_upload_attempts WHERE at<?').bind(new Date(Date.now()-86400000).toISOString()).run();
  await env.DB.prepare('DELETE FROM seller_file_access WHERE expires_at<?').bind(now()).run();
  for(const {id} of results){
   // Un changement concurrent de statut protège les pièces contre une purge pendant la soumission.
   const token=uuid();
   await env.DB.batch([
-   env.DB.prepare("UPDATE seller_submissions SET mutation_token=?,mutation_actor=NULL,stage='archived',status='approved',purged_at=?,data='{}',feedback='',public_summary='',updated_at=?,revision=revision+1 WHERE id=? AND updated_at<? AND stage IN ('draft','rejected','archived') AND purged_at IS NULL").bind(token,now(),now(),id,cutoff),
+   env.DB.prepare("UPDATE seller_submissions SET mutation_token=?,mutation_actor=NULL,stage='archived',status='approved',purged_at=?,data='{}',feedback='',public_summary='',updated_at=?,revision=revision+1 WHERE id=? AND updated_at<? AND stage IN ('draft','rejected','archived') AND purged_at IS NULL AND NOT EXISTS(SELECT 1 FROM vehicle_offers WHERE submission_id=seller_submissions.id) AND NOT EXISTS(SELECT 1 FROM moderation_reports WHERE submission_id=seller_submissions.id)").bind(token,now(),now(),id,cutoff),
    env.DB.prepare("UPDATE seller_validation_events SET message='',actor_id=NULL WHERE submission_id=? AND EXISTS(SELECT 1 FROM seller_submissions WHERE id=? AND mutation_token=?)").bind(id,id,token),
-   ...['seller_files','seller_diagnostics','seller_damages','seller_vin_claims'].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE submission_id=? AND EXISTS(SELECT 1 FROM seller_submissions WHERE id=? AND mutation_token=?)`).bind(id,id,token)),
+   ...['seller_files','seller_diagnostics','seller_damages','seller_vin_claims','seller_financials','garage_assignments'].map(table=>env.DB.prepare(`DELETE FROM ${table} WHERE submission_id=? AND EXISTS(SELECT 1 FROM seller_submissions WHERE id=? AND mutation_token=?)`).bind(id,id,token)),
   ]);
  }
  return drainDeletions(env);

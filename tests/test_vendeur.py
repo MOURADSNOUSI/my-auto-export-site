@@ -25,16 +25,16 @@ KINDS = PHOTO_KINDS + ['registration','ownership','diagnostic']
 
 
 @unittest.skipUnless(WRANGLER, 'définir WRANGLER pour les tests Worker locaux')
-class VendeurTest(unittest.TestCase):
+class SellerFixture(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.tmp.cleanup)
         cls.config = Path(cls.tmp.name) / 'wrangler.json'
         cls.config.write_text(json.dumps({
-            'name':'seller-test','compatibility_date':'2026-10-01',
+            'name':'seller-test','compatibility_date':'2026-10-01','vars':{'LEGACY_AUCTIONS_ENABLED':'false',**getattr(cls,'ENV_VARS',{})},
             'main':str(ROOT/'worker/main.js'),
-            'assets':{'directory':str(ROOT/'my-auto-export'),'binding':'ASSETS'},
+            'assets':{'directory':str(ROOT/'my-auto-export'),'binding':'ASSETS','run_worker_first':True},
             'd1_databases':[{'binding':'DB','database_name':'seller-test','database_id':str(uuid.uuid4()),'migrations_dir':str(ROOT/'migrations')}],
             'r2_buckets':[{'binding':'SELLER_DOCUMENTS','bucket_name':'seller-private-test'}],
         }))
@@ -59,7 +59,7 @@ class VendeurTest(unittest.TestCase):
             cls.log.seek(0); raise RuntimeError(cls.log.read())
         cls.tokens = {}
         # Sessions déterministes de test : les routes vérifient réellement les cookies et les rôles en base.
-        for i, name in enumerate(['seller','other','admin'],1):
+        for i, name in enumerate(['seller','other','admin','outsider'],1):
             token = hashlib.sha256(name.encode()).hexdigest(); cls.tokens[name]=token
             cls.sql(f"INSERT INTO users(id,email,name,phone,password_hash,password_salt,role) VALUES({i},'{name}@example.test','{name}','12345678','unused','00','{'admin' if name=='admin' else 'buyer'}'); INSERT INTO sessions(token_hash,user_id,expires_at) VALUES('{hashlib.sha256(token.encode()).hexdigest()}',{i},'2099-01-01T00:00:00Z')")
         cls.garage = cls.call('POST','/api/admin/seller/garages',{'name':'Garage partenaire','address':'Tunis','contact':'contact@example.test','professionalNumber':'GAR-001','validUntil':'2099-12-31'},'admin')[1]['garage']['id']
@@ -67,7 +67,9 @@ class VendeurTest(unittest.TestCase):
             cls.call('PUT','/api/seller/profile',{'name':name,'phone':'12345678','address':'Adresse privée Tunis'},name)
 
     def setUp(self):
-        self.sql('DELETE FROM seller_upload_attempts')
+        for purpose in ['seller_terms','privacy_notice']:
+            self.call('POST','/api/marketplace/consents',{'purpose':purpose,'version':'lot1-draft-1','confirmed':True})
+        self.sql('DELETE FROM seller_upload_attempts; DELETE FROM marketplace_api_attempts')
 
     @classmethod
     def stop(cls):
@@ -105,8 +107,8 @@ class VendeurTest(unittest.TestCase):
         code,p,_=self.call('POST','/api/seller/submissions',{})
         self.assertEqual(code,201,p); s=p['submission']
         if complete:
-            self.sql('DELETE FROM seller_upload_attempts')
-            data={'make':'Peugeot','model':'208','year':2021,'mileageKm':50000,'fuel':'Essence','vin':'VF3CAHMRPKS123456','location':'Tunis','originCountry':'FR','licensePlate':'AA-123-BB','firstRegistrationDate':'2021-04-18','priceTnd':65000,'saleType':sale_type,'garageId':self.garage,'diagnosticDate':datetime.now(timezone.utc).date().isoformat(),'observations':{k:'Contrôlé sans anomalie' for k in ['engine','transmission','brakes','suspension','steering','electronics','battery','body','tyres','defects']}}
+            self.sql('DELETE FROM seller_upload_attempts; DELETE FROM marketplace_api_attempts')
+            data={'make':'Peugeot','model':'208','year':2021,'mileageKm':50000,'fuel':'Essence','vin':'VF3CAHMRPKS123456','location':'Tunis','originCountry':'FR','licensePlate':'AA-123-BB','firstRegistrationDate':'2021-04-18','priceAmount':'65000.000','priceCurrency':'TND','minimumAmount':'55000.000','publicReserveAmount':'60000.000','allowOffers':True,'diagnosticValidUntil':'2099-01-01','saleType':sale_type,'garageId':self.garage,'diagnosticDate':datetime.now(timezone.utc).date().isoformat(),'observations':{k:'Contrôlé sans anomalie' for k in ['engine','transmission','brakes','suspension','steering','electronics','battery','body','tyres','defects']}}
             data['vin']='VF3'+uuid.uuid4().hex[:14].upper()
             data.update(diagnosticReference='R-'+s['id'],diagnosticVin=data['vin'],diagnosticMileageKm=50000)
             if sale_type=='auction': data.update(auctionStart=(datetime.now(timezone.utc)+timedelta(days=1)).isoformat(),auctionEnd=(datetime.now(timezone.utc)+timedelta(days=3)).isoformat())
@@ -133,489 +135,228 @@ class VendeurTest(unittest.TestCase):
             response=self.call('POST',path+'/publish',{'revision':response[1]['submission']['revision']},'admin')
         return response
 
-    def test_authentication_owner_admin_and_csrf(self):
-        self.assertEqual(self.call('GET','/api/seller/submissions',who=None)[0],401)
-        self.assertEqual(self.call('GET','/api/admin/seller/submissions')[0],403)
+    def published(self):
+        code,p,_=self.review(self.submit(self.draft(True)))
+        self.assertEqual(code,200,p)
+        return p['submission']
+
+    def offer(self,s,who='other',amount=60000000):
+        code,p,_=self.call('POST','/api/marketplace/offers',{'reference':'SV-'+s['id'],'amountMinor':amount,'currency':'TND','confirmIntent':True,'rulesVersion':'lot1-draft-1'},who)
+        self.assertEqual(code,201,p)
+        return p['id']
+
+
+
+class VendeurTest(SellerFixture):
+    def test_01_registration_profile_and_incomplete_draft(self):
+        self.assertEqual(self.call('POST','/api/register',{'email':uuid.uuid4().hex+'@example.test','name':'Vendeur neuf','phone':'12345678','password':'VendeurTest42!'},who=None)[0],201)
+        s=self.draft();code,p,_=self.call('POST',f"/api/seller/submissions/{s['id']}/submit",{'revision':s['revision']})
+        self.assertEqual(code,400,p);self.assertGreater(len(p['missing']),10);self.assertEqual(self.review(s)[0],409)
+
+    def test_02_publication_is_separate_and_documents_private(self):
+        s=self.submit(self.draft(True));code,p,_=self.review(s,publish=False);self.assertEqual(code,200,p);s=p['submission'];ref='SV-'+s['id']
+        self.assertFalse(any(l['reference']==ref for l in self.call('GET','/api/catalogue',who=None)[1]))
+        code,p,_=self.call('POST',f"/api/admin/seller/submissions/{s['id']}/publish",{'revision':s['revision']},'admin');self.assertEqual(code,200,p)
+        lot=next(l for l in self.call('GET','/api/catalogue',who=None)[1] if l['reference']==ref)
+        self.assertTrue(lot['diagnosticVerified']);self.assertEqual(lot['priceMinor'],65000000);self.assertEqual(lot['currency'],'TND')
+        public=json.dumps(lot);self.assertNotIn(s['data']['vin'],public);self.assertNotIn('minimum',public);self.assertNotIn('priceTnd',public)
+        private=next(f for f in s['files'] if f['kind']=='registration')
+        self.assertEqual(self.call('GET','/seller-media/'+private['id'],who=None)[0],404)
+        self.assertEqual(self.call('GET',lot['photos'][0]['url'],who=None)[0],200);self.assertEqual(self.call('GET',lot['url'],who=None)[0],200)
+
+    def test_03_owner_idor_temporary_access_and_audit(self):
+        s=self.draft(True);f=next(f for f in s['files'] if f['kind']=='registration');path='/api/seller/files/'+f['id']
+        self.assertEqual(self.call('GET',path,who='other')[0],404);self.assertEqual(self.call('GET',path,who=None)[0],401)
+        code,p,_=self.call('POST',path+'/access',{});self.assertEqual(code,200,p)
+        self.assertEqual(self.call('GET',p['url'])[0],200);self.assertEqual(self.call('GET',p['url'],who='other')[0],404)
+        self.sql("UPDATE seller_file_access SET expires_at='2000-01-01'");self.assertEqual(self.call('GET',p['url'])[0],404)
+        self.assertEqual(self.call('GET','/api/admin/seller/files/'+f['id'],who='admin')[0],200)
+        self.assertTrue(any(x['action']=='document.read' and x['resource_id']==f['id'] for x in self.call('GET','/api/marketplace/dashboard',who='admin')[1]['audit_logs']))
+
+    def test_04_offer_authentication_intention_currency_and_self_offer(self):
+        s=self.published();body={'reference':'SV-'+s['id'],'amountMinor':60000000,'currency':'TND','confirmIntent':True,'rulesVersion':'lot1-draft-1'}
+        self.assertEqual(self.call('POST','/api/marketplace/offers',body,who=None)[0],401);self.assertEqual(self.call('POST','/api/marketplace/offers',body)[0],403)
+        for patch,expected in [({'confirmIntent':False},428),({'currency':'EUR'},400),({'amountMinor':60.5},400),({'amountMinor':'60000000'},400)]:
+            self.assertEqual(self.call('POST','/api/marketplace/offers',{**body,**patch},'other')[0],expected)
+        oid=self.offer(s);self.assertEqual(self.call('GET','/api/marketplace/offers/'+oid,who='other')[1]['offer']['status'],'pending')
+        self.assertEqual(self.call('POST','/api/offers',{'reference':body['reference'],'kind':'buy_now'},'other')[0],410)
+
+    def test_05_manual_acceptance_is_not_contract_and_money_immutable(self):
+        s=self.published();oid=self.offer(s);p='/api/marketplace/offers/'+oid
+        self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0},'other')[0],403)
+        self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0,'amountMinor':1})[0],400)
+        self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0})[0],200)
+        d=self.call('GET',p)[1];self.assertEqual(d['offer']['status'],'accepted');self.assertIsNone(d['transaction']);self.assertNotIn('counterparty',d['offer'])
+        self.assertEqual(self.call('POST',p+'/contract',{})[0],410)
+        self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0})[0],409)
+        self.assertTrue(any(n['event_code']=='offer.pending' for n in self.call('GET','/api/marketplace/notifications')[1]['notifications']))
+
+    def test_06_concurrent_incompatible_acceptances(self):
+        s=self.published();a=self.offer(s);b=self.offer(s,'admin',61000000)
+        def accept(oid):return self.call('POST','/api/marketplace/offers/'+oid+'/decision',{'decision':'accept','revision':0})[0]
+        with concurrent.futures.ThreadPoolExecutor() as pool:codes=list(pool.map(accept,[a,b]))
+        self.assertEqual(sorted(codes),[200,409])
+        offers=self.call('GET','/api/marketplace/offers?side=seller')[1]['offers'];self.assertEqual(sum(o['status']=='accepted' and o['submission_id']==s['id'] for o in offers),1)
+
+    def test_07_expiry_withdrawal_rejection_and_cancellation(self):
+        s=self.published();a=self.offer(s);p='/api/marketplace/offers/'+a
+        self.assertEqual(self.call('POST',p+'/withdraw',{},'other')[0],200)
+        b=self.offer(s);self.sql(f"UPDATE vehicle_offers SET expires_at='2000-01-01' WHERE id='{b}'")
+        self.assertEqual(self.call('GET','/api/marketplace/offers/'+b,who='other')[1]['offer']['status'],'expired')
+        c=self.offer(s);p='/api/marketplace/offers/'+c
+        self.assertEqual(self.call('POST',p+'/decision',{'decision':'reject','revision':0,'reason':''})[0],400)
+        self.assertEqual(self.call('POST',p+'/decision',{'decision':'reject','revision':0,'reason':'Prix non retenu'})[0],200)
+        d=self.offer(s);p='/api/marketplace/offers/'+d;self.call('POST',p+'/decision',{'decision':'accept','revision':0})
+        self.assertEqual(self.call('POST',p+'/cancel',{'reason':'Accord suspendu'})[0],403)
+
+    def test_08_acceptance_creates_no_contract_sale_or_payment(self):
+        s=self.published();oid=self.offer(s);p='/api/marketplace/offers/'+oid
+        self.assertEqual(self.call('POST',p+'/decision',{'decision':'accept','revision':0})[0],200)
+        self.assertEqual(self.call('GET',p)[1]['offer']['status'],'accepted')
+        self.assertIsNone(self.call('GET',p)[1]['transaction'])
+        self.assertEqual(self.call('POST',p+'/contract',{})[0],410)
+        self.assertEqual(self.call('POST',p+'/confirm',{'confirmContract':True,'rulesVersion':'lot1-draft-1'},'other')[0],410)
+        self.assertFalse(self.call('GET','/api/marketplace/rules',who=None)[1]['contractEnabled'])
+        account=self.call('GET','/api/me',who='other')[1];self.assertFalse(account['vehicles']);self.assertFalse(account['invoices'])
+        self.assertEqual(self.call('POST','/api/marketplace/reports',{'category':'dispute','offerId':oid,'reason':'Désaccord signalé'},'other')[0],201)
+
+    def test_09_revalidation_hides_and_cancels_pending_offers(self):
+        s=self.published();oid=self.offer(s);p='/api/marketplace/listings/'+s['id']+'/revalidate'
+        self.assertEqual(self.call('POST',p,{'revision':s['revision']},'other')[0],404);self.assertEqual(self.call('POST',p,{'revision':s['revision']})[0],200)
+        self.assertFalse(any(l['reference']=='SV-'+s['id'] for l in self.call('GET','/api/catalogue',who=None)[1]))
+        self.assertEqual(self.call('GET','/api/marketplace/offers/'+oid,who='other')[1]['offer']['status'],'cancelled')
+        s=self.call('GET','/api/seller/submissions/'+s['id'])[1]['submission'];self.assertEqual(s['status'],'draft')
+        self.assertEqual(self.call('PUT','/api/seller/submissions/'+s['id'],{'revision':s['revision'],'data':{**s['data'],'mileageKm':51000}})[0],200)
+
+    def test_10_expired_diagnostic_removes_public_vehicle_and_photos(self):
+        s=self.published();ref='SV-'+s['id'];lot=next(l for l in self.call('GET','/api/catalogue',who=None)[1] if l['reference']==ref)
+        self.sql(f"UPDATE seller_diagnostics SET valid_until='2000-01-01' WHERE submission_id='{s['id']}'")
+        self.assertFalse(any(l['reference']==ref for l in self.call('GET','/api/catalogue',who=None)[1]))
+        self.assertEqual(self.call('GET',lot['photos'][0]['url'],who=None)[0],404);self.assertEqual(self.call('GET',lot['url'],who=None)[0],404)
+
+    def test_11_moderator_and_assigned_partner_permissions(self):
+        s=self.draft(True)
+        self.assertEqual(self.call('PUT','/api/marketplace/roles',{'userId':2,'role':'garage','enabled':True})[0],403)
+        self.call('PUT','/api/marketplace/roles',{'userId':2,'role':'garage','enabled':True},'admin')
+        self.assertEqual(self.call('POST','/api/marketplace/diagnostics/'+s['id'],PDF,'other')[0],404)
+        self.assertEqual(self.call('POST','/api/marketplace/assignments',{'submissionId':s['id'],'userId':2,'garageId':self.garage},'admin')[0],200)
+        a=next(x for x in self.call('GET','/api/marketplace/assignments',who='other')[1]['assignments'] if x['submissionId']==s['id']);self.assertNotIn('minimum',json.dumps(a));self.assertNotIn('email',json.dumps(a))
+        self.assertEqual(self.call('PUT','/api/marketplace/diagnostics/'+s['id'],{'reportReference':'GAR-REPORT','inspectionDate':datetime.now(timezone.utc).date().isoformat(),'validUntil':'2099-01-01','mileageKm':50100,'observations':'Contrôles effectués','reservations':'Aucune'},'other')[0],200)
+        self.assertEqual(self.call('POST','/api/marketplace/diagnostics/'+s['id'],PDF,'other')[0],201)
+        self.call('PUT','/api/marketplace/roles',{'userId':2,'role':'moderator','enabled':True},'admin')
+        try:
+            self.assertEqual(self.call('GET','/api/admin/seller/submissions',who='other')[0],200)
+            self.assertEqual(self.call('POST','/api/admin/seller/submissions/'+s['id']+'/publish',{'revision':0},'other')[0],403)
+            self.assertEqual(self.call('PUT','/api/marketplace/suspensions',{'userId':1,'suspended':True,'reason':'Test'},'other')[0],403)
+        finally:
+            for role in ['garage','moderator']:self.call('PUT','/api/marketplace/roles',{'userId':2,'role':role,'enabled':False},'admin')
+
+    def test_12_csrf_sql_xss_and_generic_admin_bypass(self):
         self.assertEqual(self.call('POST','/api/seller/submissions',{},origin='https://evil.example')[0],403)
-        s=self.draft()
-        self.assertEqual(self.call('GET',f"/api/seller/submissions/{s['id']}",who='other')[0],404)
-        self.assertEqual(self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':0,'data':{}},'other')[0],404)
+        self.assertEqual(self.call('GET','/api/seller/submissions/abc%27%20OR%201=1--')[0],404)
+        s=self.draft(True);payload='<img src=x onerror=alert(1)>'
+        code,p,_=self.call('PUT','/api/seller/submissions/'+s['id'],{'revision':s['revision'],'data':{**s['data'],'description':payload}});self.assertEqual(code,200,p)
+        code,p,_=self.review(self.submit(p['submission']));self.assertEqual(code,200,p)
+        html=self.call('GET','/vehicules/SV-'+s['id'],who=None)[1].decode();self.assertNotIn(payload,html);self.assertIn('&lt;img',html)
+        self.assertEqual(self.call('PUT','/api/admin/vehicles/SV-'+s['id'],{'make':'Fake','model':'Fake','status':'stock','photos':[]},'admin')[0],409)
 
-    def test_missing_documents_and_forged_badge_cannot_publish(self):
-        s=self.draft()
-        code,p,_=self.call('POST',f"/api/seller/submissions/{s['id']}/submit",{'revision':s['revision']})
-        self.assertEqual(code,400); self.assertGreater(len(p['missing']),10)
-        self.assertEqual(self.review(s)[0],409)
-        code,p,_=self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':s['revision'],'data':{'diagnosticVerified':True,'status':'approved','public_data':'malicious'}})
-        self.assertEqual(code,200); self.assertNotIn('diagnosticVerified',p['submission']['data'])
-        self.assertFalse(any(x['reference']=='SV-'+s['id'] for x in self.call('GET','/api/catalogue',who=None)[1]))
+    def test_13_upload_content_exif_and_stale_revision(self):
+        s=self.draft();p='/api/seller/submissions/'+s['id']
+        self.assertEqual(self.call('POST',p+'/files?kind=front',b'<svg/>',content_type='image/png')[0],415)
+        self.assertEqual(self.call('POST',p+'/files?kind=diagnostic',b'%PDF-1.4\n/JavaScript x\n%%EOF')[0],415)
+        import struct,zlib
+        payload=b'PrivateGPS\x00never-publish';chunk=b'tEXt'+payload;chunk=struct.pack('>I',len(payload))+chunk+struct.pack('>I',zlib.crc32(chunk))
+        code,b,_=self.call('POST',p+'/files?kind=front',PNG[:33]+chunk+PNG[33:],content_type='image/png');self.assertEqual(code,201,b)
+        fid=b['submission']['files'][0]['id'];self.assertNotIn(b'PrivateGPS',self.call('GET','/api/seller/files/'+fid)[1])
+        self.assertEqual(self.call('PUT',p,{'revision':s['revision'],'data':{}})[0],409)
+        self.assertEqual(self.call('POST',p+'/files?kind=identity',PNG,content_type='image/png')[0],409)
 
-    def test_approval_publication_and_private_documents(self):
-        s=self.draft(True); file=s['files'][0]; doc=next(f for f in s['files'] if f['kind']=='registration')
-        self.assertEqual(self.call('GET','/seller-media/'+file['id'],who=None)[0],404)
-        for who,expected in [(None,401),('other',404),('seller',200),('admin',200)]:
-            code,_,headers=self.call('GET','/api/'+('admin/seller/' if who=='admin' else 'seller/')+'files/'+doc['id'],who=who)
-            self.assertEqual(code,expected)
-            if code==200:self.assertEqual(headers['Cache-Control'],'private, no-store')
-        s=self.submit(s)
-        self.assertEqual(self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':s['revision'],'data':{}})[0],409)
-        self.assertEqual(self.call('POST',f"/api/seller/submissions/{s['id']}/files?kind=diagnostic",PDF)[0],409)
-        self.assertEqual(self.review(s,diagnosticAuthentic=False)[0],400)
-        self.assertEqual(self.review(s,documentsChecked=False)[0],400)
-        self.assertEqual(self.review(s)[0],200)
-        catalogue=self.call('GET','/api/catalogue',who=None)[1]
-        lot=next(x for x in catalogue if x['reference']=='SV-'+s['id'])
-        self.assertIs(lot['diagnosticVerified'],True);self.assertEqual(lot['status'],'stock')
-        for key in ['vin','licensePlate','firstRegistrationDate','location','originCountry','observations','seller_email','address','garageId','diagnosticDate']:
-            self.assertNotIn(key,lot)
-        self.assertNotIn(doc['id'],json.dumps(lot))
-        self.assertEqual(self.call('GET','/seller-media/'+file['id'],who=None)[0],200)
-        self.assertEqual(self.call('GET','/seller-media/'+doc['id'],who=None)[0],404)
-        self.assertEqual(self.review(s)[0],409)
-        self.assertEqual(self.call('DELETE','/api/seller/files/'+doc['id'],{'revision':s['revision']})[0],409)
-        # La programmation et les prix n'altèrent pas le diagnostic technique.
-        self.sql(f"UPDATE vehicles SET data=json_set(data,'$.indicativePriceTnd',66000) WHERE reference='SV-{s['id']}'")
-        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']=='SV-'+s['id'])
-        self.assertTrue(lot['diagnosticVerified'])
-        # Une modification administrative ne conserve pas une attestation portant sur un autre état.
-        self.sql(f"UPDATE vehicles SET data=json_set(data,'$.model','Modifié') WHERE reference='SV-{s['id']}'")
-        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']=='SV-'+s['id'])
-        self.assertNotIn('diagnosticVerified',lot)
+    def test_14_suspension_privacy_and_environment_isolation(self):
+        self.assertEqual(self.call('POST','/api/marketplace/privacy',{'kind':'deletion','reason':'Supprimer mes données'})[0],201)
+        self.assertEqual(self.call('GET','/api/marketplace/privacy')[1]['requests'][0]['status'],'open');self.assertEqual(self.call('GET','/api/marketplace/dashboard')[0],403)
+        self.call('PUT','/api/marketplace/suspensions',{'userId':2,'suspended':True,'reason':'Test local'},'admin')
+        try:self.assertEqual(self.call('GET','/api/marketplace/offers',who='other')[0],403)
+        finally:self.call('PUT','/api/marketplace/suspensions',{'userId':2,'suspended':False,'reason':'Fin du test'},'admin')
+        config=json.loads(self.config.read_text());self.assertNotEqual(config['d1_databases'][0]['database_id'],'9481f2d4-698c-4f6f-90e2-9532f9e44bcf');self.assertIn(self.tmp.name,self.persist)
+        self.assertEqual(self.call('GET','/mes-offres')[2]['Cache-Control'],'private, no-store')
 
-    def test_corrections_rejection_and_resubmission(self):
-        for decision in ['corrections','rejected']:
-            s=self.submit(self.draft(True))
-            self.assertEqual(self.review(s,decision,feedback='')[0],400)
-            code,p,_=self.review(s,decision,feedback='Rapport à compléter')
-            self.assertEqual(code,200);s=p['submission'];self.assertEqual(s['feedback'],'Rapport à compléter')
-            s=self.submit(s); self.assertEqual(s['status'],'submitted')
-            self.assertFalse(any(x['reference']=='SV-'+s['id'] for x in self.call('GET','/api/catalogue',who=None)[1]))
+    def test_15_eur_exact_values_and_auction_exclusion(self):
+        s=self.draft(True);d={**s['data'],'priceCurrency':'EUR','priceAmount':'12345.67','minimumAmount':'12000.01','publicReserveAmount':'12000.00'}
+        code,p,_=self.call('PUT','/api/seller/submissions/'+s['id'],{'revision':s['revision'],'data':d});self.assertEqual(code,200,p)
+        code,p,_=self.review(self.submit(p['submission']));self.assertEqual(code,200,p)
+        lot=next(l for l in self.call('GET','/api/catalogue',who=None)[1] if l['reference']=='SV-'+s['id']);self.assertEqual(lot['priceMinor'],1234567);self.assertEqual(lot['currency'],'EUR');self.assertNotIn('indicativePriceTnd',lot)
+        s=self.draft();self.assertEqual(self.call('PUT','/api/seller/submissions/'+s['id'],{'revision':s['revision'],'data':{'saleType':'auction'}})[0],400)
 
-    def test_upload_formats_removal_and_stale_revision(self):
-        s=self.draft()
-        path=f"/api/seller/submissions/{s['id']}/files?kind="
-        self.assertEqual(self.call('POST',path+'constructor',PDF)[0],400)
-        self.assertEqual(self.call('POST',path+'__proto__',PDF)[0],400)
-        self.assertEqual(self.call('POST',path+'diagnostic',PNG,content_type='image/png')[0],415)
-        self.assertEqual(self.call('POST',path+'diagnostic',b'<script>bad</script>')[0],415)
-        self.assertEqual(self.call('POST',path+'exterior',PDF)[0],415)
-        self.assertEqual(self.call('POST',path+'registration',b'x'*(10*1024*1024+1))[0],413)
-        code,p,_=self.call('POST',path+'diagnostic',PDF);self.assertEqual(code,201)
-        f=p['submission']['files'][0]; updated=p['submission']
-        self.assertEqual(self.call('DELETE','/api/seller/files/'+f['id'],{'revision':s['revision']})[0],409)
-        self.assertEqual(self.call('DELETE','/api/seller/files/'+f['id'],{'revision':updated['revision']})[0],200)
-        self.assertEqual(self.call('GET','/api/seller/files/'+f['id'])[0],404)
-        self.assertEqual(self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':s['revision'],'data':{}})[0],409)
-
-    def test_garage_and_report_validation_on_submission_and_approval(self):
-        s=self.draft(True)
-        data=s['data'].copy();data['diagnosticDate']='2099-01-01';data['vin']='INVALID'
-        code,p,_=self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':s['revision'],'data':data});s=p['submission']
-        self.assertEqual(self.call('POST',f"/api/seller/submissions/{s['id']}/submit",{'revision':s['revision']})[0],400)
-        s=self.submit(self.draft(True))
-        try:
-            self.call('PUT',f'/api/admin/seller/garages/{self.garage}',{'active':False},'admin')
-            self.assertEqual(self.review(s)[0],400)
-            self.assertEqual(self.call('GET','/api/seller/garages')[1]['garages'],[])
-        finally:self.call('PUT',f'/api/admin/seller/garages/{self.garage}',{'active':True},'admin')
-
-    def test_concurrent_reviews_and_auction_upcoming(self):
-        s=self.submit(self.draft(True,'auction'))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            results=list(pool.map(lambda _: self.review(s)[0],range(2)))
-        self.assertEqual(sorted(results),[200,409])
-        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']=='SV-'+s['id'])
-        self.assertEqual(lot['status'],'upcoming');self.assertTrue(lot['diagnosticVerified']);self.assertEqual(lot['startingPriceTnd'],65000)
-
-    def identify_in_browser(self,page):
-        from playwright.sync_api import expect
-        expect(page.locator('#continue-identification')).to_be_disabled()
-        page.locator('[name=vin]').fill('VF3'+uuid.uuid4().hex[:14].upper())
-        page.locator('[name=licensePlate]').fill('AA-123-BB')
-        page.locator('[name=firstRegistrationDate]').fill('2021-04-18')
-        page.locator('[name=location]').select_option('Tunis')
-        page.locator('[name=originCountry]').select_option('FR')
-        expect(page.locator('#continue-identification')).to_be_enabled()
-        page.locator('#continue-identification').click()
-        expect(page.locator('#model-step')).to_be_visible()
-
-    def test_browser_draft_and_submission_blocking(self):
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            browser=p.chromium.launch()
-            context=browser.new_context(viewport={'width':390,'height':844})
-            context.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}])
-            page=context.new_page();page.goto(self.base+'/vendre')
-            page.get_by_role('button',name='Ajouter un véhicule',exact=True).click()
-            page.wait_for_selector('#vehicle-form')
-            page.locator('[name=make]').fill('Renault')
-            self.identify_in_browser(page)
-            self.assertTrue(page.locator('#submit-dossier').is_disabled())
-            page.get_by_role('button',name='Enregistrer le brouillon',exact=True).click()
-            page.wait_for_function("() => document.getElementById('message').textContent === 'Brouillon enregistré.'")
-            self.assertEqual(page.locator('[name=make]').input_value(),'Renault')
-            self.assertTrue(page.locator('#submit-dossier').is_disabled())
-            self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),390)
-            # Vérifier le badge réel et l'absence de documents dans le DOM public.
-            s=self.submit(self.draft(True));self.assertEqual(self.review(s)[0],200)
-            page.goto(self.base+'/');page.wait_for_function("() => typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
-            self.assertGreater(page.get_by_text('Diagnostic vérifié par M&Y AUTO EXPORT',exact=True).count(),0)
-            self.assertEqual(page.locator('a[href*="/seller/files/"]').count(),0)
-
-
-    def test_seller_listing_states_use_accepted_offers_and_removal(self):
-        draft=self.draft()
-        active=self.submit(self.draft(True))
-        sold=self.submit(self.draft(True))
-        archived=self.submit(self.draft(True))
-        for submission in [active,sold,archived]:
-            self.assertEqual(self.review(submission)[0],200)
-        self.sql(f"UPDATE vehicles SET removed=1 WHERE reference IN ('SV-{sold['id']}','SV-{archived['id']}'); INSERT INTO offers(user_id,reference,amount_tnd,kind,status) VALUES(2,'SV-{sold['id']}',65000,'buy_now','accepted')")
-        code,p,_=self.call('GET','/api/seller/submissions')
-        self.assertEqual(code,200)
-        states={s['id']:s['listingState'] for s in p['submissions']}
-        for s,state in [(draft,'active'),(active,'active'),(sold,'sold'),(archived,'archived')]:
-            self.assertEqual(states[s['id']],state)
-        other=self.call('GET','/api/seller/submissions',who='other')[1]['submissions']
-        self.assertFalse({draft['id'],active['id'],sold['id'],archived['id']} & {s['id'] for s in other})
-        self.assertNotIn('amount_tnd',json.dumps(p))
-
-    def test_browser_seller_filters_counts_empty_states_and_mobile(self):
+    def test_16_browser_mobile_draft_and_mandatory_diagnostic(self):
         from playwright.sync_api import sync_playwright, expect
-        samples=[{'id':f'{i:032x}','data':{'make':'Marque','model':f'Modèle {i}'},'status':status,'listingState':'active','files':[]} for i,status in enumerate(['draft','submitted','corrections','rejected','approved','approved'],1)]
-        samples.append({'id':f'{7:032x}','data':{'make':'Véhicule','model':'Vendu'},'status':'approved','listingState':'sold','files':[]})
-        with sync_playwright() as p:
-            browser=p.chromium.launch()
-            context=browser.new_context(viewport={'width':1200,'height':900})
-            context.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}])
-            page=context.new_page()
-            page.route('**/api/seller/submissions',lambda route:route.fulfill(json={'submissions':samples}))
-            page.goto(self.base+'/vendre')
-            for key,count in [('all',7),('active',6),('sold',1),('archived',0)]:
-                expect(page.locator(f'[data-vehicle-count={key}]')).to_have_text(str(count))
-            expect(page.locator('#submissions article')).to_have_count(7)
-            page.locator('[data-vehicle-filter=active]').click()
-            expect(page.locator('#submissions article')).to_have_count(6)
-            self.assertEqual(page.locator('[data-vehicle-filter=active]').get_attribute('aria-pressed'),'true')
-            page.locator('[data-vehicle-filter=sold]').click()
-            expect(page.locator('#submissions article')).to_have_count(1)
-            expect(page.locator('#submissions .status')).to_have_text('Vendu')
-            page.locator('[data-vehicle-filter=archived]').click()
-            expect(page.locator('#submissions')).to_have_text('Aucun véhicule archivé.')
-            samples.append({'id':f'{8:032x}','data':{'make':'Véhicule','model':'Archivé'},'status':'approved','listingState':'archived','files':[]})
-            page.reload()
-            expect(page.locator('[data-vehicle-count=all]')).to_have_text('8')
-            expect(page.locator('[data-vehicle-count=archived]')).to_have_text('1')
-            page.locator('[data-vehicle-filter=archived]').click()
-            expect(page.locator('#submissions article')).to_have_count(1)
-            expect(page.locator('#submissions .status')).to_have_text('Archivé')
-            page.set_viewport_size({'width':390,'height':844})
-            self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),390)
-            page.locator('[data-vehicle-filter=all]').click()
-            expect(page.locator('#submissions article')).to_have_count(8)
-            browser.close()
-
-    def test_identification_fields_persist_and_are_checked_on_submit(self):
-        s=self.draft(True)
-        path=f"/api/seller/submissions/{s['id']}"
-        self.assertEqual(s['data']['licensePlate'],'AA-123-BB')
-        self.assertEqual(s['data']['firstRegistrationDate'],'2021-04-18')
-        self.assertEqual(s['data']['location'],'Tunis')
-        self.assertEqual(s['data']['originCountry'],'FR')
-        valid=s['data'].copy()
-        for updates in [{'location':''},{'originCountry':''},{'originCountry':'XX'},{'firstRegistrationDate':'2099-01-01'},{'firstRegistrationDate':'2021-02-31'}]:
-            code,p,_=self.call('PUT',path,{'revision':s['revision'],'data':{**valid,**updates}})
-            self.assertEqual(code,200);s=p['submission']
-            self.assertEqual(self.call('POST',path+'/submit',{'revision':s['revision']})[0],400)
-        # Les deux champs sans astérisque restent facultatifs.
-        code,p,_=self.call('PUT',path,{'revision':s['revision'],'data':{**valid,'licensePlate':'','firstRegistrationDate':''}})
-        self.assertEqual(code,200)
-        self.assertEqual(self.submit(p['submission'])['status'],'submitted')
-
-    def test_browser_identification_continue_back_and_cancel(self):
-        from playwright.sync_api import sync_playwright,expect
-        with sync_playwright() as p:
-            browser=p.chromium.launch()
+        with sync_playwright() as pw, pw.chromium.launch(headless=True) as browser:
             context=browser.new_context(viewport={'width':390,'height':844})
             context.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}])
-            page=context.new_page();page.goto(self.base+'/vendre')
-            page.get_by_role('button',name='Ajouter un véhicule',exact=True).click()
-            expect(page.locator('#identification-step')).to_be_visible()
-            expect(page.locator('#model-step')).to_be_hidden()
-            expect(page.locator('#diagnostic-step')).to_be_hidden()
-            expect(page.locator('#continue-identification')).to_be_disabled()
-            page.locator('[name=vin]').fill('INVALID')
-            page.locator('[name=location]').select_option('other')
-            page.locator('[name=locationOther]').fill('Munich, Allemagne')
-            page.locator('[name=originCountry]').select_option('DE')
-            expect(page.locator('#continue-identification')).to_be_disabled()
-            page.locator('[name=vin]').fill('VF3'+uuid.uuid4().hex[:14].upper())
-            page.locator('[name=firstRegistrationDate]').fill('2099-01-01')
-            expect(page.locator('#continue-identification')).to_be_disabled()
-            page.locator('[name=firstRegistrationDate]').fill('2020-06-12')
-            page.locator('[name=licensePlate]').fill('M-AB-123')
-            expect(page.locator('#continue-identification')).to_be_enabled()
-            page.locator('#continue-identification').click()
-            expect(page.locator('#model-step')).to_be_visible()
-            expect(page.locator('#diagnostic-step')).to_be_hidden()
-            page.locator('#previous-step').click()
-            expect(page.locator('[name=licensePlate]')).to_have_value('M-AB-123')
-            page.locator('#cancel-identification').click()
-            expect(page.locator('#editor')).to_be_hidden()
-            expect(page.locator('#message')).to_have_text('Brouillon conservé dans vos dossiers.')
-            drafts=self.call('GET','/api/seller/submissions')[1]['submissions']
-            saved=next(s for s in drafts if s['data'].get('licensePlate')=='M-AB-123')
-            self.assertEqual(saved['status'],'draft')
-            self.assertEqual(saved['data']['location'],'Munich, Allemagne')
-            page.locator(f'[data-open="{saved["id"]}"]').click()
-            expect(page.locator('#identification-step')).to_be_visible()
+            page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+            page.goto(self.base+'/mes-vehicules');page.locator('#new-submission').click()
+            page.locator('#vehicle-form').wait_for();page.locator('[name=vin]').fill('VF3'+uuid.uuid4().hex[:14].upper())
+            page.locator('[name=location]').select_option(label='Tunis');page.locator('[name=originCountry]').select_option('FR')
+            page.locator('#continue-identification').click();page.locator('#model-step').wait_for(state='visible')
+            page.locator('[data-step="7"]').click();page.locator('[name=priceAmount]').fill('12345.678');page.locator('[name=minimumAmount]').fill('12000.001')
+            self.assertEqual(page.locator('[name=saleType]').input_value(),'sale');self.assertTrue(page.locator('#submit-dossier').is_disabled())
+            self.assertEqual(page.locator('[name=auctionEnd]').count(),0)
+            page.locator('#save-draft').click();expect(page.locator('#message')).to_contain_text('enregistr')
             self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),390)
-            browser.close()
+            self.assertFalse(errors,errors)
+            context.close()
 
-    def test_browser_complete_seller_and_admin_journey(self):
+    def test_17_browser_private_offer_seller_decision_and_history(self):
         from playwright.sync_api import sync_playwright,expect
-        with sync_playwright() as p:
-            browser=p.chromium.launch()
-            page=browser.new_page(viewport={'width':390,'height':844})
-            page.goto(self.base+'/vendre');page.locator('summary').click()
-            form=page.locator('#register-form')
-            for key,value in {'name':'Vendeur navigateur','email':f'{uuid.uuid4().hex}@example.test','phone':'12345678','password':'motdepasse-solide'}.items():form.locator(f'[name={key}]').fill(value)
-            form.get_by_role('button',name='Créer mon compte',exact=True).click()
-            expect(page.locator('#profile-section')).to_be_visible()
-            page.locator('#profile-form [name=address]').fill('Adresse privée de test Tunis')
-            page.get_by_role('button',name='Enregistrer mes coordonnées',exact=True).click()
-            expect(page.locator('#message')).to_have_text('Coordonnées enregistrées.')
-            page.get_by_role('button',name='Ajouter un véhicule',exact=True).click()
-            expect(page.locator('#vehicle-form')).to_be_visible()
-            for key,value in {'make':'Toyota','model':'Yaris E2E','year':'2022','mileageKm':'35000'}.items():page.locator(f'[name={key}]').fill(value)
-            self.identify_in_browser(page)
-            page.locator('[name=fuel]').select_option('Hybride')
-            page.locator('[data-step="2"]').click();expect(page.locator('#equipment-step')).to_be_visible()
-            page.locator('#equipment-search').fill('CarPlay');page.get_by_label('Apple CarPlay',exact=True).check()
-            page.locator('[data-step="4"]').click();expect(page.locator('#photos-step')).to_be_visible()
-            for index,kind in enumerate(PHOTO_KINDS,1):
-                page.locator(f'[data-upload={kind}]').set_input_files({'name':'photo.png','mimeType':'image/png','buffer':PNG})
-                expect(page.locator('[data-photo]')).to_have_count(index)
-                expect(page.locator('[data-step="5"]')).to_be_enabled()
-            page.locator('[data-photo-main]').last.click()
-            expect(page.locator('.seller-photo p').filter(has_text='Principale')).to_have_count(1)
-            page.locator('[data-step="5"]').click();expect(page.locator('#damage-step')).to_be_visible()
-            page.locator('button[data-zone=hood]').click();page.locator('#damage-description').fill('Petite rayure sur le capot')
-            page.locator('[data-damage-photo]').first.check();page.locator('#save-damage').click()
-            expect(page.locator('#damages-list')).to_contain_text('Petite rayure')
-            page.locator('[data-step="6"]').click();expect(page.locator('#diagnostic-step')).to_be_visible()
-            page.locator('[name=garageId]').select_option(str(self.garage))
-            page.locator('[name=diagnosticDate]').fill(datetime.now(timezone.utc).date().isoformat())
-            page.locator('[name=diagnosticReference]').fill('RAPPORT-E2E');page.locator('[name=diagnosticMileageKm]').fill('35000')
-            page.locator('[name=diagnosticVin]').fill(page.locator('[name=vin]').input_value())
-            for key in ['engine','transmission','brakes','suspension','steering','electronics','battery','body','tyres','defects']:page.locator(f'[name=obs-{key}]').fill('Contrôlé : voir rapport')
-            for kind in ['registration','ownership','diagnostic']:
-                before=page.locator('#diagnostic-step li').count()
-                page.locator(f'[data-upload={kind}]').set_input_files({'name':'rapport.pdf','mimeType':'application/pdf','buffer':PDF})
-                expect(page.locator('#diagnostic-step li')).to_have_count(before+1)
-                expect(page.locator('[data-step="7"]')).to_be_enabled()
-            page.locator('[data-step="7"]').click();expect(page.locator('#sale-step')).to_be_visible()
-            page.locator('[name=saleType]').select_option('sale');page.locator('[name=priceAmount]').fill('85000')
-            page.get_by_role('button',name='Enregistrer le brouillon',exact=True).click()
-            expect(page.locator('#message')).to_have_text('Brouillon enregistré.')
-            expect(page.locator('#submit-dossier')).to_be_enabled()
-            submission_id=page.locator('#editor').get_attribute('data-submission-id')
-            page.locator('#submit-dossier').click();expect(page.locator('#editor .status')).to_have_text('Soumis')
-            reviewer_context=browser.new_context();reviewer_context.add_cookies([{'name':'my_session','value':self.tokens['admin'],'url':self.base}])
-            reviewer=reviewer_context.new_page();reviewer.goto(self.base+'/admin-vendeurs')
-            reviewer.locator(f'[data-open="{submission_id}"]').click();reviewer.locator('#begin-review').click()
-            expect(reviewer.locator('#editor .status')).to_have_text('En cours de vérification')
-            for key in ['diagnosticAuthentic','documentsChecked','vinChecked']:reviewer.locator(f'[name={key}]').check()
-            reviewer.locator('[name=publicSummary]').fill('Diagnostic vérifié par le garage, rayure capot déclarée.')
-            reviewer.locator('[name=decision]').select_option('approved')
-            reviewer.get_by_role('button',name='Enregistrer la décision',exact=True).click()
-            expect(reviewer.locator('#editor .status')).to_have_text('Approuvé — publication à autoriser')
-            self.assertFalse(any(x['reference']=='SV-'+submission_id for x in self.call('GET','/api/catalogue',who=None)[1]))
-            reviewer.locator('#publish-submission').click();expect(reviewer.locator('#editor .status')).to_have_text('Publié')
-            page.goto(self.base+'/');card=page.locator('.lot-card').filter(has_text='Yaris E2E')
-            expect(card).to_contain_text('Diagnostic vérifié par M&Y AUTO EXPORT')
-            card.get_by_role('button',name='Voir la fiche').click()
-            expect(page.locator('#lot-dialog-body')).to_contain_text('Petite rayure sur le capot')
-            self.assertEqual(page.locator('a[href*="/seller/files/"]').count(),0)
-            browser.close()
+        s=self.published()
+        with sync_playwright() as pw,pw.chromium.launch(headless=True) as browser:
+            buyer=browser.new_context();buyer.add_cookies([{'name':'my_session','value':self.tokens['other'],'url':self.base}]);page=buyer.new_page()
+            page.goto(self.base+'/vehicules/SV-'+s['id']);page.get_by_role('button',name='Proposer une offre',exact=True).click()
+            popup=page.locator('#proposal-dialog');popup.locator('[name=amount]').fill('60000.001');popup.locator('[name=intention]').check();popup.get_by_role('button',name='Envoyer ma proposition').click()
+            expect(popup).to_contain_text('Votre proposition a été envoyée')
+            page.goto(self.base+'/mes-offres');expect(page.get_by_text('En attente',exact=True).first).to_be_visible()
+            seller=browser.new_context();seller.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}]);review=seller.new_page();review.goto(self.base+'/vendeur/offres')
+            article=review.locator('article',has=review.locator('a[href="/vehicules/SV-'+s['id']+'"]'))
+            article.get_by_role('button',name='Accepter l’offre',exact=True).click();expect(article).to_contain_text('Acceptée par le vendeur')
+            article.get_by_role('button',name='Historique',exact=True).click();expect(article.locator('ol')).to_contain_text('Acceptée par le vendeur')
+            self.assertEqual(article.locator('[data-action=contract]').count(),0);buyer.close();seller.close()
 
-    def test_workflow_approval_is_not_publication_and_audit_is_preserved(self):
-        s=self.submit(self.draft(True));path=f"/api/admin/seller/submissions/{s['id']}"
-        self.assertEqual(self.call('POST',path+'/publish',{'revision':s['revision']},'admin')[0],409)
-        self.assertEqual(self.call('POST',path+'/review',{'revision':s['revision'],'decision':'approved','diagnosticAuthentic':True,'documentsChecked':True,'vinChecked':True},'admin')[0],409)
-        code,p,_=self.review(s,publish=False);self.assertEqual(code,200,p);approved=p['submission']
-        self.assertEqual(approved['status'],'approved')
-        self.assertFalse(any(x['reference']=='SV-'+s['id'] for x in self.call('GET','/api/catalogue',who=None)[1]))
-        self.assertEqual(self.call('POST',f"/api/seller/submissions/{s['id']}/publish",{'revision':approved['revision']})[0],405)
-        self.assertEqual(self.call('POST',path+'/publish',{'revision':s['revision']},'admin')[0],409)
-        code,p,_=self.call('POST',path+'/publish',{'revision':approved['revision']},'admin');self.assertEqual(code,200,p)
-        events=p['submission']['events'];self.assertEqual([e['to_stage'] for e in events],['draft','submitted','reviewing','approved','published'])
-        self.assertEqual(events[-1]['actor_id'],3)
+    def test_18_sale_completion_is_manual_and_revalidation_respects_acceptance(self):
+        s=self.published();oid=self.offer(s);p='/api/marketplace/listings/'+s['id']
+        self.assertEqual(self.call('POST',p+'/availability',{'availability':'sold'})[0],428)
+        self.call('POST','/api/marketplace/offers/'+oid+'/decision',{'decision':'accept','revision':0})
+        self.assertEqual(self.call('POST',p+'/revalidate',{'revision':s['revision']})[0],409)
+        self.assertEqual(self.call('POST',p+'/availability',{'availability':'sold','confirmExternalCompletion':True})[0],200)
+        listing=next(x for x in self.call('GET','/api/seller/submissions')[1]['submissions'] if x['id']==s['id']);self.assertEqual(listing['listingState'],'sold')
 
-    def test_diagnostic_vin_eight_photos_and_expired_garage(self):
-        s=self.draft(True);path=f"/api/seller/submissions/{s['id']}"
-        data={**s['data'],'diagnosticVin':'VF3AAAAAAAAAAAAAA'}
-        code,p,_=self.call('PUT',path,{'revision':s['revision'],'data':data});self.assertEqual(code,200);s=p['submission']
-        self.assertEqual(self.call('POST',path+'/submit',{'revision':s['revision']})[0],400)
-        data['diagnosticVin']=data['vin'];s=self.call('PUT',path,{'revision':s['revision'],'data':data})[1]['submission']
-        # Diagnostic absent : même une galerie complète ne suffit pas.
-        diagnostic=next(f for f in s['files'] if f['kind']=='diagnostic')
-        self.assertEqual(self.call('DELETE','/api/seller/files/'+diagnostic['id'],{'revision':s['revision']})[0],200)
-        s=self.call('GET',path)[1]['submission'];self.assertEqual(self.call('POST',path+'/submit',{'revision':s['revision']})[0],400)
-        s=self.call('POST',path+'/files?kind=diagnostic',PDF)[1]['submission']
-        # Une catégorie obligatoire absente est bloquante, même avec huit autres photos.
-        front=next(f for f in s['files'] if f['kind']=='front')
-        self.call('DELETE','/api/seller/files/'+front['id'],{'revision':s['revision']})
-        s=self.call('GET',path)[1]['submission'];self.assertEqual(self.call('POST',path+'/submit',{'revision':s['revision']})[0],400)
-        s=self.call('POST',path+'/files?kind=front',PNG,content_type='image/png')[1]['submission']
+    def test_19_versioned_policy_and_identity_procedure(self):
+        original=self.call('GET','/api/marketplace/policy',who='admin')[1]['policy']
+        b={'version':'test-policy','offerHours':24,'confirmationHours':48,'withdrawalAllowed':False,'contractEnabled':True,'legalReviewReference':'','confirmLegalReview':False,'minPhotos':7,'retentionDays':30,'identityRequired':False,'identityProcedure':''}
+        self.assertEqual(self.call('PUT','/api/marketplace/policy',b)[0],403)
+        self.assertEqual(self.call('PUT','/api/marketplace/policy',b,'admin')[0],409)
         try:
-            self.call('PUT',f'/api/admin/seller/garages/{self.garage}',{'active':True,'validUntil':'2020-01-01'},'admin')
-            self.assertEqual(self.call('POST',path+'/submit',{'revision':s['revision']})[0],400)
-        finally:self.call('PUT',f'/api/admin/seller/garages/{self.garage}',{'active':True,'validUntil':'2099-12-31'},'admin')
+            self.assertEqual(self.call('PUT','/api/marketplace/policy',{**b,'contractEnabled':False},'admin')[0],200)
+            self.assertFalse(self.call('GET','/api/marketplace/rules',who=None)[1]['withdrawalAllowed'])
+        finally:
+            self.sql("UPDATE marketplace_policy SET version='lot1-draft-1',offer_hours=72,confirmation_hours=168,withdrawal_allowed=1,contract_enabled=0,legal_review_reference='',min_photos=8,retention_days=180,identity_required=0,identity_procedure=''")
 
-    def test_duplicate_vin_and_photo_damage_ownership(self):
-        first=self.draft(True);other=self.draft();path=f"/api/seller/submissions/{other['id']}"
-        self.assertEqual(self.call('PUT',path,{'revision':other['revision'],'data':first['data']})[0],409)
-        d={**first['data'],'vin':'VF3'+uuid.uuid4().hex[:14].upper()}
-        self.assertEqual(self.call('PUT',path,{'revision':other['revision'],'data':d})[0],200)
-        d=first['data'];d['damages']=[{'zone':'hood','type':'rayure','severity':'léger','description':'Rayure','photoIds':[uuid.uuid4().hex]}]
-        code,p,_=self.call('PUT',f"/api/seller/submissions/{first['id']}",{'revision':first['revision'],'data':d});self.assertEqual(code,200)
-        self.assertEqual(self.call('POST',f"/api/seller/submissions/{first['id']}/submit",{'revision':p['submission']['revision']})[0],400)
-        for zone in ['unknown','__proto__','constructor']:
-            d['damages'][0]['zone']=zone
-            self.assertEqual(self.call('PUT',f"/api/seller/submissions/{first['id']}",{'revision':p['submission']['revision'],'data':d})[0],400)
+    def test_20_retention_preserves_evidence_and_purges_only_inactive_drafts(self):
+        d=self.draft(True);p=self.published();oid=self.offer(p)
+        self.call('POST','/api/marketplace/offers/'+oid+'/withdraw',{},'other')
+        self.call('POST','/api/admin/seller/submissions/'+p['id']+'/archive',{'revision':p['revision']},'admin')
+        self.sql(f"UPDATE seller_submissions SET updated_at='2000-01-01' WHERE id IN ('{d['id']}','{p['id']}')")
+        self.assertEqual(self.call('POST','/api/admin/seller/cleanup',{},'admin')[0],200)
+        draft=self.call('GET','/api/seller/submissions/'+d['id'])[1]['submission'];self.assertIsNotNone(draft['purged_at']);self.assertFalse(draft['files'])
+        proof=self.call('GET','/api/seller/submissions/'+p['id'])[1]['submission'];self.assertIsNone(proof['purged_at']);self.assertTrue(proof['files'])
 
-    def test_temporary_document_access_expiration_and_pdf_rejection(self):
-        s=self.draft(True);f=next(f for f in s['files'] if f['kind']=='registration')
-        code,p,_=self.call('POST','/api/seller/files/'+f['id']+'/access',{});self.assertEqual(code,200)
-        self.assertEqual(self.call('GET',p['url'])[0],200)
-        self.assertEqual(self.call('GET',p['url'],who='other')[0],404)
-        self.assertEqual(self.call('GET',p['url'],who=None)[0],401)
-        self.sql("UPDATE seller_file_access SET expires_at='2000-01-01T00:00:00Z'")
-        self.assertEqual(self.call('GET',p['url'])[0],404)
-        for body in [b'%PDF-1.7 /JavaScript (bad)',b'%PDF-1.7 /J#61vaScript (bad)',b'%PDF-1.7 /Encrypt 3 0 R']:
-            self.assertEqual(self.call('POST',f"/api/seller/submissions/{s['id']}/files?kind=diagnostic",body)[0],415)
+    def test_21_rejection_corrections_and_duplicate_vin(self):
+        s=self.submit(self.draft(True));code,p,_=self.review(s,'corrections',False,feedback='Corriger les observations');self.assertEqual(code,200,p)
+        s=p['submission'];self.assertEqual(s['status'],'corrections');self.assertEqual(s['diagnostic']['diagnostic_status'],'rejected')
+        other=self.draft();self.assertEqual(self.call('PUT','/api/seller/submissions/'+other['id'],{'revision':other['revision'],'data':{'vin':s['data']['vin']}})[0],409)
+        self.assertEqual(self.call('PUT','/api/seller/submissions/'+s['id'],{'revision':s['revision'],'data':s['data']})[0],200)
 
-    def test_upload_rate_limit_is_server_enforced(self):
-        s=self.draft();path=f"/api/seller/submissions/{s['id']}/files?kind=diagnostic"
-        for _ in range(20):self.assertEqual(self.call('POST',path,b'not a PDF')[0],415)
-        self.assertEqual(self.call('POST',path,PDF)[0],429)
-
-    def test_professional_document_requirements_and_retention(self):
-        self.assertEqual(self.call('PUT','/api/seller/profile',{'name':'Pro','phone':'1234','address':'Tunis','sellerType':'professional'})[0],400)
-        try:
-            self.assertEqual(self.call('PUT','/api/seller/profile',{'name':'Pro','phone':'1234','address':'Tunis','sellerType':'professional','professionalNumber':'PRO-1'})[0],200)
-            s=self.draft(True);path=f"/api/seller/submissions/{s['id']}"
-            self.assertEqual(self.call('POST',path+'/submit',{'revision':s['revision']})[0],400)
-            s=self.call('POST',path+'/files?kind=invoice',PDF)[1]['submission']
-            s=self.submit(s);code,p,_=self.review(s,'rejected',feedback='Dossier incomplet');self.assertEqual(code,200)
-            s=p['submission'];self.assertEqual(self.call('POST',path+'/archive',{'revision':s['revision']})[0],200)
-            file_id=s['files'][0]['id'];self.sql(f"UPDATE seller_submissions SET updated_at='2020-01-01T00:00:00Z' WHERE id='{s['id']}'")
-            self.assertEqual(self.call('POST','/api/admin/seller/cleanup',{},'admin')[0],200)
-            self.assertEqual(self.call('GET','/api/seller/files/'+file_id)[0],404)
-            redacted=self.call('GET',path)[1]['submission'];self.assertEqual(redacted['data'],{});self.assertIsNotNone(redacted['purged_at'])
-            self.assertFalse(any(x['id']==s['id'] for x in self.call('GET','/api/seller/submissions')[1]['submissions']))
-        finally:self.call('PUT','/api/seller/profile',{'name':'seller','phone':'12345678','address':'Adresse privée Tunis','sellerType':'individual'})
-
-    def test_eur_publication_requires_validated_tnd_price_and_direct_offers(self):
-        s=self.draft(True);d={**s['data'],'priceCurrency':'EUR','priceAmount':20000,'allowOffers':True}
-        s=self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':s['revision'],'data':d})[1]['submission']
-        s=self.submit(s);code,p,_=self.review(s,publish=False);self.assertEqual(code,200);s=p['submission']
-        path=f"/api/admin/seller/submissions/{s['id']}/publish"
-        self.assertEqual(self.call('POST',path,{'revision':s['revision']},'admin')[0],400)
-        self.assertEqual(self.call('POST',path,{'revision':s['revision'],'priceTnd':68000},'admin')[0],200)
-        ref='SV-'+s['id'];body={'reference':ref,'amountTnd':65000}
-        self.sql("UPDATE users SET terms_version=NULL WHERE id=2")
-        self.assertEqual(self.call('POST','/api/seller/offers',body,'other')[0],409)
-        self.sql("UPDATE users SET terms_version='2026-11-01' WHERE id IN (1,2)")
-        self.assertEqual(self.call('POST','/api/seller/offers',body)[0],403)
-        self.assertEqual(self.call('POST','/api/seller/offers',body,'other')[0],201)
-        self.assertEqual(self.call('POST','/api/seller/offers',body,'other')[0],409)
-
-    def test_document_rules_are_country_and_seller_specific(self):
-        rule={'countryCode':'FR','sellerType':'individual','kind':'invoice','required':True}
-        self.assertEqual(self.call('POST','/api/seller/document-rules',rule)[0],405)
-        self.assertEqual(self.call('POST','/api/admin/seller/document-rules',rule,'admin')[0],200)
-        try:
-            s=self.draft(True);path=f"/api/seller/submissions/{s['id']}"
-            code,p,_=self.call('POST',path+'/submit',{'revision':s['revision']});self.assertEqual(code,400)
-            self.assertTrue(any('Facture' in m for m in p['missing']))
-            s=self.call('POST',path+'/files?kind=invoice',PDF)[1]['submission']
-            self.assertEqual(self.submit(s)['status'],'submitted')
-        finally:self.call('POST','/api/admin/seller/document-rules',{**rule,'required':False},'admin')
-
-    def test_photo_order_and_damage_details_are_published_without_private_data(self):
-        s=self.draft(True);photos=[f for f in s['files'] if f['kind'] in PHOTO_KINDS]
-        ids=[f['id'] for f in photos][::-1];path=f"/api/seller/submissions/{s['id']}"
-        self.assertEqual(self.call('PUT',path+'/photos',{'revision':s['revision'],'order':ids,'main':uuid.uuid4().hex})[0],400)
-        code,p,_=self.call('PUT',path+'/photos',{'revision':s['revision'],'order':ids,'main':ids[0]});self.assertEqual(code,200);s=p['submission']
-        d={**s['data'],'powerKw':88,'powerHp':120,'gearbox':'Automatique','exteriorColor':'Gris','displacementCc':1598,'doors':5,'seats':5,'condition':'Occasion','equipment':['Apple CarPlay'],'damages':[{'zone':'hood','type':'rayure','severity':'léger','description':'Rayure constatée','photoIds':[ids[0]]}]}
-        s=self.call('PUT',path,{'revision':s['revision'],'data':d})[1]['submission'];s=self.submit(s)
-        self.assertEqual(self.review(s)[0],200)
-        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']=='SV-'+s['id'])
-        self.assertEqual(lot['photos'][0]['url'],'/seller-media/'+ids[0])
-        self.assertEqual(lot['damages'][0]['description'],'Rayure constatée')
-        self.assertEqual(lot['equipment'],['Apple CarPlay']);self.assertEqual(lot['diagnostic']['garage'],'Garage partenaire')
-        self.assertEqual({k:lot[k] for k in ['transmission','color','powerHp','engineCc','doors','seats','condition']},{'transmission':'Automatique','color':'Gris','powerHp':120,'engineCc':1598,'doors':5,'seats':5,'condition':'used'})
-        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+lot['reference'],{**lot,'indicativePriceTnd':67000},'admin')[0],200)
-        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+lot['reference'],{**lot,'color':'Noir'},'admin')[0],409)
-        self.assertEqual(lot['diagnostic']['date'],s['data']['diagnosticDate'])
-        code,html,_=self.call('GET',lot['url'],who=None);self.assertEqual(code,200);html=html.decode()
-        self.assertIn('Diagnostic vérifié par M&amp;Y AUTO EXPORT',html);self.assertIn('Rayure constatée',html);self.assertIn('/seller-media/'+ids[0],html)
-        self.assertNotIn(s['data']['vin'],html)
-        for secret in [s['data']['vin'],s['data']['licensePlate'],s['data']['diagnosticReference']]:self.assertNotIn(secret,json.dumps(lot))
-
-    def test_large_json_is_rejected_before_mutation(self):
-        s=self.draft();path=f"/api/seller/submissions/{s['id']}"
-        self.assertEqual(self.call('PUT',path,{'revision':s['revision'],'data':{'description':'x'*300000}})[0],413)
-        after=self.call('GET',path)[1]['submission'];self.assertEqual(after['revision'],s['revision']);self.assertEqual(after['data'],{})
-
-    def test_private_identifiers_in_free_text_block_publication(self):
-        s=self.draft(True);d={**s['data'],'description':'Identifiant du véhicule : '+s['data']['vin'].lower()}
-        path=f"/api/seller/submissions/{s['id']}"
-        s=self.call('PUT',path,{'revision':s['revision'],'data':d})[1]['submission'];s=self.submit(s)
-        self.assertEqual(self.review(s)[0],400)
-        self.assertFalse(any(x['reference']=='SV-'+s['id'] for x in self.call('GET','/api/catalogue',who=None)[1]))
-
-    def test_browser_partial_upload_failure_preserves_successful_photos(self):
-        import re
-        from playwright.sync_api import sync_playwright,expect
-        with sync_playwright() as p:
-            browser=p.chromium.launch();context=browser.new_context()
-            context.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}])
-            page=context.new_page();page.goto(self.base+'/vendre')
-            page.get_by_role('button',name='Ajouter un véhicule',exact=True).click();self.identify_in_browser(page)
-            page.locator('[data-step="4"]').click();expect(page.locator('#photos-step')).to_be_visible()
-            attempts=[]
-            def intercept(route):
-                attempts.append(1)
-                if len(attempts)==2:route.fulfill(status=429,json={'error':'Limite simulée : réessayez plus tard.'})
-                else:route.continue_()
-            page.route(re.compile(r'/api/seller/submissions/[a-f0-9]{32}/files\?kind=front$'),intercept)
-            page.locator('[data-upload=front]').set_input_files([{'name':f'photo-{i}.png','mimeType':'image/png','buffer':PNG} for i in range(2)])
-            expect(page.locator('#message')).to_have_text('Limite simulée : réessayez plus tard.')
-            expect(page.locator('[data-photo]')).to_have_count(1)
-            expect(page.locator('[data-upload=front]')).to_be_enabled()
-            self.assertEqual(len(attempts),2)
-            browser.close()
-
-    def test_catalogue_edit_preserves_verified_metadata_and_blocks_offers_on_auction(self):
-        s=self.draft(True);d={**s['data'],'allowOffers':True}
-        s=self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':s['revision'],'data':d})[1]['submission']
-        s=self.submit(s);self.assertEqual(self.review(s)[0],200);ref='SV-'+s['id']
-        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']==ref)
-        code,p,_=self.call('PUT','/api/admin/vehicles/'+ref,{**lot,'indicativePriceTnd':67000},'admin');self.assertEqual(code,200,p)
-        updated=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']==ref)
-        self.assertTrue(updated['diagnosticVerified']);self.assertTrue(updated['allowSellerOffers']);self.assertEqual(updated['diagnostic'],lot['diagnostic'])
-        # Un changement du mode de vente par l'administration est immédiatement pris en compte.
-        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+ref,{**updated,'status':'open','endsAt':(datetime.now(timezone.utc)+timedelta(days=2)).isoformat()},'admin')[0],200)
-        self.sql("UPDATE users SET terms_version='2026-11-01' WHERE id=2")
-        self.assertEqual(self.call('POST','/api/seller/offers',{'reference':ref,'amountTnd':60000},'other')[0],409)
-
-    def test_generic_admin_cannot_bypass_seller_validation(self):
-        s=self.draft(True);ref='SV-'+s['id'];payload={'make':'Peugeot','model':'208','year':2021,'mileageKm':50000,'fuel':'Essence','status':'stock','photos':[]}
-        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+ref,payload,'admin')[0],409)
-        s=self.submit(s);self.assertEqual(self.review(s)[0],200)
-        lot=next(x for x in self.call('GET','/api/catalogue',who=None)[1] if x['reference']==ref)
-        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+ref,{**lot,'mileageKm':1},'admin')[0],409)
-        self.assertEqual(self.call('PUT','/api/admin/vehicles/'+ref,{**lot,'photos':[]},'admin')[0],409)
+    def test_22_api_abuse_limit_and_file_size(self):
+        s=self.draft()
+        self.assertEqual(self.call('POST','/api/seller/submissions/'+s['id']+'/files?kind=front',PNG+b'0'*(10*1024*1024),content_type='image/png')[0],413)
+        self.sql("WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<120) INSERT INTO marketplace_api_attempts(user_id,at) SELECT 2,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM n")
+        try:self.assertEqual(self.call('POST','/api/marketplace/privacy',{'kind':'access','reason':'Test de limite'},'other')[0],429)
+        finally:self.sql('DELETE FROM marketplace_api_attempts WHERE user_id=2')

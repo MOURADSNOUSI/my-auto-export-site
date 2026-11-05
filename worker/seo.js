@@ -1,3 +1,5 @@
+import {legacyAuctionsEnabled,lot1Public,reserveTerms} from './proposal-domain.js';
+const money=(v,c)=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:c,minimumFractionDigits:c==='TND'?3:2}).format(v/(c==='TND'?1000:100));
 import { sellerMedia } from "./seller.js";
 // Référencement : pages véhicules rendues par le Worker, sitemap dynamique, liste indexable de l'accueil,
 // page 404 et contrôle SEO (après chaque publication et chaque jour à 07:00, heure de Paris).
@@ -70,6 +72,7 @@ export function indexable(item) {
 }
 
 export function prixAffiche(lot) {
+  if(lot.priceMinor!=null&&['TND','EUR'].includes(lot.currency))return {label:"Prix demandé",value:money(lot.priceMinor,lot.currency)};
   const a = lot.auction;
   if (a?.currentBidTnd != null) return { label: a.status === "ended" ? "Dernière enchère" : "Enchère actuelle", value: tnd(a.currentBidTnd) };
   if (Number.isFinite(lot.startingPriceTnd)) return { label: "Mise à prix", value: tnd(lot.startingPriceTnd) };
@@ -108,7 +111,7 @@ function caracteristiques(lot) {
 // une enchère n'a pas de prix de vente connu d'avance.
 export function donneesStructurees(lot, url) {
   const photos = photosLot(lot).map(absolue);
-  const prix = lot.status === "stock" ? (lot.buyNowPriceTnd ?? lot.indicativePriceTnd) : null;
+  const prix = lot.priceMinor!=null ? lot.priceMinor/(lot.currency==='TND'?1000:100) : lot.status === "stock" ? (lot.buyNowPriceTnd ?? lot.indicativePriceTnd) : null;
   const vehicule = {
     "@context": "https://schema.org",
     "@type": Number.isFinite(prix) ? ["Product", "Car"] : "Car",
@@ -135,7 +138,7 @@ export function donneesStructurees(lot, url) {
       "@type": "Offer",
       url,
       price: prix,
-      priceCurrency: "TND",
+      priceCurrency: lot.currency || "TND",
       availability: "https://schema.org/InStock",
       description: Number.isFinite(lot.buyNowPriceTnd) ? "Prix d'achat immédiat." : NOTE_PRIX,
       seller: { "@type": "AutoDealer", name: "M&Y AUTO EXPORT", url: `${SITE}/` }
@@ -189,7 +192,7 @@ dl{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:6px 16px;margin
 footer{margin-top:48px;padding:24px 0;border-top:1px solid var(--line);font-size:14px;color:var(--soft)}
 `;
 
-function gabarit({ titre, description, canonique, robots, image, contenu, donnees = [] }) {
+function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [] }) {
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -210,11 +213,13 @@ function gabarit({ titre, description, canonique, robots, image, contenu, donnee
   <meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}">
   ${donnees.map(jsonLd).join("\n  ")}
   <style>${STYLE}</style>
+  <link rel="stylesheet" href="/proposal-dialog.css">
 </head>
 <body>
   <header><div class="shell"><a href="/"><img src="/logo.png" alt="Logo M&amp;Y AUTO EXPORT" width="36" height="36"></a><a href="/">M&amp;Y AUTO EXPORT</a></div></header>
   <main class="shell">${contenu}</main>
   <footer><div class="shell"><strong>M&amp;Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie · <a href="/vehicules">Tous les véhicules</a> · <a href="/conditions">Conditions générales de vente</a> · <a href="mailto:contact@myautoexport.com">contact@myautoexport.com</a></div></footer>
+${scripts}
 </body>
 </html>`;
 }
@@ -258,7 +263,8 @@ function image(url, webp, alt, { principale = false } = {}) {
 // --- Routes ---
 
 async function lotsAvecEtat(request, env) {
-  const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
+  const [items, resumes] = await Promise.all([catalogueComplet(request, env), legacyAuctionsEnabled(env)?resumesEncheres(env):Promise.resolve(new Map())]);
+  if(!legacyAuctionsEnabled(env))return items.map(item=>({...item,removed:item.removed||(!item.offerOwnerAssigned&&item.lot.status==='open'&&!!item.lot.endsAt&&Date.parse(item.lot.endsAt)<=Date.now()),lot:lot1Public(item.lot)}));
   const maintenant = Date.now();
   return items.map((item) => {
     const auction = etatEnchere(item.lot, resumes.get(item.lot.reference), maintenant);
@@ -291,14 +297,15 @@ async function pageVehicule(request, env, url) {
   const demande = url.pathname.toLowerCase();
   let item = items.find((entry) => cheminVehicule(entry.lot) === demande);
   if (!item) {
-    // Ancienne adresse (marque, modèle ou année modifiés) : redirection permanente vers l'adresse actuelle.
-    // La plus longue référence l'emporte : …-my-0001 désigne MY-0001, pas 0001.
+    // Ancienne adresse (marque, modèle ou année modifiés) ou référence seule (/vehicules/SV-…, liens des offres) :
+    // redirection permanente vers l'adresse actuelle. La plus longue référence l'emporte : …-my-0001 désigne MY-0001, pas 0001.
     const ancien = items
-      .filter((entry) => demande.endsWith(`-${slug(entry.lot.reference)}`))
+      .filter((entry) => demande.endsWith(`-${slug(entry.lot.reference)}`) || demande === `${PREFIXE}${slug(entry.lot.reference)}`)
       .sort((a, b) => slug(b.lot.reference).length - slug(a.lot.reference).length)[0];
     if (ancien) return Response.redirect(`${url.origin}${cheminVehicule(ancien.lot)}`, 301);
     return page404();
   }
+  if(item.sellerUnavailable)return page404();
   const lot = item.lot;
   if (item.removed) {
     // Véhicule vendu ou retiré : 410 indique aux moteurs de retirer la page de l'index.
@@ -317,6 +324,10 @@ async function pageVehicule(request, env, url) {
   const titre = titreLot(lot);
   const prix = prixAffiche(lot);
   const enVente = indexable(item);
+  // Offres privées : toutes les annonces en mode « propositions seules », sinon les annonces vendeur et celles dont
+  // le vendeur a été affecté (worker/proposals.js). Les enchères et l'achat immédiat restent sur l'accueil (/?lot=…).
+  const proposition = enVente && (!legacyAuctionsEnabled(env) || Boolean(lot.marketplace) || Boolean(item.offerOwnerAssigned));
+  const terms = reserveTerms(lot);
   const sujet = encodeURIComponent(`Véhicule réf. ${lot.reference} — ${titre}`);
   const galerie = photos.length
     ? `<div class="galerie-principale">${image(photos[0], webp[0], `${titre} — photo 1 sur ${photos.length}`, { principale: true })}</div>
@@ -327,15 +338,16 @@ async function pageVehicule(request, env, url) {
     <nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › <a href="/vehicules">Véhicules</a> › ${escapeHtml(titre)}</nav>
     <h1>${escapeHtml(titre)}${lot.year ? ` ${escapeHtml(lot.year)}` : ""}</h1>
     <p class="meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(statutLot(lot))}</p>
-    <div class="fiche">
+    <article data-reference="${escapeHtml(lot.reference)}"><div class="fiche">
       <section aria-label="Photos">${galerie}</section>
       <div>
         <section class="carte prix" aria-label="Prix">
           <small>${escapeHtml(prix.label)}</small><strong>${escapeHtml(prix.value)}</strong>
           ${lot.auction?.endsAt && lot.auction.status === "live" ? `<p>Fin de la vente : <time datetime="${escapeHtml(lot.auction.endsAt)}">${escapeHtml(new Date(lot.auction.endsAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis", dateStyle: "long", timeStyle: "short" }))}</time> (heure de Tunis)</p>` : ""}
           <p class="note">${NOTE_PRIX} Ces éléments sont communiqués sur demande avant tout engagement (<a href="/conditions#prix">conditions</a>).</p>
+          ${proposition?`<p class="proposal-reserve">Prix de réserve : <strong>${terms?escapeHtml(money(terms.reserveMinor,terms.currency)):"À renseigner par le vendeur"}</strong></p>`:""}
           <div class="actions">
-            ${enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
+            ${proposition?`<button class="bouton" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`:enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
             <a class="bouton secondaire" href="mailto:contact@myautoexport.com?subject=${sujet}">Poser une question</a>
           </div>
         </section>
@@ -346,9 +358,10 @@ async function pageVehicule(request, env, url) {
           ${lot.sourceUrl ? `<p><a href="${escapeHtml(lot.sourceUrl)}" rel="nofollow noopener noreferrer" target="_blank">Fiche fournisseur ↗</a></p>` : ""}
         </section>
       </div>
-    </div>${diagnosticVendeur(lot)}`;
+    </div>${diagnosticVendeur(lot)}<p id="status" role="status"></p><div id="offer-form"></div><button id="report-listing" disabled>Signaler cette annonce</button></article>`;
 
   return reponseHtml(gabarit({
+    scripts: proposition ? '<script type="module" src="/marketplace-ui.js"></script>' : '',
     titre: titrePage(lot),
     description: descriptionPage(lot),
     canonique,
@@ -384,12 +397,12 @@ async function pageListe(request, env) {
   }];
   return reponseHtml(gabarit({
     titre: "Véhicules européens à vendre, livrés en Tunisie | M&Y AUTO EXPORT",
-    description: `${lots.length} véhicule${lots.length > 1 ? "s" : ""} d'occasion sélectionné${lots.length > 1 ? "s" : ""} en Europe : stock, enchères et achat direct, prix affichés en dinars tunisiens.`,
+    description: `${lots.length} véhicule${lots.length > 1 ? "s" : ""} d'occasion sélectionné${lots.length > 1 ? "s" : ""} en Europe : annonces et propositions d'achat privées, prix dans la devise de chaque annonce.`,
     canonique,
     donnees,
     contenu: `<nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › Véhicules</nav>
       <h1>Véhicules à vendre</h1>
-      <p class="meta">${lots.length} véhicule${lots.length > 1 ? "s" : ""} en ligne. Prix en dinars tunisiens (TND).</p>
+      <p class="meta">${lots.length} véhicule${lots.length > 1 ? "s" : ""} en ligne. Prix en TND ou EUR selon l’annonce.</p>
       ${lots.length ? `<ul class="liste">${lots.map(ligneListe).join("")}</ul>` : "<p>Aucun véhicule en ligne pour le moment.</p>"}
       <p class="note">${NOTE_PRIX}</p>`
   }));
