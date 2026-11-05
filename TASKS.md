@@ -3,6 +3,18 @@
 
 ## Branche principale et déploiement
 
+2026-11-05 — Offres libres, suivi #5 — Copilot, branche
+`feature/offres-libres` depuis `master`, sur demande explicite : enchères, achat
+immédiat et nouveaux dépôts désactivés ; montant positif libre sans réserve ;
+réception administrative sans vendeur fictif, notification et décisions M&Y.
+Fichiers : `wrangler.jsonc`, `worker/index.js`, `worker/proposal-domain.js`,
+`worker/proposals.js`, `migrations/0017_offres_libres.sql`, interface catalogue,
+fenêtre de proposition, liste des offres, README et tests associés. Validation :
+182 tests Python et 28 tests Vitest réussis, bundle Wrangler en simulation réussi.
+Migration de données peuplées testée avec conservation des offres, transactions et
+clés étrangères ; parcours mobile soumission/refus administratif vérifié.
+Déploiement demandé depuis `master` uniquement ; migration distante 0017 requise.
+
 2026-11-05 — Copilot : renommage GitHub de `main` en `master`, demandé et confirmé
 par l'utilisateur pour ce dépôt uniquement. Branche par défaut et `origin/HEAD`
 vérifiés ; travail local des autres agents préservé. Consignes mises à jour dans

@@ -2,7 +2,27 @@
 
 ## Lot 1 — propositions d’achat
 
-Le bouton « Proposer une offre » et le contrôle de réserve officiel sont décrits dans [le rapport du Lot 1](docs/LOT1_PROPOSITIONS.md), avec les fichiers modifiés, les migrations et les tests. Depuis l’intégration avec `main`, les enchères restent actives par défaut (`LEGACY_AUCTIONS_ENABLED="true"` dans `wrangler.jsonc`) : les annonces vendeur et celles dont le vendeur est affecté reçoivent des propositions privées, les autres gardent enchères et achat immédiat. La valeur `"false"` passe le site en « propositions seules » (enchères, achat immédiat et nouveaux dépôts de garantie désactivés). Une réserve publique et un propriétaire vendeur explicite sont nécessaires avant l’envoi ; le minimum vendeur reste privé. Le déploiement explicitement demandé le 4 novembre 2026 est suivi dans [le rapport de déploiement](docs/DEPLOIEMENT_LOT1.md).
+### Mode actuel : offres libres
+
+`LEGACY_AUCTIONS_ENABLED="false"` désactive les enchères, l'achat immédiat et les
+nouveaux paiements de caution. `FREE_OFFERS_ENABLED="true"` autorise toute proposition
+strictement positive, même inférieure à la réserve ou sans réserve enregistrée.
+La connexion, la devise de l'annonce, le consentement, les contrôles d'activité,
+la modération des dossiers vendeurs et les limites anti-spam restent obligatoires.
+
+Sans vendeur affecté, les offres sont reçues par M&Y, sans créer de vendeur fictif.
+Les administrateurs les traitent depuis **Administration marketplace → Consulter
+et traiter les offres reçues par M&Y**. Un administrateur ne peut pas accepter sa
+propre proposition. Les vendeurs affectés continuent à décider sur leurs annonces.
+Aucune vente ni aucun paiement n'est déclenché automatiquement.
+
+La migration `0017_offres_libres.sql` conserve les offres et historiques existants,
+rend le destinataire vendeur facultatif pour les offres libres et notifie les
+administrateurs lorsqu'aucun vendeur n'est affecté. Appliquer cette migration
+avant de publier le code. Les anciennes propositions conservent leurs conditions
+de réserve ; la soumission libre est enregistrée individuellement sur les nouvelles.
+
+Le fonctionnement initial et son contrôle de réserve sont décrits dans [le rapport du Lot 1](docs/LOT1_PROPOSITIONS.md). Pour rétablir les seuils de réserve et l'affectation obligatoire d'un vendeur, définir `FREE_OFFERS_ENABLED="false"`. `LEGACY_AUCTIONS_ENABLED="true"` réactive séparément les enchères historiques, l'achat immédiat et les dépôts. Ces changements de mode nécessitent une validation explicite. Le déploiement du 4 novembre 2026 est suivi dans [le rapport de déploiement](docs/DEPLOIEMENT_LOT1.md).
 
 ## Marketplace phase 1 (branche de développement)
 

@@ -3,6 +3,7 @@ export const RESERVE_ERROR='Votre offre doit être supérieure ou égale au prix
 // Enchères, achat immédiat et dépôts de garantie actifs sauf si LEGACY_AUCTIONS_ENABLED vaut explicitement "false"
 // (mode « propositions seules » du Lot 1). Variable absente : enchères actives, comme en production.
 export const legacyAuctionsEnabled=env=>String(env.LEGACY_AUCTIONS_ENABLED??'true').trim().toLowerCase()!=='false';
+export const freeOffersEnabled=env=>String(env.FREE_OFFERS_ENABLED??'false').trim().toLowerCase()==='true';
 // Pas de repli vers le minimum privé, le prix demandé ou une conversion monétaire.
 export function reserveTerms(lot){
  const currency=lot.currency||lot.priceCurrency||'TND';if(!['TND','EUR'].includes(currency))return null;
@@ -28,10 +29,10 @@ export async function offerVehicle(env,reference){
   LEFT JOIN seller_financials f ON f.submission_id=s.id
   LEFT JOIN vehicle_offer_owners ow ON ow.vehicle_id=v.reference WHERE v.reference=?`).bind(reference).first();
 }
-export function proposalActive(row){
+export function proposalActive(row,free=false){
  if(!row||row.removed||row.legacy_sold||row.owner_suspended)return false;
  if(row.submission_id)return row.stage==='published'&&row.diagnostic_verified_at&&row.diagnostic_valid&&row.availability==='available'&&(!row.available_from||row.available_from<=dateNow().slice(0,10))&&row.allow_offers===1;
- return !!row.assigned_owner&&!['archived','sold','inactive'].includes(JSON.parse(row.data).status);
+ return (free||!!row.assigned_owner)&&!['archived','sold','inactive'].includes(JSON.parse(row.data).status);
 }
 export async function expireProposals(env){
  await env.DB.prepare("UPDATE vehicle_offers SET status='expired',revision=revision+1,updated_at=?,actor_id=NULL,reason='deadline' WHERE status='pending' AND expires_at<=?").bind(dateNow(),dateNow()).run();

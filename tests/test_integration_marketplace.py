@@ -1,6 +1,6 @@
-"""Intégration de la marketplace (PR #10) avec la production (main) : règles qui doivent tenir ensemble.
+"""Intégration de la marketplace avec la configuration de production (master).
 
-- la configuration livrée (wrangler.jsonc) garde les enchères actives : une enchère se place ;
+- la configuration livrée désactive les enchères et active les propositions libres ;
 - /vehicules/<slug> reste la page SEO, /vehicules/<référence> redirige en 301 vers elle ;
 - les routes de proposition /api/marketplace/… répondent ;
 - les pages de la marketplace portent les en-têtes de sécurité.
@@ -72,9 +72,10 @@ class ConfigLivreeTest(unittest.TestCase):
         existantes = sorted(p.name for p in (PROJET / "migrations").glob("*.sql") if p.name < "0017")
         self.assertEqual(existantes, MIGRATIONS_PRODUCTION)
 
-    def test_encheres_actives_par_defaut(self):
+    def test_offres_libres_sans_encheres_par_defaut(self):
         config = config_livree()
-        self.assertEqual(config["vars"]["LEGACY_AUCTIONS_ENABLED"], "true")
+        self.assertEqual(config["vars"]["LEGACY_AUCTIONS_ENABLED"], "false")
+        self.assertEqual(config["vars"]["FREE_OFFERS_ENABLED"], "true")
         self.assertIn('data-proposal-only="false"', (PROJET / "my-auto-export" / "index.html").read_text())
         self.assertEqual(sorted(config["triggers"]["crons"]), sorted(["30 2 * * *", "0 5 * * *", "0 6 * * *"]))
         self.assertEqual({b["binding"] for b in config["r2_buckets"]}, {"PHOTOS", "SELLER_DOCUMENTS"})
@@ -146,27 +147,24 @@ class IntegrationMarketplaceTest(unittest.TestCase):
     def connexion(cls, email):
         return cls.requete("/api/login", {"email": email, "password": MOT_DE_PASSE}, "POST")[2]["Set-Cookie"].split(";")[0]
 
-    def test_enchere_avec_la_config_livree(self):
+    def test_enchere_refusee_avec_la_config_livree(self):
         fin = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
         lot = {"make": "BMW", "model": "X3", "year": 2021, "status": "open", "endsAt": fin, "startingPriceTnd": 100000}
         self.assertEqual(self.requete("/api/admin/vehicles/INT-ENC", lot, "PUT", self.cookies["admin@ex.com"])[0], 200)
         statut, corps, _ = self.requete("/api/offers", {"reference": "INT-ENC", "amount": 100000}, "POST", self.cookies["alice@ex.com"])
-        self.assertEqual(statut, 201, corps)
+        self.assertEqual(statut, 410, corps)
         statut, detail, _ = self.requete("/api/auctions/INT-ENC")
-        self.assertEqual(statut, 200)
-        self.assertEqual(detail["auction"]["currentBidTnd"], 100000)
-        # L'accueil reste en mode enchères : la page n'est pas basculée en « propositions seules ».
+        self.assertEqual(statut, 410)
         statut, html, _ = self.requete("/")
         self.assertEqual(statut, 200)
-        self.assertIn('data-proposal-only="false"', html)
-        self.assertNotIn('data-proposal-only="true"', html)
+        self.assertIn('data-proposal-only="true"', html)
 
     def test_page_seo_et_reference_nue(self):
         canonique = "/vehicules/peugeot-208-2022-int-seo"
         statut, html, _ = self.requete(canonique, suivre=False)
         self.assertEqual(statut, 200)
         self.assertIn(f'<link rel="canonical" href="https://www.myautoexport.com{canonique}">', html)
-        self.assertIn('href="/?lot=INT-SEO"', html, "annonce du stock : achat par l'accueil, pas d'offre privée")
+        self.assertIn('data-proposal-ref="INT-SEO"', html)
         for nue in ("/vehicules/INT-SEO", "/vehicules/int-seo"):
             statut, _, entetes = self.requete(nue, suivre=False)
             self.assertEqual((statut, entetes.get("Location")), (301, self.base + canonique), nue)
@@ -176,7 +174,8 @@ class IntegrationMarketplaceTest(unittest.TestCase):
         statut, corps, _ = self.requete("/api/marketplace/proposal-vehicles/INT-SEO")
         self.assertEqual(statut, 200, corps)
         self.assertEqual(corps["vehicle"]["reference"], "INT-SEO")
-        self.assertFalse(corps["vehicle"]["active"], "sans vendeur affecté ni réserve, pas de proposition possible")
+        self.assertTrue(corps["vehicle"]["active"], "M&Y reçoit les propositions sans vendeur affecté ni réserve")
+        self.assertTrue(corps["rules"]["freeSubmission"])
         self.assertIn("version", corps["rules"])
         self.assertEqual(self.requete("/api/marketplace/proposal-vehicles/INCONNU")[0], 404)
         self.assertEqual(self.requete("/api/marketplace/offers", {"reference": "INT-SEO"}, "POST")[0], 401)

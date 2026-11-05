@@ -896,6 +896,7 @@
     };
 
     const PROPOSALS_ONLY=document.documentElement.dataset.proposalOnly==='true';
+    const FREE_OFFERS=document.documentElement.dataset.freeOffers==='true';
     if(PROPOSALS_ONLY){const auctionLink=document.querySelector('[data-nav="auction"]');auctionLink.setAttribute('aria-disabled','true');auctionLink.title='Les enchères sont désactivées pendant le Lot 1';auctionLink.style.opacity='.5';const accroche=document.querySelector('.hero-lead');if(accroche)accroche.textContent='Des véhicules sélectionnés en Europe et aux États-Unis. Proposez une offre privée au vendeur, dans la devise de l’annonce.';}
     function choisirOnglet(onglet) {
       if(PROPOSALS_ONLY&&onglet==='auction')return;
@@ -924,6 +925,7 @@
     }
 
     function prixEnchere(lot) {
+      if(PROPOSALS_ONLY&&FREE_OFFERS)return '<dl class="price-lines"><div><dt>Proposition libre</dt><dd>Sans prix minimum</dd></div></dl>';
       if(PROPOSALS_ONLY){const minor=lot.publicReserveMinor??lot.reservePriceMinor??(Number.isSafeInteger(lot.reservePriceTnd)?lot.reservePriceTnd*1000:null),currency=lot.currency||'TND';return `<dl class="price-lines"><div><dt>Prix de réserve</dt><dd>${minor!=null?new Intl.NumberFormat('fr-FR',{style:'currency',currency,minimumFractionDigits:currency==='TND'?3:2}).format(minor/(currency==='TND'?1000:100)):'À renseigner par le vendeur'}</dd></div></dl>`;}
 
       const lignes = [
