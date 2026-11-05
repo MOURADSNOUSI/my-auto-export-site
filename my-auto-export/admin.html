@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#ffffff">
   <title>Administration — M&Y AUTO EXPORT</title>
@@ -92,7 +92,7 @@
     .bid-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 2px; }
     .decision { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .badge.offer-accepted, .badge.sold { background: var(--green); color: white; }
-    .badge.offer-refused { background: #e6eae7; color: var(--muted); text-decoration: line-through; }
+    .badge.offer-withdrawn, .badge.offer-refused { background: #e6eae7; color: var(--muted); text-decoration: line-through; }
     .badge.offer-pending { background: var(--gold-pale); color: #725b2d; }
     .remove-check { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-size: 14px; font-weight: 650; }
     .remove-check input { width: 20px; height: 20px; accent-color: var(--green); }
@@ -153,6 +153,7 @@
       <a class="brand" href="/"><img src="logo.png" alt=""><span><strong>M&Y AUTO EXPORT</strong><small>Administration</small></span></a>
       <div class="header-actions">
         <span class="who" id="who"></span>
+        <a class="button small" href="/admin-vendeurs">Annonces vendeurs à valider</a>
         <a class="button small" href="/">Voir le site</a>
         <button class="button small hidden" type="button" id="logout">Déconnexion</button>
       </div>
@@ -183,6 +184,10 @@
       <h1 id="list-title">Catalogue</h1>
       <p class="lead" id="counts"></p>
       <p class="message info hidden" id="photos-off">Le stockage des photos n'est pas encore configuré : tu peux enregistrer des véhicules, mais pas envoyer de photos (voir le README).</p>
+      <section class="todo hidden" id="transfers" aria-labelledby="transfers-title">
+        <h2 id="transfers-title">Virements de caution à valider</h2>
+        <ul class="todo-list" id="transfers-list"></ul>
+      </section>
       <section class="todo hidden" id="todo" aria-labelledby="todo-title">
         <h2 id="todo-title">À traiter</h2>
         <ul class="todo-list" id="todo-list"></ul>
@@ -340,6 +345,7 @@
       etat.offres = offres.offers;
       etat.lotsOffres = offres.lots;
       renderAFaire();
+      await chargerVirements();
       etat.photosEnabled = data.photosEnabled;
       $("photos-off").classList.toggle("hidden", etat.photosEnabled);
       $("makes").innerHTML = [...new Set(etat.vehicles.map((item) => item.lot.make))].sort().map((m) => `<option value="${escapeHtml(m)}">`).join("");
@@ -367,7 +373,7 @@
       return `<div class="meta auction-meta">Enchère ${fin} · ${meilleure}${reserve}</div>`;
     }
 
-    const STATUTS_OFFRE = { pending: "En attente", accepted: "Acceptée", refused: "Refusée" };
+    const STATUTS_OFFRE = { pending: "En attente", accepted: "Acceptée", refused: "Refusée", withdrawn: "Retirée" };
 
     function offresDe(reference) {
       return (etat.offres || []).filter((offre) => offre.reference === reference);
@@ -431,21 +437,66 @@
       $("remove-check").classList.toggle("hidden", Boolean(vendu));
       $("decision-error").classList.add("hidden");
       $("bids-body").innerHTML = offers.length ? `<ol class="bids">${offers.map((offre) => {
-        const decidable = offre.status === "pending" && !vendu && !(offre.kind === "bid" && auction?.status === "live");
+        // Une enchère peut être refusée pendant la vente (montant fantaisiste…), acceptée seulement après la fin.
+        const decidable = offre.status === "pending" && !vendu;
         // Une enchère perdante peut être refusée, pas acceptée : seule la meilleure enchère l'est (règle aussi appliquée par le Worker).
-        const acceptable = decidable && (offre.kind !== "bid" || offre.best);
+        const acceptable = decidable && (offre.kind !== "bid" || (offre.best && auction?.status !== "live"));
         return `<li${offre.best ? ` class="best"` : ""}>
           <div class="bid-line"><strong>${tnd(offre.amountTnd)}</strong>
             <span class="badge ${offre.kind === "bid" ? "upcoming" : "stock"}">${offre.kind === "bid" ? "Enchère" : "Achat immédiat"}</span>
             <span class="badge offer-${escapeHtml(offre.status)}">${STATUTS_OFFRE[offre.status] || escapeHtml(offre.status)}</span>
             ${offre.best ? `<span class="badge open">Meilleure enchère</span>` : ""}</div>
           <span>${offre.bidder ? `${escapeHtml(offre.bidder)} · ` : ""}${escapeHtml(offre.name)} · <a href="mailto:${escapeHtml(offre.email)}">${escapeHtml(offre.email)}</a>${offre.phone ? ` · <a href="tel:${escapeHtml(offre.phone)}">${escapeHtml(offre.phone)}</a>` : ""} · ${dateHeure(offre.createdAt)}</span>
-          ${decidable ? `<div class="decision">${acceptable ? `<button class="button small primary" type="button" data-accept="${offre.id}">Accepter</button>` : ""}<button class="button small danger" type="button" data-refuse="${offre.id}">Refuser</button></div>` : ""}
+          <div class="decision"><span class="badge ${offre.depositTnd >= 500 ? "open" : "upcoming"}">Caution : ${tnd(offre.depositTnd)}</span><button class="button small" type="button" data-deposit="${offre.userId}" data-amount="${offre.depositTnd}">Modifier la caution</button></div>
+                    ${decidable ? `<div class="decision">${acceptable ? `<button class="button small primary" type="button" data-accept="${offre.id}">Accepter</button>` : ""}<button class="button small danger" type="button" data-refuse="${offre.id}">Refuser</button></div>` : ""}
           ${offre.status === "accepted" ? `<div class="decision"><a class="button small primary" href="${lienConfirmation(offre, lot?.title || reference)}">Envoyer la confirmation écrite</a></div>` : ""}
         </li>`;
       }).join("")}</ol>` : "<p>Aucune offre.</p>";
       $("bids-dialog").dataset.reference = reference;
       if (!$("bids-dialog").open) $("bids-dialog").showModal();
+    }
+
+    async function chargerVirements() {
+      const { transfers } = await api("/api/admin/deposits");
+      $("transfers").classList.toggle("hidden", !transfers.length);
+      $("transfers-list").innerHTML = transfers.map((t) => `<li><span><strong>${escapeHtml(t.name)}</strong> · ${escapeHtml(t.email)}${t.phone ? ` · ${escapeHtml(t.phone)}` : ""} · ${tnd(t.amountTnd)} · libellé ${escapeHtml(t.reference)}</span>
+        <button class="button small primary" type="button" data-transfer="${t.id}" data-ok="1" data-amount="${t.amountTnd}" data-ref="${escapeHtml(t.reference)}">Virement reçu</button>
+        <button class="button small danger" type="button" data-transfer="${t.id}">Annuler</button></li>`).join("");
+    }
+
+    $("transfers-list").addEventListener("click", async (event) => {
+      const bouton = event.target.closest("[data-transfer]");
+      if (!bouton) return;
+      const confirmer = Boolean(bouton.dataset.ok);
+      let body = {};
+      if (confirmer) {
+        // Montant lu sur le relevé bancaire, à saisir (pas de valeur proposée) : le serveur refuse s'il diffère de la demande.
+        const saisie = prompt(`Montant réellement reçu sur le relevé pour le libellé ${bouton.dataset.ref} (TND) ?\nDemande : ${tnd(Number(bouton.dataset.amount))}. L'acheteur pourra enchérir immédiatement.`);
+        if (saisie === null || !saisie.trim()) return;
+        body = { amountTnd: Number(saisie.replace(/[\s ]/g, "")) };
+      } else if (!confirm("Annuler cette demande de virement ?")) return;
+      try {
+        await api(`/api/admin/deposits/${bouton.dataset.transfer}/${confirmer ? "confirm" : "cancel"}`, { method: "POST", body });
+        await chargerVirements();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    async function modifierCaution(userId, actuel) {
+      const saisie = prompt("Nouveau solde de caution (TND) :", actuel);
+      if (saisie === null) return;
+      // Motif obligatoire : il est journalisé avec l'ancien et le nouveau solde.
+      const motif = prompt("Motif de l'ajustement (obligatoire, 2000 caractères au plus) :", "");
+      if (motif === null) return;
+      if (!motif.trim()) return alert("Le motif est obligatoire.");
+      try {
+        await api(`/api/admin/users/${userId}/deposit`, { method: "POST", body: { amountTnd: Number(saisie), reason: motif.trim() } });
+        await afficherEncheres($("bids-dialog").dataset.reference);
+      } catch (error) {
+        $("decision-error").textContent = error.message;
+        $("decision-error").classList.remove("hidden");
+      }
     }
 
     async function decider(id, accepter) {
@@ -679,6 +730,8 @@
       if (bouton) afficherEncheres(bouton.dataset.bids).catch((error) => alert(error.message));
     });
     $("bids-dialog").addEventListener("click", (event) => {
+      const caution = event.target.closest("[data-deposit]");
+      if (caution) modifierCaution(Number(caution.dataset.deposit), Number(caution.dataset.amount));
       const accepter = event.target.closest("[data-accept]");
       const refuser = event.target.closest("[data-refuse]");
       if (accepter || refuser) decider(Number((accepter || refuser).dataset.accept || (accepter || refuser).dataset.refuse), Boolean(accepter));

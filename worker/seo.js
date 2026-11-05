@@ -295,12 +295,12 @@ function diagnosticVendeur(lot) {
 async function pageVehicule(request, env, url) {
   const items = await lotsAvecEtat(request, env);
   const demande = url.pathname.toLowerCase();
-  let item = items.find((entry) => cheminVehicule(entry.lot) === demande || `${PREFIXE}${entry.lot.reference}`.toLowerCase()===demande);
+  let item = items.find((entry) => cheminVehicule(entry.lot) === demande);
   if (!item) {
-    // Ancienne adresse (marque, modèle ou année modifiés) : redirection permanente vers l'adresse actuelle.
-    // La plus longue référence l'emporte : …-my-0001 désigne MY-0001, pas 0001.
+    // Ancienne adresse (marque, modèle ou année modifiés) ou référence seule (/vehicules/SV-…, liens des offres) :
+    // redirection permanente vers l'adresse actuelle. La plus longue référence l'emporte : …-my-0001 désigne MY-0001, pas 0001.
     const ancien = items
-      .filter((entry) => demande.endsWith(`-${slug(entry.lot.reference)}`))
+      .filter((entry) => demande.endsWith(`-${slug(entry.lot.reference)}`) || demande === `${PREFIXE}${slug(entry.lot.reference)}`)
       .sort((a, b) => slug(b.lot.reference).length - slug(a.lot.reference).length)[0];
     if (ancien) return Response.redirect(`${url.origin}${cheminVehicule(ancien.lot)}`, 301);
     return page404();
@@ -324,7 +324,10 @@ async function pageVehicule(request, env, url) {
   const titre = titreLot(lot);
   const prix = prixAffiche(lot);
   const enVente = indexable(item);
-  const terms=reserveTerms(lot);
+  // Offres privées : toutes les annonces en mode « propositions seules », sinon les annonces vendeur et celles dont
+  // le vendeur a été affecté (worker/proposals.js). Les enchères et l'achat immédiat restent sur l'accueil (/?lot=…).
+  const proposition = enVente && (!legacyAuctionsEnabled(env) || Boolean(lot.marketplace) || Boolean(item.offerOwnerAssigned));
+  const terms = reserveTerms(lot);
   const sujet = encodeURIComponent(`Véhicule réf. ${lot.reference} — ${titre}`);
   const galerie = photos.length
     ? `<div class="galerie-principale">${image(photos[0], webp[0], `${titre} — photo 1 sur ${photos.length}`, { principale: true })}</div>
@@ -342,9 +345,9 @@ async function pageVehicule(request, env, url) {
           <small>${escapeHtml(prix.label)}</small><strong>${escapeHtml(prix.value)}</strong>
           ${lot.auction?.endsAt && lot.auction.status === "live" ? `<p>Fin de la vente : <time datetime="${escapeHtml(lot.auction.endsAt)}">${escapeHtml(new Date(lot.auction.endsAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis", dateStyle: "long", timeStyle: "short" }))}</time> (heure de Tunis)</p>` : ""}
           <p class="note">${NOTE_PRIX} Ces éléments sont communiqués sur demande avant tout engagement (<a href="/conditions#prix">conditions</a>).</p>
-          ${!legacyAuctionsEnabled(env)?`<p class="proposal-reserve">Prix de réserve : <strong>${terms?escapeHtml(money(terms.reserveMinor,terms.currency)):"À renseigner par le vendeur"}</strong></p>`:""}
+          ${proposition?`<p class="proposal-reserve">Prix de réserve : <strong>${terms?escapeHtml(money(terms.reserveMinor,terms.currency)):"À renseigner par le vendeur"}</strong></p>`:""}
           <div class="actions">
-            ${!legacyAuctionsEnabled(env)?`<button class="bouton" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`:enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
+            ${proposition?`<button class="bouton" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`:enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
             <a class="bouton secondaire" href="mailto:contact@myautoexport.com?subject=${sujet}">Poser une question</a>
           </div>
         </section>
@@ -358,7 +361,7 @@ async function pageVehicule(request, env, url) {
     </div>${diagnosticVendeur(lot)}<p id="status" role="status"></p><div id="offer-form"></div><button id="report-listing" disabled>Signaler cette annonce</button></article>`;
 
   return reponseHtml(gabarit({
-    scripts: !legacyAuctionsEnabled(env)?'<script type="module" src="/marketplace-ui.js"></script>':'',
+    scripts: proposition ? '<script type="module" src="/marketplace-ui.js"></script>' : '',
     titre: titrePage(lot),
     description: descriptionPage(lot),
     canonique,

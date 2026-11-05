@@ -1,6 +1,8 @@
 import {toMinor,moneyValid,dateNow} from './marketplace-domain.js';
 export const RESERVE_ERROR='Votre offre doit être supérieure ou égale au prix de réserve de ce véhicule.';
-export const legacyAuctionsEnabled=env=>env.LEGACY_AUCTIONS_ENABLED==='true';
+// Enchères, achat immédiat et dépôts de garantie actifs sauf si LEGACY_AUCTIONS_ENABLED vaut explicitement "false"
+// (mode « propositions seules » du Lot 1). Variable absente : enchères actives, comme en production.
+export const legacyAuctionsEnabled=env=>String(env.LEGACY_AUCTIONS_ENABLED??'true').trim().toLowerCase()!=='false';
 // Pas de repli vers le minimum privé, le prix demandé ou une conversion monétaire.
 export function reserveTerms(lot){
  const currency=lot.currency||lot.priceCurrency||'TND';if(!['TND','EUR'].includes(currency))return null;

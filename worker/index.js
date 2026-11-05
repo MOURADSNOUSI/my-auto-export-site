@@ -1,14 +1,15 @@
-import {proposalRoute,proposals} from './proposals.js';
-import {legacyAuctionsEnabled,lot1Public} from './proposal-domain.js';
-// Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*) et le serveur MCP (worker/mcp.js).
-import {sellerRoutes,routeSeller,sellerMedia,verifiedSellerLots} from './seller.js';
-import {marketplace} from './marketplace.js';
-import {diagnosticValid,expireOffers,policy} from './marketplace-domain.js';
-import {purgeSeller} from './seller-domain.js';
-import {marketplacePage} from './marketplace-pages.js';
-import {cheminVehicule,controleQuotidien,estRouteSeo,listeIndexable,page404,routeSeo} from './seo.js';
-import {webhookStripe} from './legacy-deposits.js';
+import { sellerRoutes, routeSeller, sellerMedia, verifiedSellerLots, purgeSeller } from "./seller.js";
+// Worker M&Y AUTO EXPORT : sert le site statique, l'API de l'espace acheteur (/api/*), le serveur MCP (worker/mcp.js),
+// les pages de référencement (worker/seo.js) et la marketplace (offres privées, propositions d'achat du Lot 1).
+import Stripe from "stripe";
+import { proposalRoute, proposals } from "./proposals.js";
+import { legacyAuctionsEnabled, lot1Public } from "./proposal-domain.js";
+import { marketplace } from "./marketplace.js";
+import { diagnosticValid, expireOffers, policy } from "./marketplace-domain.js";
+import { marketplacePage } from "./marketplace-pages.js";
 import { estRouteMcp, routeMcp } from "./mcp.js";
+import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, listeIndexable, page404, routeSeo } from "./seo.js";
+import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -18,12 +19,26 @@ const MAX_ECHECS_PAR_IP = 30; // toutes adresses e-mail confondues, sur 15 minut
 const MAX_ECHECS_PAR_COMPTE = 100; // toutes IP confondues, sur 15 minutes : freine une attaque répartie
 const MAX_INSCRIPTIONS_PAR_IP = 10; // par heure
 const MAX_OFFER_TND = 10_000_000;
+const MAX_MOTIF_CAUTION = 2000; // motif d'un ajustement manuel de caution
 // Version des conditions générales (conditions.html). La changer redemande l'acceptation à tous les acheteurs.
 const CGV_VERSION = "2026-11-01";
+// Barème de la caution selon la valeur du lot (prix de réserve, à défaut mise à prix) : [plafond inclus, caution] en TND.
+const DEPOSIT_TIERS = [[30_000, 500], [50_000, 1000], [70_000, 1500], [100_000, 2000], [199_999, 2500]];
+const DEPOSIT_TOP_TND = 3000; // à partir de 200 000 TND
+
+// Le solde de caution du compte est global : il couvre tous les lots dont la caution exigée est inférieure ou égale.
+export function depotRequis(lot) {
+  const valeur = [lot.reservePriceTnd, lot.startingPriceTnd].find((v) => Number.isFinite(v) && v > 0) || 0;
+  return DEPOSIT_TIERS.find(([plafond]) => valeur <= plafond)?.[1] ?? DEPOSIT_TOP_TND;
+}
+const RETRAIT_MIN_MS = 12 * 3_600_000; // une enchère ne peut plus être retirée dans les 12 dernières heures
 const ANTI_SNIPE_MS = 2 * 60_000; // une enchère dans les 2 dernières minutes repousse la fin de 2 minutes
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
+// En-têtes de sécurité de toutes les réponses. Les mêmes sont déclarés dans my-auto-export/_headers pour les fichiers
+// que Cloudflare sert sans passer par le Worker (tests/test_securite.py vérifie qu'ils restent identiques).
+// Une réponse qui fixe déjà l'un d'eux le garde (page d'autorisation MCP : CSP sans form-action).
 export const ENTETES_SECURITE = {
   "Strict-Transport-Security": "max-age=31536000",
   "X-Content-Type-Options": "nosniff",
@@ -35,64 +50,106 @@ export const ENTETES_SECURITE = {
     + "form-action 'self'; frame-ancestors 'none'"
 };
 
-async function handle(request,env){
- const url=new URL(request.url);
- if(url.protocol==='http:'&&/(^|\.)myautoexport\.com$/.test(url.hostname)){url.protocol='https:';return Response.redirect(url.toString(),301);}
- try {
-  const media=url.pathname.match(/^\/seller-media\/([a-f0-9]{32})$/);
-  if(media&&['GET','HEAD'].includes(request.method))return sellerMedia(env,media[1],request.method==='HEAD');
-  if(url.pathname.startsWith('/media/')&&['GET','HEAD'].includes(request.method))return servirPhoto(env,url);
-  if(estRouteMcp(url.pathname))return routeMcp(request,env,url);
-  if(url.pathname.startsWith('/api/'))return await routeApi(request,env,url);
-  if(estRouteSeo(url.pathname)&&['GET','HEAD'].includes(request.method))return routeSeo(request,env,url);
-  const aliases={'/mes-vehicules':'/vendre','/vendre':'/vendre','/admin-vendeurs':'/admin-vendeurs'};
-  if(aliases[url.pathname])return env.ASSETS.fetch(new Request(new URL(aliases[url.pathname],url),request));
-  if(['/mes-offres','/vendeur/offres','/garages','/admin/marketplace','/confidentialite','/conditions-marketplace','/droits-donnees'].includes(url.pathname))return marketplacePage(url.pathname);
-  const asset=await servirFichier(request,env,url);
-  if(legacyAuctionsEnabled(env)&&['/','/index.html'].includes(url.pathname)&&asset.headers.get('Content-Type')?.includes('text/html'))return new Response((await asset.text()).replace('data-proposal-only="true"','data-proposal-only="false"'),{status:asset.status,headers:asset.headers});
-  return asset;
- }catch(error){
-  if(error instanceof ApiError)return json({error:error.message},error.status);
-  if(String(error).includes('marketplace_one')||String(error).includes('UNIQUE constraint failed: vehicle_offers'))return json({error:'Une offre incompatible existe déjà.'},409);
-  // Le message et la pile d'une erreur D1/R2 peuvent contenir des données privées.
-  console.error('worker_request_failed');return json({error:'Erreur interne, réessaie plus tard.'},500);
- }
-}
+// Pages de la marketplace rendues par le Worker (worker/marketplace-pages.js).
+const PAGES_MARKETPLACE = ["/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/confidentialite", "/conditions-marketplace", "/droits-donnees"];
+// Pages privées : jamais en cache partagé ni indexées.
+const PAGES_PRIVEES = ["/vendre", "/vendre.html", "/mes-vehicules", "/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/admin-vendeurs", "/admin-vendeurs.html"];
+// CSP des pages privées qui n'en fixent pas déjà une : pas de script en ligne.
+const CSP_PAGES_PRIVEES = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; "
+  + "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
+
 export default {
- async fetch(request,env){
-  const response=await handle(request,env),headers=new Headers(response.headers),path=new URL(request.url).pathname;
-  if(path.startsWith('/api/')||['/vendre','/mes-vehicules','/mes-offres','/vendeur/offres','/garages','/admin/marketplace'].includes(path)||path.includes('vendeur')){
-   headers.set('Cache-Control','private, no-store');headers.set('X-Robots-Tag','noindex, nofollow');
-   if(!headers.has('Content-Security-Policy'))headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+  async fetch(request, env, ctx) {
+    const reponse = new Response(...corps(await repondre(request, env, ctx)));
+    const path = new URL(request.url).pathname;
+    if (path.startsWith("/api/") || PAGES_PRIVEES.includes(path)) {
+      reponse.headers.set("Cache-Control", "private, no-store");
+      reponse.headers.set("X-Robots-Tag", "noindex, nofollow");
+      if (!path.startsWith("/api/") && !reponse.headers.has("Content-Security-Policy")) reponse.headers.set("Content-Security-Policy", CSP_PAGES_PRIVEES);
+    }
+    for (const [cle, valeur] of Object.entries(ENTETES_SECURITE)) {
+      if (!reponse.headers.has(cle)) reponse.headers.set(cle, valeur);
+    }
+    return reponse;
+  },
+
+  // 02:30 UTC : expiration des offres privées et diagnostics, puis purge des dossiers vendeurs inactifs.
+  // 05:00 et 06:00 UTC : contrôle SEO (seul celui de 07:00 à Paris s'exécute).
+  async scheduled(controller, env) {
+    if (controller.cron === "30 2 * * *") {
+      await expireOffers(env);
+      const regles = await policy(env);
+      await purgeSeller(env, regles?.retention_days ?? (env.SELLER_RETENTION_DAYS || 180));
+    } else await controleQuotidien(controller, env);
   }
-  for(const [key,value] of Object.entries(ENTETES_SECURITE))if(!headers.has(key))headers.set(key,value);
-  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
- },
- async scheduled(event,env,ctx){ctx.waitUntil(Promise.all([controleQuotidien(event,env),(async()=>{await expireOffers(env);const p=await policy(env);await purgeSeller(env,p.retention_days);})()]));}
 };
 
-async function servirFichier(request, env, url) {
-  const reponse = await env.ASSETS.fetch(request);
+// Corps et options d'une réponse, pour en refaire une copie aux en-têtes modifiables.
+function corps(response) {
+  return [response.body, { status: response.status, statusText: response.statusText, headers: response.headers }];
+}
+
+async function repondre(request, env, ctx) {
+  const url = new URL(request.url);
+  // Une seule version du site : http répondait aussi, ce qui dupliquait chaque page.
+  if (url.protocol === "http:" && /(^|\.)myautoexport\.com$/.test(url.hostname)) {
+    url.protocol = "https:";
+    return Response.redirect(url.toString(), 301);
+  }
+  const lecture = request.method === "GET" || request.method === "HEAD";
+  if (/^\/seller-media\/[a-f0-9]{32}$/.test(url.pathname) && lecture) {
+    try { return await sellerMedia(env, url.pathname.split("/")[2], request.method === "HEAD"); } catch { return new Response("Indisponible", {status:503}); }
+  }
+  if (url.pathname.startsWith("/media/") && lecture) return servirPhoto(env, url);
+  if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
+  if (estRouteSeo(url.pathname) && lecture) return routeSeo(request, env, url);
+  if (!url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/mes-vehicules" && lecture) return servirFichier(request, env, url, "/vendre");
+    if (PAGES_MARKETPLACE.includes(url.pathname) && lecture) return marketplacePage(url.pathname);
+    return servirFichier(request, env, url);
+  }
+  try {
+    return await routeApi(request, env, url, ctx);
+  } catch (error) {
+    if (error instanceof ApiError) return json({ error: error.message }, error.status);
+    if (String(error).includes("marketplace_one") || String(error).includes("UNIQUE constraint failed: vehicle_offers")) {
+      return json({ error: "Une offre incompatible existe déjà." }, 409);
+    }
+    // Le message et la pile d'une erreur D1/R2 peuvent contenir des données privées.
+    console.error("worker_request_failed");
+    return json({ error: "Erreur interne, réessaie plus tard." }, 500);
+  }
+}
+
+// alias : autre fichier servi à cette adresse (/mes-vehicules sert l'espace vendeur /vendre).
+async function servirFichier(request, env, url, alias) {
+  const reponse = await env.ASSETS.fetch(alias ? new Request(new URL(alias, url), request) : request);
   if (reponse.status === 404 && (request.headers.get("Accept") || "").includes("text/html")) return page404();
-  if (url.pathname === "/admin" || url.pathname === "/admin.html") {
+  if (["/admin", "/admin.html", "/vendre", "/vendre.html", "/admin-vendeurs", "/admin-vendeurs.html"].includes(url.pathname)) {
     const entetes = new Headers(reponse.headers);
     entetes.set("X-Robots-Tag", "noindex, nofollow");
     return new Response(reponse.body, { status: reponse.status, headers: entetes });
   }
-  if (url.pathname !== "/" || !reponse.ok || request.method !== "GET") return reponse;
+  if (!["/", "/index.html"].includes(url.pathname) || !reponse.ok || request.method !== "GET") return reponse;
+  // Mode « propositions seules » (LEGACY_AUCTIONS_ENABLED à "false") : l'accueil masque enchères et achat immédiat.
+  // Par défaut (wrangler.jsonc), les enchères restent actives et la page est servie telle quelle.
+  const accueil = legacyAuctionsEnabled(env) ? reponse : new HTMLRewriter()
+    .on("html", { element: (element) => element.setAttribute("data-proposal-only", "true") })
+    .transform(reponse);
+  if (url.pathname !== "/") return accueil;
   // Accueil : la liste des véhicules est insérée côté serveur, lisible par les moteurs qui n'exécutent pas JavaScript.
   let liste;
   try {
     liste = await listeIndexable(request, env);
   } catch (error) {
-    console.error('homepage_catalogue_failed');
-    return reponse;
+    console.error("homepage_catalogue_failed");
+    return accueil;
   }
-  if (!liste) return reponse;
+  if (!liste) return accueil;
   return new HTMLRewriter()
     .on("#tous-vehicules", { element: (element) => element.removeAttribute("hidden") })
     .on("#liste-vehicules", { element: (element) => element.setInnerContent(liste, { html: true }) })
-    .transform(reponse);
+    .transform(accueil);
 }
 
 export class ApiError extends Error {
@@ -102,28 +159,50 @@ export class ApiError extends Error {
   }
 }
 
-async function routeApi(request, env, url) {
+async function routeApi(request, env, url, ctx) {
   const method = request.method;
   const path = url.pathname;
-  if(path==="/api/stripe/webhook"&&method==="POST")return webhookStripe(request,env);
+  if (path === "/api/stripe/webhook" && method === "POST") return webhookStripe(request, env);
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
-  if(["/api/deposit/card","/api/deposit/transfer"].includes(path)&&method==="POST"){await exigerUtilisateur(request,env);throw new ApiError(410,"Les nouveaux dépôts de garantie sont désactivés pendant le Lot 1.");}
 
-  if(proposalRoute(path))return proposals(request,env,url,{json,ApiError,exigerUtilisateur,lireJson,catalogueComplet});
-  if(path.startsWith('/api/marketplace/'))return marketplace(request,env,url,{json,ApiError,exigerUtilisateur,lireJson});
-  if(sellerRoutes(path))return routeSeller(request,env,url,{json,ApiError,exigerUtilisateur,sha256,CGV_VERSION});
+  if (!legacyAuctionsEnabled(env) && ["/api/deposit/card", "/api/deposit/transfer"].includes(path) && method === "POST") {
+    await exigerUtilisateur(request, env);
+    throw new ApiError(410, "Les nouveaux dépôts de garantie sont désactivés tant que les enchères le sont.");
+  }
+  if (proposalRoute(path)) return proposals(request, env, url, {json, ApiError, exigerUtilisateur, lireJson, catalogueComplet});
+  if (path.startsWith("/api/marketplace/")) return marketplace(request, env, url, {json, ApiError, exigerUtilisateur, lireJson});
+  if (sellerRoutes(path)) {
+    const response = await routeSeller(request, env, url, {json, ApiError, exigerUtilisateur, lireJson, sha256, CGV_VERSION});
+    const publication = path.match(/^\/api\/admin\/seller\/submissions\/([a-f0-9]{32})\/(publish|archive)$/);
+    if (publication && method === "POST" && response.ok) await controlerApresPublication(env, ctx, `SV-${publication[1]}`);
+    return response;
+  }
   if (path === "/api/me" && method === "GET") return me(request, env);
-  if (path === "/api/catalogue" && method === "GET") return json(await catalogue(request, env));
+  if (path === "/api/catalogue" && method === "GET") {
+    return json((await catalogue(request, env)).map((lot) => ({ ...lot, url: cheminVehicule(lot) })));
+  }
+  if (path === "/api/voitures-europe" && method === "GET") {
+    try {
+      return await voituresEurope(request, env, url, ctx);
+    } catch (error) {
+      if (error instanceof ErreurCatalogue) throw new ApiError(error.status, error.message);
+      throw error;
+    }
+  }
   const enchere = path.match(/^\/api\/auctions\/([^/]{1,64})$/);
   if (enchere && method === "GET") return detailEnchere(request, env, decodeURIComponent(enchere[1]));
-  if (path.startsWith("/api/admin/")) return routeAdmin(request, env, path, method);
+  if (path.startsWith("/api/admin/")) return routeAdmin(request, env, path, method, ctx);
   const invoiceDocument = path.match(/^\/api\/invoices\/(\d+)\/document$/);
   if (invoiceDocument && method === "GET") return telechargerFacture(request, env, Number(invoiceDocument[1]));
   if (path === "/api/register" && method === "POST") return register(request, env);
   if (path === "/api/login" && method === "POST") return login(request, env);
   if (path === "/api/logout" && method === "POST") return logout(request, env);
   if (path === "/api/offers" && method === "POST") return createOffer(request, env);
+  const retrait = path.match(/^\/api\/offers\/(\d{1,12})$/);
+  if (retrait && method === "DELETE") return retirerOffre(request, env, Number(retrait[1]));
   if (path === "/api/terms" && method === "POST") return accepterConditions(request, env);
+  if (path === "/api/deposit/card" && method === "POST") return caution_carte(request, env, url);
+  if (path === "/api/deposit/transfer" && method === "POST") return caution_virement(request, env);
   const favorite = path.match(/^\/api\/favorites\/([^/]{1,64})$/);
   if (favorite && (method === "PUT" || method === "DELETE")) {
     return toggleFavorite(request, env, decodeURIComponent(favorite[1]), method === "PUT");
@@ -243,7 +322,8 @@ async function exigerUtilisateur(request, env) {
 function profil(user) {
   return {
     id: user.id, email: user.email, name: user.name, phone: user.phone || "", role: user.role || "buyer", createdAt: user.created_at,
-    termsAccepted: user.terms_version === CGV_VERSION, termsVersion: CGV_VERSION, depositTnd: user.deposit_tnd || 0
+    termsAccepted: user.terms_version === CGV_VERSION, termsVersion: CGV_VERSION,
+    depositTnd: user.deposit_tnd || 0
   };
 }
 
@@ -254,6 +334,162 @@ async function accepterConditions(request, env) {
   await env.DB.prepare("UPDATE users SET terms_version = ?, terms_accepted_at = ? WHERE id = ?")
     .bind(CGV_VERSION, new Date().toISOString(), user.id).run();
   return json({ termsAccepted: true, termsVersion: CGV_VERSION });
+}
+
+// --- Dépôt de garantie : carte (Stripe) ou virement ---
+
+// Complément à verser pour pouvoir enchérir sur le lot demandé.
+async function montantARegler(request, env, user, body) {
+  const lot = await chargerLot(request, env, texte(body.reference, 64));
+  if (!lot) throw new ApiError(404, "Lot introuvable.");
+  return Math.max(depotRequis(lot) - (user.deposit_tnd || 0), 0);
+}
+
+// Crédite la caution et clôt la demande dans une même transaction ; ne fait rien si la demande n'est plus en attente.
+async function crediterDepot(env, depositId, methode) {
+  const [, clos] = await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE users SET deposit_tnd = deposit_tnd + (SELECT amount_tnd FROM deposits WHERE id = ?1 AND status = 'pending' AND method = ?2)
+       WHERE id = (SELECT user_id FROM deposits WHERE id = ?1 AND status = 'pending' AND method = ?2)`
+    ).bind(depositId, methode),
+    env.DB.prepare("UPDATE deposits SET status = 'paid', confirmed_at = ? WHERE id = ? AND status = 'pending' AND method = ?")
+      .bind(new Date().toISOString(), depositId, methode)
+  ]);
+  return clos.meta.changes === 1;
+}
+
+async function caution_carte(request, env, url) {
+  const user = await exigerUtilisateur(request, env);
+  if (!env.STRIPE_SECRET_KEY) throw new ApiError(503, "Le paiement par carte n'est pas encore disponible. Utilise le virement bancaire.");
+  // Stripe n'encaisse pas le dinar : la carte est débitée en euros au taux TND_PER_EUR (dinars pour 1 €), déclaré par le
+  // propriétaire. Jamais de taux de secours : sans taux valide, aucune demande n'est créée.
+  const taux = Number(env.TND_PER_EUR);
+  if (!(Number.isFinite(taux) && taux > 0)) throw new ApiError(503, "Paiement par carte indisponible : taux de change non configuré. Utilise le virement bancaire.");
+  const montant = await montantARegler(request, env, user, await lireJson(request));
+  if (!montant) throw new ApiError(409, "Ton dépôt de garantie couvre déjà ce véhicule.");
+  const centimes = Math.ceil((montant / taux) * 100);
+  const depot = await env.DB.prepare("INSERT INTO deposits (user_id, method, amount_tnd, charge_amount, charge_currency) VALUES (?, 'card', ?, ?, 'eur') RETURNING id")
+    .bind(user.id, montant, centimes).first();
+  let session;
+  try {
+    session = await new Stripe(env.STRIPE_SECRET_KEY).checkout.sessions.create({
+      mode: "payment",
+      success_url: `${url.origin}/?caution=ok`,
+      cancel_url: `${url.origin}/?caution=annule`,
+      client_reference_id: String(depot.id),
+      customer_email: user.email,
+      metadata: { deposit_id: String(depot.id) },
+      integration_identifier: "deposit-checkout-kqzvmwtr",
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: "eur",
+          unit_amount: centimes,
+          product_data: { name: `Dépôt de garantie M&Y AUTO EXPORT (${montant} TND)` }
+        }
+      }]
+    });
+  } catch (error) {
+    console.error("Stripe", error?.message);
+    await env.DB.prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ?").bind(depot.id).run();
+    throw new ApiError(502, "Le paiement par carte est momentanément indisponible. Réessaie ou utilise le virement.");
+  }
+  await env.DB.prepare("UPDATE deposits SET stripe_session_id = ? WHERE id = ?").bind(session.id, depot.id).run();
+  return json({ url: session.url });
+}
+
+async function signatureStripeValide(corps, entete, secret) {
+  const parties = Object.fromEntries((entete || "").split(",").map((p) => p.trim().split("=")).filter((p) => p.length === 2));
+  const horodatage = Number(parties.t);
+  if (!Number.isFinite(horodatage) || Math.abs(Date.now() / 1000 - horodatage) > 300 || !/^[0-9a-f]{64}$/.test(parties.v1 || "")) return false;
+  const cle = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+  const attendue = Uint8Array.from(parties.v1.match(/../g).map((o) => parseInt(o, 16)));
+  return crypto.subtle.verify("HMAC", cle, attendue, new TextEncoder().encode(`${parties.t}.${corps}`));
+}
+
+async function webhookStripe(request, env) {
+  if (!env.STRIPE_WEBHOOK_SECRET) throw new ApiError(503, "Webhook non configuré.");
+  const corps = await request.text();
+  if (!(await signatureStripeValide(corps, request.headers.get("Stripe-Signature"), env.STRIPE_WEBHOOK_SECRET))) {
+    throw new ApiError(400, "Signature invalide.");
+  }
+  const evenement = JSON.parse(corps);
+  const session = evenement.data?.object;
+  if (session?.object === "checkout.session" && session.id) {
+    const depot = await env.DB.prepare("SELECT id, amount_tnd, charge_amount, charge_currency, status FROM deposits WHERE stripe_session_id = ? AND method = 'card'").bind(session.id).first();
+    if (depot && depot.status === "pending") {
+      const paye = ["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(evenement.type)
+        && session.payment_status === "paid" && session.amount_total === depot.charge_amount && String(session.currency).toLowerCase() === depot.charge_currency;
+      if (paye) await crediterDepot(env, depot.id, "card");
+      else if (["checkout.session.expired", "checkout.session.async_payment_failed"].includes(evenement.type)) {
+        await env.DB.prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ? AND status = 'pending'").bind(depot.id).run();
+      }
+    }
+  }
+  return json({ received: true });
+}
+
+async function caution_virement(request, env) {
+  const user = await exigerUtilisateur(request, env);
+  if (!env.BANK_IBAN || !env.BANK_BENEFICIARY) throw new ApiError(503, "Le virement bancaire n'est pas encore disponible. Contacte M&Y AUTO EXPORT.");
+  const montant = await montantARegler(request, env, user, await lireJson(request));
+  if (!montant) throw new ApiError(409, "Ton dépôt de garantie couvre déjà ce véhicule.");
+  // Le montant d'une demande est figé : une demande en attente d'un autre montant est annulée et remplacée (nouvelle
+  // référence), celle du même montant est reprise. Une seule transaction : jamais deux demandes en attente.
+  const [, , trouve] = await env.DB.batch([
+    env.DB.prepare("UPDATE deposits SET status = 'cancelled' WHERE user_id = ?1 AND method = 'transfer' AND status = 'pending' AND amount_tnd <> ?2")
+      .bind(user.id, montant),
+    env.DB.prepare(
+      `INSERT INTO deposits (user_id, method, amount_tnd) SELECT ?1, 'transfer', ?2
+       WHERE NOT EXISTS (SELECT 1 FROM deposits WHERE user_id = ?1 AND method = 'transfer' AND status = 'pending')`
+    ).bind(user.id, montant),
+    env.DB.prepare("SELECT id, amount_tnd FROM deposits WHERE user_id = ? AND method = 'transfer' AND status = 'pending' ORDER BY id DESC LIMIT 1")
+      .bind(user.id)
+  ]);
+  const depot = trouve.results[0];
+  return json({
+    transfer: {
+      id: depot.id, amountTnd: depot.amount_tnd, reference: referenceVirement(depot.id),
+      beneficiary: env.BANK_BENEFICIARY, iban: env.BANK_IBAN
+    }
+  }, 201);
+}
+
+// Libellé à porter sur le virement : propre à chaque demande, donc à un montant unique.
+function referenceVirement(depositId) {
+  return `CAUTION-${depositId}`;
+}
+
+async function listerVirements(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT deposits.id, deposits.user_id, deposits.amount_tnd, deposits.created_at, users.name, users.email, users.phone
+     FROM deposits JOIN users ON users.id = deposits.user_id
+     WHERE deposits.method = 'transfer' AND deposits.status = 'pending' ORDER BY deposits.created_at`
+  ).all();
+  return {
+    transfers: results.map((row) => ({
+      id: row.id, userId: row.user_id, amountTnd: row.amount_tnd, createdAt: row.created_at,
+      reference: referenceVirement(row.id), name: row.name, email: row.email, phone: row.phone || ""
+    }))
+  };
+}
+
+// Confirmer exige le montant réellement reçu : il doit être celui de la demande (figé à sa création).
+async function deciderVirement(env, id, confirmer, body) {
+  if (confirmer) {
+    const recu = Number(body.amountTnd);
+    if (!Number.isInteger(recu) || recu <= 0 || recu > MAX_OFFER_TND) throw new ApiError(400, "Indique le montant reçu (nombre entier de dinars).");
+    const depot = await env.DB.prepare("SELECT amount_tnd FROM deposits WHERE id = ? AND method = 'transfer' AND status = 'pending'").bind(id).first();
+    if (!depot) throw new ApiError(404, "Virement introuvable ou déjà traité.");
+    if (depot.amount_tnd !== recu) {
+      throw new ApiError(409, `Montant reçu (${recu} TND) différent de la demande ${referenceVirement(id)} (${depot.amount_tnd} TND) : rien n'est crédité. Corrige la caution à la main, avec un motif, si besoin.`);
+    }
+    if (!(await crediterDepot(env, id, "transfer"))) throw new ApiError(404, "Virement introuvable ou déjà traité.");
+    return { id, status: "paid" };
+  }
+  const res = await env.DB.prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ? AND method = 'transfer' AND status = 'pending'").bind(id).run();
+  if (res.meta.changes !== 1) throw new ApiError(404, "Virement introuvable ou déjà traité.");
+  return { id, status: "cancelled" };
 }
 
 // --- Routes ---
@@ -273,7 +509,7 @@ async function me(request, env) {
     const [lots, meilleures] = await Promise.all([
       catalogue(request, env),
       env.DB.prepare(
-        `SELECT reference, id, MAX(amount_tnd) AS top FROM offers WHERE kind = 'bid'
+        `SELECT reference, id, MAX(amount_tnd) AS top FROM offers WHERE kind = 'bid' AND status <> 'refused'
          AND reference IN (${references.map(() => "?").join(",")}) GROUP BY reference`
       ).bind(...references).all()
     ]);
@@ -286,9 +522,11 @@ async function me(request, env) {
     favorites: favorites.results.map((row) => row.reference),
     offers: offers.results.map((row) => {
       const enchere = row.kind === "bid" ? encheres.get(row.reference) : null;
+      const retiree = Boolean(row.withdrawn_at);
       return {
         id: row.id, reference: row.reference, amountTnd: row.amount_tnd, kind: row.kind,
-        status: row.withdrawn_at ? "withdrawn" : enchere ? statutEnchere(row, enchere.meilleureId, enchere.auction) : row.status, createdAt: row.created_at
+        status: retiree ? "withdrawn" : enchere ? statutEnchere(row, enchere.meilleureId, enchere.auction) : row.status, createdAt: row.created_at,
+        canWithdraw: row.kind === "bid" && row.status === "pending" && retraitPossible(enchere?.auction, Date.now())
       };
     }),
     vehicles: vehicles.results.map((row) => ({
@@ -439,13 +677,15 @@ export async function catalogueComplet(request, env) {
   for (const row of lignes.values()) {
     resultat.push({ lot: JSON.parse(row.data), source: "base", removed: Boolean(row.removed), updatedAt: row.updated_at,offerOwnerAssigned:Boolean(row.offer_owner_assigned) });
   }
-  const rows=await env.DB.prepare("SELECT s.id,s.stage,s.public_data,x.user_id AS suspended FROM seller_submissions s LEFT JOIN marketplace_suspensions x ON x.user_id=s.user_id").all();
-  const sellerRows=new Map(rows.results.map(r=>['SV-'+r.id,r]));
-  const checked=await verifiedSellerLots(env,resultat);
-  return Promise.all(checked.map(async item=>{
-   if(!item.lot.reference.startsWith('SV-'))return item;
-   const row=sellerRows.get(item.lot.reference),valid=row&&row.stage==='published'&&!row.suspended&&await diagnosticValid(env,row.id);
-   return {...item,sellerUnavailable:!valid,removed:item.removed||!valid,lot:{...item.lot,url:'/vehicules/'+item.lot.reference}};
+  // Annonces vendeur : visibles seulement publiées, diagnostic valide et vendeur non suspendu.
+  const rows = await env.DB.prepare("SELECT s.id, s.stage, x.user_id AS suspended FROM seller_submissions s LEFT JOIN marketplace_suspensions x ON x.user_id = s.user_id").all();
+  const sellerRows = new Map(rows.results.map((r) => ["SV-" + r.id, r]));
+  const checked = await verifiedSellerLots(env, resultat);
+  return Promise.all(checked.map(async (item) => {
+    if (!item.lot.reference.startsWith("SV-")) return item;
+    const row = sellerRows.get(item.lot.reference);
+    const valid = Boolean(row && row.stage === "published" && !row.suspended && await diagnosticValid(env, row.id));
+    return { ...item, sellerUnavailable: !valid, removed: item.removed || !valid };
   }));
 }
 
@@ -475,12 +715,15 @@ function pasEnchere(lot, montant) {
 
 export async function resumesEncheres(env) {
   const { results } = await env.DB.prepare(
-    "SELECT reference, COUNT(*) AS n, MAX(amount_tnd) AS top, MAX(created_at) AS last FROM offers WHERE kind = 'bid' GROUP BY reference"
+    `SELECT reference, SUM(status <> 'refused') AS n, MAX(CASE WHEN status <> 'refused' THEN amount_tnd END) AS top,
+            MAX(created_at) AS last FROM offers WHERE kind = 'bid' GROUP BY reference`
   ).all();
   return new Map(results.map((row) => [row.reference, row]));
 }
 
 // Fin effective : la date prévue, repoussée à 2 minutes après la dernière enchère si celle-ci est arrivée tard.
+// La dernière enchère compte même refusée : refuser une enchère fantaisiste de dernière minute laisse aux autres
+// acheteurs le temps de surenchérir au prix réel.
 // Chaque enchère acceptée l'a été avant la fin effective du moment, d'où ce calcul à partir de la seule dernière.
 export function etatEnchere(lot, resume, maintenant) {
   if (lot.status !== "open" && lot.status !== "upcoming") return null;
@@ -499,7 +742,8 @@ export function etatEnchere(lot, resume, maintenant) {
     bidCount: resume?.n ?? 0,
     incrementTnd: pas,
     minNextBidTnd: top == null ? Math.max(depart, 1) : top + pas,
-    reserveMet: Number.isFinite(lot.reservePriceTnd) ? top != null && top >= lot.reservePriceTnd : null
+    reserveMet: Number.isFinite(lot.reservePriceTnd) ? top != null && top >= lot.reservePriceTnd : null,
+    depositRequiredTnd: depotRequis(lot)
   };
 }
 
@@ -517,7 +761,7 @@ async function detailEnchere(request, env, reference) {
   const [user, etiquettes, { results }] = await Promise.all([
     utilisateurConnecte(request, env),
     etiquettesEncherisseurs(env, reference),
-    env.DB.prepare("SELECT user_id, amount_tnd, created_at FROM offers WHERE reference = ? AND kind = 'bid' ORDER BY amount_tnd DESC, created_at ASC LIMIT 30")
+    env.DB.prepare("SELECT user_id, amount_tnd, created_at FROM offers WHERE reference = ? AND kind = 'bid' AND status <> 'refused' ORDER BY amount_tnd DESC, created_at ASC LIMIT 30")
       .bind(reference).all()
   ]);
   return json({
@@ -539,6 +783,30 @@ function statutEnchere(offre, meilleureId, auction) {
   return auction.reserveMet === false ? "reserve_not_met" : "won";
 }
 
+// Retrait possible tant qu'il reste au moins 12 h avant la fin effective de la vente.
+function retraitPossible(auction, maintenant) {
+  if (auction?.status !== "live") return false;
+  const fin = Date.parse(auction.endsAt);
+  return Number.isFinite(fin) && fin - maintenant >= RETRAIT_MIN_MS;
+}
+
+async function retirerOffre(request, env, offreId) {
+  const user = await exigerUtilisateur(request, env);
+  const offre = await env.DB.prepare("SELECT id, reference, kind, status FROM offers WHERE id = ? AND user_id = ?").bind(offreId, user.id).first();
+  if (!offre) throw new ApiError(404, "Offre introuvable.");
+  if (offre.kind !== "bid") throw new ApiError(400, "Un achat immédiat n'est pas révocable : seule une enchère d'une vente ouverte peut être retirée.");
+  if (offre.status !== "pending") throw new ApiError(409, "Cette offre a déjà été traitée ou retirée.");
+  const lot = await chargerLot(request, env, offre.reference);
+  if (!retraitPossible(lot?.auction, Date.now())) {
+    throw new ApiError(403, "Une enchère ne peut plus être retirée moins de 12 heures avant la fin de la vente.");
+  }
+  const { meta } = await env.DB.prepare("UPDATE offers SET status = 'refused', withdrawn_at = ? WHERE id = ? AND user_id = ? AND status = 'pending'")
+    .bind(new Date().toISOString(), offreId, user.id).run();
+  if (meta.changes !== 1) throw new ApiError(409, "Cette offre a déjà été traitée ou retirée.");
+  const auction = etatEnchere(lot, (await resumesEncheres(env)).get(offre.reference), Date.now());
+  return json({ id: offreId, status: "withdrawn", auction });
+}
+
 async function chargerLot(request, env, reference) {
   return (await catalogue(request, env)).find((lot) => lot.reference === reference) || null;
 }
@@ -551,9 +819,13 @@ async function exigerAdmin(request, env) {
   return user;
 }
 
-async function routeAdmin(request, env, path, method) {
+async function routeAdmin(request, env, path, method, ctx) {
   const user = await exigerAdmin(request, env);
-  if(path.includes("/auctions/")&&!legacyAuctionsEnabled(env))throw new ApiError(410,"Les enchères sont désactivées pendant le Lot 1.");
+  if (path.includes("/auctions/") && !legacyAuctionsEnabled(env)) throw new ApiError(410, "Les enchères sont désactivées pendant le Lot 1.");
+  if (path === "/api/admin/seo" && method === "GET") {
+    const { results } = await env.DB.prepare("SELECT ran_at, declencheur, ok, resume FROM seo_journal ORDER BY id DESC LIMIT 30").all();
+    return json({ controles: results.map((row) => ({ ranAt: row.ran_at, declencheur: row.declencheur, ok: Boolean(row.ok), ...JSON.parse(row.resume) })) });
+  }
   if (path === "/api/admin/vehicles" && method === "GET") {
     const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
     const maintenant = Date.now();
@@ -580,13 +852,37 @@ async function routeAdmin(request, env, path, method) {
     });
   }
   const vehicule = path.match(/^\/api\/admin\/vehicles\/([^/]{1,64})$/);
-  if (vehicule && method === "PUT") return json(await enregistrerVehicule(env, user, decodeURIComponent(vehicule[1]), await lireJson(request)));
-  if (vehicule && method === "DELETE") return json(await retirerVehicule(request, env, user, decodeURIComponent(vehicule[1])));
+  if (vehicule && method === "PUT") return json(await enregistrerVehicule(env, user, decodeURIComponent(vehicule[1]), await lireJson(request), ctx));
+  if (vehicule && method === "DELETE") return json(await retirerVehicule(request, env, user, decodeURIComponent(vehicule[1]), ctx));
   if (path === "/api/admin/offers" && method === "GET") return json(await listerOffres(request, env, new URL(request.url).searchParams.get("reference")));
   const decision = path.match(/^\/api\/admin\/offers\/(\d+)\/(accept|refuse)$/);
   if (decision && method === "POST") {
     const body = await lireJson(request).catch(() => ({}));
     return json(await deciderOffre(request, env, user, Number(decision[1]), decision[2] === "accept", body.removeFromSite !== false));
+  }
+  const caution = path.match(/^\/api\/admin\/users\/(\d+)\/deposit$/);
+  if (caution && method === "POST") {
+    const body = await lireJson(request);
+    const amount = Number(body.amountTnd);
+    if (!Number.isInteger(amount) || amount < 0 || amount > MAX_OFFER_TND) throw new ApiError(400, "Montant invalide (nombre entier de dinars).");
+    const motif = typeof body.reason === "string" ? body.reason.trim() : "";
+    if (!motif || motif.length > MAX_MOTIF_CAUTION) throw new ApiError(400, `Motif obligatoire (${MAX_MOTIF_CAUTION} caractères au plus).`);
+    // Journal puis solde dans la même transaction : l'ancienne valeur est lue juste avant l'écriture, sans fenêtre.
+    const acheteur = Number(caution[1]);
+    const [, maj] = await env.DB.batch([
+      env.DB.prepare("INSERT INTO deposit_adjustments (user_id, previous_tnd, new_tnd, reason, actor_id) SELECT id, deposit_tnd, ?, ?, ? FROM users WHERE id = ?")
+        .bind(amount, motif, user.id, acheteur),
+      env.DB.prepare("UPDATE users SET deposit_tnd = ? WHERE id = ? RETURNING id, deposit_tnd").bind(amount, acheteur)
+    ]);
+    const row = maj.results[0];
+    if (!row) throw new ApiError(404, "Acheteur introuvable.");
+    return json({ userId: row.id, depositTnd: row.deposit_tnd });
+  }
+  if (path === "/api/admin/deposits" && method === "GET") return json(await listerVirements(env));
+  const virement = path.match(/^\/api\/admin\/deposits\/(\d+)\/(confirm|cancel)$/);
+  if (virement && method === "POST") {
+    const body = virement[2] === "confirm" ? await lireJson(request) : {};
+    return json(await deciderVirement(env, Number(virement[1]), virement[2] === "confirm", body));
   }
   if (path === "/api/admin/photos" && method === "POST") return envoyerPhoto(request, env);
   const photo = path.match(/^\/api\/admin\/photos\/(vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp))$/);
@@ -606,7 +902,7 @@ export async function listerOffres(request, env, reference) {
     reference ? etiquettesEncherisseurs(env, reference) : Promise.resolve(null),
     env.DB.prepare(
       `SELECT offers.id, offers.reference, offers.kind, offers.amount_tnd, offers.status, offers.created_at, offers.withdrawn_at, offers.user_id,
-              users.name, users.email, users.phone FROM offers JOIN users ON users.id = offers.user_id
+              users.name, users.email, users.phone, users.deposit_tnd FROM offers JOIN users ON users.id = offers.user_id
        ${reference ? "WHERE offers.reference = ?" : ""} ORDER BY offers.reference, offers.kind, offers.amount_tnd DESC, offers.created_at ASC LIMIT 1000`
     ).bind(...(reference ? [reference] : [])).all()
   ]);
@@ -622,14 +918,14 @@ export async function listerOffres(request, env, reference) {
   }
   const meilleures = new Map();
   for (const row of results) {
-    if (row.kind === "bid" && !meilleures.has(row.reference)) meilleures.set(row.reference, row.id);
+    if (row.kind === "bid" && row.status !== "refused" && !meilleures.has(row.reference)) meilleures.set(row.reference, row.id);
   }
   return {
     lots,
     offers: results.map((row) => ({
       id: row.id, reference: row.reference, kind: row.kind, amountTnd: row.amount_tnd, status: row.withdrawn_at ? "withdrawn" : row.status, createdAt: row.created_at,
       best: meilleures.get(row.reference) === row.id, bidder: etiquettes?.get(row.user_id) || null,
-      name: row.name, email: row.email, phone: row.phone || ""
+      name: row.name, email: row.email, phone: row.phone || "", userId: row.user_id, depositTnd: row.deposit_tnd || 0
     }))
   };
 }
@@ -700,9 +996,11 @@ export async function deciderOffre(request, env, user, offreId, accepter, retire
 }
 
 // Meilleure enchère d'un véhicule : la plus haute, la plus ancienne à montant égal (même ordre que listerOffres).
-const MEILLEURE_ENCHERE = "SELECT id FROM offers WHERE reference = ? AND kind = 'bid' ORDER BY amount_tnd DESC, created_at ASC, id ASC LIMIT 1";
+// Une enchère refusée ne compte plus : refuser une enchère fantaisiste rend la vente à la suivante.
+const MEILLEURE_ENCHERE = "SELECT id FROM offers WHERE reference = ? AND kind = 'bid' AND status <> 'refused' ORDER BY amount_tnd DESC, created_at ASC, id ASC LIMIT 1";
 
 const STATUTS = ["open", "upcoming", "stock"];
+const ETATS_VEHICULE = ["new", "used", "accident", "damaged"];
 
 function nombre(value, nom) {
   if (value === null || value === undefined || value === "") return null;
@@ -713,17 +1011,21 @@ function nombre(value, nom) {
 
 function photoValide(url) {
   return typeof url === "string" && url.length <= 500
-    && (/^https:\/\/[^\s"'<>]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url) || /^photos\/[^/]+$/.test(url));
+    && (/^https:\/\/[^\s"'<>]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url) || /^\/seller-media\/[a-f0-9]{32}$/.test(url) || /^photos\/[^/]+$/.test(url));
 }
 
 // Ne garde que les champs connus, vérifiés comme le fait la page publique (lotValide).
 function validerVehicule(body, reference) {
   const lot = { reference };
-  const champs = { make: "Marque", model: "Modèle", trim: null, fuel: null, bodyType: null, country: null, pickupLocation: null, seller: null, availableFrom: null };
+  const champs = { make: "Marque", model: "Modèle", trim: null, fuel: null, bodyType: null, country: null, transmission: null, color: null, pickupLocation: null, seller: null, availableFrom: null };
   for (const [cle, obligatoire] of Object.entries(champs)) {
     const valeur = texte(body[cle], 120);
     if (obligatoire && !valeur) throw new ApiError(400, `${obligatoire} obligatoire.`);
     if (valeur) lot[cle] = valeur;
+  }
+  if (body.condition !== undefined && body.condition !== null && body.condition !== "") {
+    if (!ETATS_VEHICULE.includes(body.condition)) throw new ApiError(400, "État du véhicule invalide.");
+    lot.condition = body.condition;
   }
   if (!STATUTS.includes(body.status)) throw new ApiError(400, "Statut invalide.");
   lot.status = body.status;
@@ -740,6 +1042,12 @@ function validerVehicule(body, reference) {
   for (const [cle, nom] of [["mileageKm", "Kilométrage"], ["indicativePriceTnd", "Prix"], ["startingPriceTnd", "Mise à prix"], ["reservePriceTnd", "Prix de réserve"], ["buyNowPriceTnd", "Achat immédiat"], ["bidIncrementTnd", "Pas d'enchère"]]) {
     const valeur = nombre(body[cle], nom);
     if (valeur !== null) lot[cle] = valeur;
+  }
+  for (const [cle, nom, max] of [["powerHp", "Puissance", 5000], ["engineCc", "Cylindrée", 20000], ["doors", "Nombre de portes", 9], ["seats", "Nombre de sièges", 99]]) {
+    const valeur = nombre(body[cle], nom);
+    if (valeur === null) continue;
+    if (!Number.isInteger(valeur) || valeur < 1 || valeur > max) throw new ApiError(400, `${nom} : valeur invalide.`);
+    lot[cle] = valeur;
   }
   const sourceUrl = texte(body.sourceUrl, 500);
   if (sourceUrl) {
@@ -761,7 +1069,8 @@ function validerVehicule(body, reference) {
   return lot;
 }
 
-export async function enregistrerVehicule(env, user, reference, body) {
+// ctx absent (outil MCP) : le contrôle SEO est attendu avant la réponse au lieu de tourner en arrière-plan.
+export async function enregistrerVehicule(env, user, reference, body, ctx) {
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Référence invalide (lettres, chiffres, . _ - ; 40 caractères maximum).");
   if(reference.startsWith('SV-'))throw new ApiError(409,'Les annonces vendeur passent par la validation marketplace.');
   const lot = validerVehicule(body, reference);
@@ -769,16 +1078,18 @@ export async function enregistrerVehicule(env, user, reference, body) {
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 0, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET data = excluded.data, removed = 0, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
   ).bind(reference, JSON.stringify(lot), new Date().toISOString(), user.id).run();
-  return { vehicle: lot };
+  await controlerApresPublication(env, ctx, reference);
+  return { vehicle: lot, url: cheminVehicule(lot) };
 }
 
-export async function retirerVehicule(request, env, user, reference) {
+export async function retirerVehicule(request, env, user, reference, ctx) {
   const existant = (await catalogueComplet(request, env)).find((item) => item.lot.reference === reference);
   if (!existant) throw new ApiError(404, "Véhicule introuvable.");
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 1, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET removed = 1, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
   ).bind(reference, JSON.stringify(existant.lot), new Date().toISOString(), user.id).run();
+  await controlerApresPublication(env, ctx, reference);
   return { reference, removed: true };
 }
 
@@ -859,20 +1170,26 @@ async function placerEnchere(request, env, user, lot, body) {
   if (etat.status !== "live") throw new ApiError(400, "La vente de ce lot est terminée.");
   const amount = Number(body.amount);
   if (!Number.isInteger(amount) || amount <= 0 || amount > MAX_OFFER_TND) throw new ApiError(400, "Montant invalide (nombre entier de dinars).");
+  if ((user.deposit_tnd || 0) < etat.depositRequiredTnd) {
+    throw new ApiError(403, `Un dépôt de garantie de ${etat.depositRequiredTnd} TND est nécessaire pour enchérir sur ce véhicule.`);
+  }
   if (amount < etat.minNextBidTnd) throw new ApiError(400, `L'enchère minimale est de ${etat.minNextBidTnd} TND.`);
 
   // Vérification et insertion en une seule requête : deux enchères simultanées ne peuvent pas passer toutes les deux.
   const offer = await env.DB.prepare(
     `INSERT INTO offers (user_id, reference, amount_tnd, kind, created_at)
      SELECT ?, ?, ?, 'bid', ?
-     WHERE ? >= COALESCE((SELECT MAX(amount_tnd) FROM offers WHERE reference = ? AND kind = 'bid') + ?, ?)
+     WHERE ? >= COALESCE((SELECT MAX(amount_tnd) FROM offers WHERE reference = ? AND kind = 'bid' AND status <> 'refused') + ?, ?)
      RETURNING id, reference, amount_tnd, kind, created_at`
   ).bind(user.id, lot.reference, amount, new Date().toISOString(), amount, lot.reference, etat.incrementTnd, etat.minNextBidTnd).first();
   if (!offer) throw new ApiError(409, "Une enchère plus haute vient d'être placée. Le prix a été mis à jour, réessaie.");
 
   const auction = etatEnchere(lot, (await resumesEncheres(env)).get(lot.reference), Date.now());
   return json({
-    offer: { id: offer.id, reference: offer.reference, amountTnd: offer.amount_tnd, kind: offer.kind, status: "leading", createdAt: offer.created_at },
+    offer: {
+      id: offer.id, reference: offer.reference, amountTnd: offer.amount_tnd, kind: offer.kind, status: "leading", createdAt: offer.created_at,
+      canWithdraw: retraitPossible(auction, Date.now())
+    },
     auction
   }, 201);
 }

@@ -47,7 +47,7 @@ class CatalogueTest(unittest.TestCase):
 
     def open_site(self, body, status=200):
         """Ouvre la page avec un lots.json simulé et attend la fin du chargement."""
-        page = self.browser.new_page()
+        page = self.browser.new_page(bypass_csp=True)
         self.addCleanup(page.close)
 
         def serve(route):
@@ -66,6 +66,10 @@ class CatalogueTest(unittest.TestCase):
         page.goto(f"{ORIGIN}/index.html")
         page.wait_for_function("catalogueEtat !== 'loading'")
         return page
+
+    def test_badge_diagnostic_ne_vient_pas_du_fichier_statique(self):
+        page = self.open_site([lot(diagnosticVerified=True)])
+        self.assertEqual(page.get_by_text("Diagnostic vérifié par M&Y AUTO EXPORT", exact=True).count(), 0)
 
     def test_catalogue_vide_affiche_aucun_lot_valide(self):
         page = self.open_site([])

@@ -111,7 +111,7 @@ class AdministrationTest(unittest.TestCase):
         return set_cookie.split(";")[0]
 
     def page_admin(self, email="admin@example.com"):
-        context = self.browser.new_context(bypass_csp=True,viewport={"width": 390, "height": 844})
+        context = self.browser.new_context(bypass_csp=True, viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
         page.goto(self.base + "/admin.html")
@@ -195,6 +195,7 @@ class AdministrationTest(unittest.TestCase):
         self.assertEqual(statut, 200)
         acheteur = self.cookie("acheteur@example.com")
         self.assertEqual(self.requete("/api/terms", {"version": "2026-11-01"}, "POST", acheteur)[0], 200)
+        self.sql("UPDATE users SET deposit_tnd = 1000000 WHERE email = 'acheteur@example.com'")
         statut, data, _ = self.requete("/api/offers", {"reference": "MY-ADM-2", "amount": 120000}, "POST", acheteur)
         self.assertEqual(statut, 201, data)
 

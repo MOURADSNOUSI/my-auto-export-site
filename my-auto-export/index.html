@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-proposal-only="true">
+<html lang="fr" data-proposal-only="false">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -250,7 +250,8 @@
     .text-action:hover { border-color: var(--green); color: var(--green); }
 
     footer { padding: 26px 0; background: var(--dark); color: #d6ddd8; }
-    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 13px; }
+    .footer-note { flex: 1 0 100%; margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+    .footer-inner { flex-wrap: wrap; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 13px; }
     .footer-inner strong { color: white; }
 
     /* --- Fenêtres : fiche, connexion, page personnelle --- */
@@ -493,9 +494,10 @@
     <div class="shell header-inner">
       <a class="brand" href="#accueil" aria-label="M&Y AUTO EXPORT, accueil">
         <img src="logo.png" alt="Logo M&Y AUTO EXPORT">
-        <span class="brand-name">M&Y AUTO EXPORT<small>Véhicules sans frontières</small></span>
+        <span class="brand-name">M&Y AUTO EXPORT<small>Votre voiture sans frontières</small></span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
+        <a href="/vendre">Vendre mon véhicule</a>
         <a href="#ventes" data-nav="all" aria-current="true">Tous les véhicules <span class="nav-count" id="nav-count-all">0</span></a>
         <a href="#ventes" data-nav="stock">Notre stock <span class="nav-count" id="nav-count-stock">0</span></a>
         <a href="#ventes" data-nav="auction">Enchères <span class="nav-count" id="nav-count-auction">0</span></a>
@@ -524,8 +526,11 @@
     <picture><source srcset="/photos/web/MY-0001-1.webp" type="image/webp"><img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" width="960" height="1280" fetchpriority="high" decoding="async" onerror="this.remove()"></picture>
     <div class="shell hero-inner">
       <h1 id="page-title">Votre prochaine voiture, au meilleur prix, livrée chez vous !</h1>
-      <p class="hero-lead"><strong id="hero-total">Des véhicules</strong> sélectionnés en Europe et aux États-Unis. Proposez une offre privée au vendeur, dans la devise de l’annonce.</p>
-      <div class="hero-actions"><a class="hero-cta" href="#ventes">Voir les véhicules</a><a class="hero-cta hero-cta-secondary" href="#contact">Nous contacter</a></div>
+      <p class="hero-lead">Avec <strong>M&amp;Y AUTO EXPORT</strong>, découvrez une sélection de véhicules européens et américains à prix compétitifs, disponibles en <strong>achat direct ou aux enchères</strong>.</p>
+      <div class="hero-actions">
+        <a class="hero-cta" href="#ventes">Voir les véhicules</a>
+        <a class="hero-cta hero-cta-secondary" href="#contact">Nous contacter</a>
+      </div>
       <form class="hero-search" id="hero-search" role="search" aria-label="Recherche rapide">
         <label><span>Marque</span><select id="hero-make"><option value="">Toutes</option></select></label>
         <label><span>Modèle</span><select id="hero-model"><option value="">Tous</option></select></label>
@@ -604,12 +609,22 @@
     <section class="block below-grid" id="fonctionnement">
       <article class="side-panel">
         <h2>Comment acheter</h2>
-        <p>Chaque vente précise ses propres conditions. Les étapes ci-dessous décrivent le parcours habituel.</p>
+        <p>Chaque vente précise ses propres conditions. Voici le parcours habituel, de la fiche du véhicule à la livraison.</p>
         <div class="steps">
-          <div class="step"><b>01 · Consulter</b><span>Lire la fiche, les photos, l'état du véhicule et les conditions de la vente.</span></div>
-          <div class="step"><b>02 · Créer son espace</b><span>Un compte acheteur gratuit pour suivre vos favoris, vos offres et vos documents.</span></div>
-          <div class="step"><b>03 · Faire une offre</b><span>Depuis la fiche du véhicule. L'équipe vous recontacte pour confirmer chaque offre.</span></div>
+          <div class="step"><b>01 · Consulter</b><span>Lire la fiche, les photos, l'état du véhicule et les conditions de la vente : mise à prix, réserve, date de fin.</span></div>
+          <div class="step"><b>02 · Créer son espace</b><span>Un compte acheteur gratuit pour suivre vos favoris, vos enchères et vos documents. Acceptez les conditions générales de vente.</span></div>
+          <div class="step"><b>03 · Verser le dépôt de garantie</b><span>de 500 à 3 000 TND selon la valeur du véhicule (voir le barème ci-dessous), par carte bancaire (enchères ouvertes dès le paiement accepté) ou par virement (ouvertes dès réception des fonds).</span></div>
+          <div class="step"><b>04 · Enchérir</b><span>Placez votre enchère depuis la fiche. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes.</span></div>
+          <div class="step"><b>05 · Adjudication</b><span>Le meilleur enchérisseur, réserve atteinte, est confirmé par écrit par l'équipe M&amp;Y AUTO EXPORT.</span></div>
+          <div class="step"><b>06 · Paiement et livraison</b><span>Règlement du véhicule, dédouanement et immatriculation en Tunisie. Retrouvez vos véhicules et factures dans votre espace.</span></div>
         </div>
+        <details class="deposit-faq">
+          <summary>Questions sur le dépôt de garantie</summary>
+          <p><strong>À quoi sert-il ?</strong> Il garantit le sérieux des enchères : une enchère est une offre d'achat ferme.</p>
+          <p><strong>Barème (valeur du véhicule → dépôt) :</strong> jusqu'à 30 000 TND : 500 TND · jusqu'à 50 000 : 1 000 · jusqu'à 70 000 : 1 500 · jusqu'à 100 000 : 2 000 · jusqu'à 200 000 : 2 500 · à partir de 200 000 : 3 000 TND. La valeur retenue est le prix de réserve, à défaut la mise à prix.</p>
+          <p><strong>Est-il à verser pour chaque véhicule ?</strong> Non : il est cumulatif. Votre dépôt vous donne accès à tous les véhicules dont la caution est inférieure ou égale ; pour un véhicule plus cher, vous versez seulement le complément.</p>
+          <p><strong>Une question sur la restitution ?</strong> Écrivez à <a href="mailto:contact@myautoexport.com?subject=D%C3%A9p%C3%B4t%20de%20garantie">contact@myautoexport.com</a>.</p>
+        </details>
       </article>
       <article class="side-panel price-note" id="conditions">
         <h2>Prix affichés en TND</h2>
@@ -629,6 +644,7 @@
         <p>Décrivez votre recherche : marque, budget, année. L'équipe vous prévient dès qu'un véhicule correspondant arrive.</p>
       </article>
     </section>
+
     <section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title" hidden>
       <div class="section-title"><h2 id="tous-vehicules-title">Tous nos véhicules</h2><a class="text-action" href="/vehicules">Voir la liste complète</a></div>
       <!-- Rempli par le Worker (worker/seo.js) : liens vers chaque fiche, lisibles sans JavaScript. -->
@@ -637,7 +653,8 @@
   </main>
 
   <footer>
-    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie</span><span>Prix en dinars tunisiens · <a href="/conditions.html">Conditions générales de vente</a> · <a href="/conditions.html#donnees">Données personnelles</a></span></div>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules à votre critère</span><span>Prix en dinars tunisiens · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span>
+      <p class="footer-note">Dépôt de garantie : somme déposée sur votre compte client, retirable à chaque enchère. C'est une caution d'engagement à l'achat en cas d'enchère remportée, sous réserve de la loi tunisienne.</p></div>
   </footer>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
@@ -662,7 +679,7 @@
           <div class="form-field"><label for="register-phone">Téléphone (facultatif)</label><input id="register-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="30"></div>
           <div class="form-field full"><label for="register-password">Mot de passe (10 caractères minimum)</label><input id="register-password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="200" required></div>
         </div>
-        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter (<a href="/conditions.html#donnees" target="_blank" rel="noopener">données personnelles</a>).</p>
+        <p class="form-footnote">Ton compte sert à suivre tes favoris et tes offres. Tes coordonnées ne sont utilisées que par M&Y AUTO EXPORT pour te recontacter (<a href="/conditions#donnees" target="_blank" rel="noopener">données personnelles</a>).</p>
         <p class="form-error" role="alert" hidden></p>
         <button class="form-submit" type="submit">Créer mon compte</button>
       </form>
@@ -767,7 +784,6 @@
       const rubrique = watchOnly ? "Mes favoris" : { all: "Résultats", stock: "Notre stock", auction: "Enchères", fixed: "Prix fixes", exclusive: "Exclusivités" }[activeTab] || "Résultats";
       document.getElementById("result-count").textContent = `${rubrique} (${pluriel(visibleLots.length, "véhicule")})`;
       document.getElementById("filter-submit").textContent = `Afficher ${pluriel(visibleLots.length, "véhicule")}`;
-      document.getElementById("hero-total").textContent = pluriel(lots.length, "véhicule");
       majRechercheRapide();
 
       const grid = document.getElementById("lot-grid");
@@ -880,7 +896,7 @@
     };
 
     const PROPOSALS_ONLY=document.documentElement.dataset.proposalOnly==='true';
-    if(PROPOSALS_ONLY){const auctionLink=document.querySelector('[data-nav="auction"]');auctionLink.setAttribute('aria-disabled','true');auctionLink.title='Les enchères sont désactivées pendant le Lot 1';auctionLink.style.opacity='.5';}
+    if(PROPOSALS_ONLY){const auctionLink=document.querySelector('[data-nav="auction"]');auctionLink.setAttribute('aria-disabled','true');auctionLink.title='Les enchères sont désactivées pendant le Lot 1';auctionLink.style.opacity='.5';const accroche=document.querySelector('.hero-lead');if(accroche)accroche.textContent='Des véhicules sélectionnés en Europe et aux États-Unis. Proposez une offre privée au vendeur, dans la devise de l’annonce.';}
     function choisirOnglet(onglet) {
       if(PROPOSALS_ONLY&&onglet==='auction')return;
       activeTab = onglet;
@@ -953,6 +969,26 @@
       return `<p class="auction-line">${icone("gavel")}<span>Fin dans ${compteARebours(a.endsAt)}</span><span>${pluriel(a.bidCount, "enchère")}</span>${badgeReserve(a)}</p>`;
     }
 
+    document.addEventListener("click", async (event) => {
+      const carte = event.target.closest("[data-deposit-card]");
+      const virement = event.target.closest("[data-deposit-transfer]");
+      if (!carte && !virement) return;
+      const info = event.target.closest(".deposit-box").querySelector("[data-deposit-info]");
+      try {
+        if (carte) {
+          carte.disabled = true;
+          const { url } = await api("/api/deposit/card", { method: "POST", body: { reference: carte.dataset.ref } });
+          location.href = url;
+        } else {
+          const { transfer } = await api("/api/deposit/transfer", { method: "POST", body: { reference: virement.dataset.ref } });
+          info.innerHTML = `<p class="form-success">Virez <strong>${formatTnd(transfer.amountTnd)}</strong> à <strong>${escapeHtml(transfer.beneficiary)}</strong><br>IBAN : <strong>${escapeHtml(transfer.iban)}</strong><br>Libellé (propre à cette demande, à recopier exactement) : <strong>${escapeHtml(transfer.reference)}</strong><br>Virez exactement ce montant : vous pourrez enchérir dès réception du virement.</p>`;
+        }
+      } catch (error) {
+        if (carte) carte.disabled = false;
+        info.innerHTML = `<p class="form-error">${escapeHtml(error.message)}</p>`;
+      }
+    });
+
     function panneauEnchere(lot, encheres = null) {
       if(PROPOSALS_ONLY)return '';
       const a = lot.auction;
@@ -969,17 +1005,28 @@
         action = `<p class="auction-note">Vente terminée. ${resultat}</p>`;
       } else if (!compte.user) {
         action = `<button class="form-submit" type="button" data-offer-login="${escapeHtml(lot.reference)}">Se connecter pour enchérir</button>`;
+      } else if (compte.user.depositTnd < a.depositRequiredTnd) {
+        const reste = a.depositRequiredTnd - compte.user.depositTnd;
+        action = `<div class="deposit-box">
+          <p class="auction-note">Un dépôt de garantie de ${formatTnd(a.depositRequiredTnd)} (selon la valeur du véhicule) est nécessaire pour enchérir sur ce véhicule${compte.user.depositTnd ? ` (reçu : ${formatTnd(compte.user.depositTnd)}, reste ${formatTnd(reste)})` : ""}.</p>
+          <button class="form-submit" type="button" data-deposit-card data-ref="${escapeHtml(lot.reference)}">Payer ${formatTnd(reste)} par carte bancaire</button>
+          <button class="form-submit secondary" type="button" data-deposit-transfer data-ref="${escapeHtml(lot.reference)}">Payer par virement bancaire</button>
+          <div data-deposit-info aria-live="polite"></div>
+          <p class="form-footnote">Carte : enchères ouvertes dès que le paiement est accepté. Virement : ouvertes dès que M&Y AUTO EXPORT a reçu les fonds.</p>
+        </div>`;
       } else {
         const meneur = encheres?.[0]?.you;
+        const retirable = compte.offers.find((offer) => offer.reference === lot.reference && offer.kind === "bid" && offer.canWithdraw);
         action = `<form class="offer-form bid-form" data-offer="${escapeHtml(lot.reference)}">
           ${meneur ? `<p class="form-success">Vous êtes le meilleur enchérisseur.</p>` : ""}
           <div class="step-bids" role="group" aria-label="Augmenter mon enchère">${[1, 2, 5].map((n) => `<button type="button" data-step="${n * a.incrementTnd}">+${formatTnd(n * a.incrementTnd)}</button>`).join("")}</div>
           <div class="offer-row"><label class="hidden" for="offer-amount">Votre enchère en TND</label><input id="offer-amount" name="amount" type="number" inputmode="numeric" min="${a.minNextBidTnd}" step="1" required value="${a.minNextBidTnd}"><button type="submit">Enchérir</button></div>
           <details class="bid-total"><summary><span>Votre enchère</span><strong id="bid-total">${formatTnd(a.minNextBidTnd)}</strong><span class="details-label">Détails</span></summary>
-            <p>Montant payé au vendeur en cas d'adjudication. Ne sont pas inclus : droits et taxes de douane (dont l'éventuel régime FCR), transport, dédouanement et immatriculation en Tunisie. <a href="/conditions.html#prix" target="_blank" rel="noopener">En savoir plus</a></p></details>
-          ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions.html" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
-          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions.html#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
+            <p>Montant payé au vendeur en cas d'adjudication. Ne sont pas inclus : droits et taxes de douane (dont l'éventuel régime FCR), transport, dédouanement et immatriculation en Tunisie. <a href="/conditions#prix" target="_blank" rel="noopener">En savoir plus</a></p></details>
+          ${compte.user.termsAccepted ? "" : `<label class="terms-check"><input type="checkbox" name="terms" required> J'ai lu et j'accepte les <a href="/conditions" target="_blank" rel="noopener">conditions générales de vente</a>, et je comprends que mon enchère est une offre d'achat ferme.</label>`}
+          <p class="form-footnote">Pas minimum : ${formatTnd(a.incrementTnd)}. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes. L'équipe M&Y AUTO EXPORT confirme l'adjudication par écrit au gagnant (<a href="/conditions#encheres" target="_blank" rel="noopener">règles des enchères</a>).</p>
           <p class="form-error" role="alert" hidden></p>
+          ${retirable ? `<button type="button" class="text-action withdraw-bid" data-withdraw="${retirable.id}">Retirer mon enchère de ${formatTnd(retirable.amountTnd)}</button><p class="form-footnote">Retrait possible jusqu'à 12 h avant la fin de la vente.</p>` : ""}
         </form>`;
       }
       const finTunis = a.endsAt ? new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Tunis" }).format(new Date(a.endsAt)) : "";
@@ -1054,7 +1101,7 @@
     }
 
     function boutonAchat(lot) {
-      if(PROPOSALS_ONLY)return `<button type="button" class="buy-now" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`;
+      if(PROPOSALS_ONLY||lot.marketplace)return `<button type="button" class="buy-now" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`;
       return Number.isFinite(lot.buyNowPriceTnd)
         ? `<button class="buy-now" type="button" data-buynow="${escapeHtml(lot.reference)}">Acheter maintenant · ${formatTnd(lot.buyNowPriceTnd)}</button>`
         : "";
@@ -1144,6 +1191,18 @@
       }
       updateView();
       afficherCompte();
+    }
+
+    async function retirerEnchere(bouton) {
+      if (!confirm("Retirer cette enchère ? Elle ne comptera plus et le prix reviendra à l'offre précédente.")) return;
+      bouton.disabled = true;
+      try {
+        await api(`/api/offers/${encodeURIComponent(bouton.dataset.withdraw)}`, { method: "DELETE" });
+      } catch (error) {
+        alert(error.message);
+      }
+      await chargerCompte();
+      await chargerCatalogue();
     }
 
     function numeroMembre(user) {
@@ -1238,8 +1297,9 @@
             const lot = lots.find((item) => item.reference === offer.reference);
             return `<li><span>${lot ? `<button type="button" data-detail="${escapeHtml(offer.reference)}">${escapeHtml(titreLot(lot))}</button>` : `Réf. ${escapeHtml(offer.reference)}`}
               <span class="muted"> · ${offer.kind === "buy_now" ? "Achat immédiat" : "Enchère"} de ${formatTnd(offer.amountTnd)} · ${date(offer.createdAt)}</span></span>
-              <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span></li>`;
-          }).join("")}</ul>` : `<p class="account-empty">Aucune opération historique. Proposez une offre privée depuis la fiche du véhicule.</p>`}
+              <span class="offer-status ${escapeHtml(offer.status)}">${statuts[offer.status] || escapeHtml(offer.status)}</span>
+              ${offer.canWithdraw ? `<button type="button" class="text-action" data-withdraw="${offer.id}">Retirer mon offre</button>` : offer.kind === "buy_now" ? `<small class="muted">Achat immédiat : non révocable</small>` : ""}</li>`;
+          }).join("")}</ul>` : `<p class="account-empty">${PROPOSALS_ONLY ? "Aucune opération historique. Proposez une offre privée depuis la fiche du véhicule." : "Aucune offre pour le moment. Tu peux faire une offre depuis la fiche d'un véhicule aux enchères."}</p>`}
         </section>
         <section class="account-panel hidden" data-account-panel="favorites">
           <h3>Mes favoris (${favoris.length})</h3><p>Lots suivis depuis le catalogue.</p>
@@ -1251,7 +1311,7 @@
           ${compte.invoices.length ? `<ul class="account-list">${compte.invoices.map((invoice) => `<li class="invoice-item"><span class="invoice-details"><strong>${escapeHtml(invoice.invoiceNumber)}</strong><small>${escapeHtml(date(invoice.issuedAt))} · ${formatTnd(invoice.totalTnd)} · ${statutsFacture[invoice.status] || "Statut à confirmer"}</small></span>${invoice.documentAvailable ? `<a class="invoice-download" href="/api/invoices/${encodeURIComponent(invoice.id)}/document">Télécharger PDF</a>` : `<span class="muted">PDF non disponible</span>`}</li>`).join("")}</ul>` : `<p class="account-empty">Aucune facture associée à ce compte.</p>`}
           <p class="form-footnote">Les factures sont privées et accessibles uniquement après connexion au compte concerné.</p>
         </section>
-        ${user.role === "admin" ? `<a class="logout-button admin-link" href="/admin.html">Administration du catalogue</a>` : ""}
+        ${user.role === "admin" ? `<a class="logout-button admin-link" href="/admin">Administration du catalogue</a>` : ""}
         <button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
       document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -1297,8 +1357,9 @@
       return `<article class="lot-card">
         <div class="lot-photo"><span class="lot-status ${escapeHtml(lot.status)}">${statutLot(lot)}</span>${photos.length ? `<button class="photo-open" type="button" data-detail="${escapeHtml(lot.reference)}" aria-label="Voir les photos de ${escapeHtml(titreLot(lot))}"><img src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(lot.make)} ${escapeHtml(lot.model)}" loading="lazy">${photos.length > 1 ? `<span class="photo-count">${photos.length} photos</span>` : ""}</button>` : `<div class="photo-missing"><strong>Photo à confirmer</strong><span>Visuel autorisé non fourni</span></div>`}</div>
         <div class="lot-body">
-          <div><h2 class="lot-title">${lot.url?`<a href="${escapeHtml(lot.url)}">${escapeHtml(titreLot(lot))}</a>`:escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
+          <div><h2 class="lot-title">${lot.url ? `<a href="${escapeHtml(lot.url)}">${escapeHtml(titreLot(lot))}</a>` : escapeHtml(titreLot(lot))}</h2><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${escapeHtml(lot.make)} ${escapeHtml(lot.model)}</span></div>
           <ul class="lot-specs">${caracteristiques.map(([nom, texte]) => `<li>${icone(nom === "gear" ? "sliders" : nom)}<span title="${escapeHtml(texte)}">${escapeHtml(texte)}</span></li>`).join("")}</ul>
+          ${lot.diagnosticVerified === true ? `<p class="reserve-badge met">Diagnostic vérifié par M&amp;Y AUTO EXPORT</p>` : ""}
           ${resumeEnchere(lot)}
           ${enlevementLot(lot)}
           <div class="lot-foot">${lienLot(lot)}</div>
@@ -1311,6 +1372,36 @@
         </div>
       </article>`;
     }
+
+    function detailsVendeur(lot) {
+      if (!lot.diagnosticVerified || !lot.diagnostic) return "";
+      const d = lot.diagnostic;
+      const zones = {bumpers:"Pare-chocs",hood:"Capot",doors:"Portières",fenders:"Ailes",roof:"Toit",trunk:"Coffre",wheels:"Jantes",glass:"Vitrages"};
+      return `<section class="seller-public-details"><h3>Diagnostic vérifié</h3><p><strong>${escapeHtml(d.garage)}</strong> · ${escapeHtml(d.date)}</p>${d.summary ? `<p>${escapeHtml(d.summary)}</p>` : ""}<p class="form-footnote">${escapeHtml(d.notice)}</p>${lot.description ? `<h3>Description du vendeur</h3><p>${escapeHtml(lot.description)}</p>` : ""}<h3>Équipements</h3><ul>${(lot.equipment || []).map(v=>`<li>${escapeHtml(v)}</li>`).join("") || "<li>Aucun équipement renseigné.</li>"}</ul><h3>Défauts et dommages déclarés</h3>${(lot.damages || []).map(x=>`<article><strong>${escapeHtml(zones[x.zone] || x.zone)} · ${escapeHtml(x.type)} · ${escapeHtml(x.severity)}</strong><p>${escapeHtml(x.description)}</p>${(x.photos || []).filter(photoAffichable).map(url=>`<img src="${escapeHtml(url)}" alt="Photo du dommage déclaré" loading="lazy" style="width:120px;max-width:100%;border-radius:6px">`).join("")}</article>`).join("") || "<p>Aucun dommage déclaré par le vendeur.</p>"}</section>`;
+    }
+
+    function propositionVendeur(lot) {
+      if (!lot.allowSellerOffers || lot.status !== "stock") return "";
+      if (!compte.user) return `<button class="form-submit" type="button" data-open-account>Se connecter pour proposer un prix</button>`;
+      return `<form data-seller-proposal="${escapeHtml(lot.reference)}" class="offer-form"><label>Votre proposition (TND)<input name="amountTnd" type="number" min="1" max="10000000" step="1" required></label>${compte.user.termsAccepted ? "" : `<label><input type="checkbox" name="terms" required> J'accepte les <a href="/conditions" target="_blank" rel="noopener">conditions générales</a>.</label>`}<button type="submit" class="form-submit">Envoyer ma proposition</button><p class="proposal-result" role="status"></p></form>`;
+    }
+
+    document.addEventListener("submit", async (event) => {
+      const form = event.target.closest("[data-seller-proposal]");
+      if (!form) return;
+      event.preventDefault();
+      const button = form.querySelector("button[type=submit]"), result = form.querySelector(".proposal-result");
+      button.disabled = true;
+      try {
+        if (!compte.user.termsAccepted) {
+          if (!form.elements.terms.checked) throw new Error("Accepte les conditions générales.");
+          await api("/api/terms", {method:"POST",body:{version:compte.user.termsVersion}});
+          compte.user.termsAccepted = true;
+        }
+        await api("/api/seller/offers", {method:"POST",body:{reference:form.dataset.sellerProposal,amountTnd:Number(form.elements.amountTnd.value)}});
+        result.textContent = "Proposition transmise à l'équipe pour vérification.";
+      } catch (error) { result.textContent = error.message; button.disabled = false; }
+    });
 
     function ouvrirFiche(reference) {
       const lot = lots.find((item) => item.reference === reference);
@@ -1326,9 +1417,11 @@
       ].filter((spec) => Array.isArray(spec) && spec[0] && spec[1] != null && spec[1] !== "");
       document.getElementById("lot-dialog-body").innerHTML = `
         <div class="dialog-head"><div><span class="lot-meta">Réf. ${escapeHtml(lot.reference)} · ${statutLot(lot)}</span><h2 id="lot-dialog-title">${escapeHtml(titreLot(lot))}</h2></div><button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
+        ${lot.diagnosticVerified === true ? `<p class="reserve-badge met">Diagnostic vérifié par M&amp;Y AUTO EXPORT</p>` : ""}
         ${photos.length ? `<div class="gallery-main"><img id="gallery-image" src="${escapeHtml(photos[0].url)}" alt="${escapeHtml(titreLot(lot))}, photo 1"></div>
         ${photos.length > 1 ? `<div class="gallery-thumbs">${photos.map((photo, index) => `<button type="button" data-thumb="${index}" aria-label="Photo ${index + 1}" aria-pressed="${index === 0}"><img src="${escapeHtml(photo.url)}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}` : ""}
         <dl class="spec-list">${specs.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>
+        ${detailsVendeur(lot)}${propositionVendeur(lot)}
         <h3 class="fiche-section">Enlèvement</h3>
         ${enlevementLot(lot)}
         ${lot.auction && compte.disponible ? "" : `<div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>`}
@@ -1352,7 +1445,7 @@
 
     // Photo hébergée en https ou fichier local du dossier photos/ du site.
     function photoAffichable(url) {
-      return typeof url === "string" && (/^\/seller-media\/[a-f0-9]{32}$/.test(url) || url.startsWith("https://") || /^photos\/[^/]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url));
+      return typeof url === "string" && (url.startsWith("https://") || /^\/seller-media\/[a-f0-9]{32}$/.test(url) || /^photos\/[^/]+$/.test(url) || /^\/media\/vehicules\/[A-Za-z0-9._-]+\/[a-f0-9]{32}\.(?:jpg|png|webp)$/.test(url));
     }
 
     function remplirFiltre(selectId, valeurs, libelleInitial) {
@@ -1367,7 +1460,8 @@
       try {
         // Avec le serveur : lots.json + véhicules de l'administration. Sans serveur (aperçu statique) : lots.json seul.
         let response = await fetch("/api/catalogue", { cache: "no-store" }).catch(() => null);
-        if (!response?.ok || !(response.headers.get("Content-Type") || "").includes("application/json")) {
+        const catalogueVerifie = response?.ok && (response.headers.get("Content-Type") || "").includes("application/json");
+        if (!catalogueVerifie) {
           response = await fetch("./lots.json", { cache: "no-store" });
         }
         if (!response.ok) throw new Error("Catalogue inaccessible.");
@@ -1375,6 +1469,8 @@
         if (!Array.isArray(catalogue) || catalogue.some((lot) => !lotValide(lot))) {
           throw new Error("Format de catalogue invalide.");
         }
+        // Le fichier statique ne peut pas attester une validation administrative.
+        if (!catalogueVerifie) for (const lot of catalogue) delete lot.diagnosticVerified;
         // Fin effective de l'enchère (éventuellement prolongée) fournie par le serveur, sinon date prévue.
         lots = catalogue.filter((lot) => lot.status !== "open" || Date.parse(lot.auction?.endsAt || lot.endsAt) > Date.now());
         remplirFiltre("make", lots.map((lot) => lot.make), "Toutes les marques");
@@ -1515,7 +1611,7 @@
     });
 
     const lotDialog = document.getElementById("lot-dialog");
-    lotDialog.addEventListener("click", (event) => {
+    lotDialog.addEventListener("click", async (event) => {
       const thumb = event.target.closest("[data-thumb]");
       if (thumb) {
         const index = Number(thumb.dataset.thumb);
@@ -1544,6 +1640,13 @@
         const base = Math.max(Number(champ.value) || 0, Number(champ.min));
         champ.value = base + Number(pas.dataset.step);
         majTotalEnchere();
+        return;
+      }
+      const retrait = event.target.closest("[data-withdraw]");
+      if (retrait) {
+        const reference = document.getElementById("auction-panel")?.dataset.ref;
+        await retirerEnchere(retrait);
+        if (reference) rafraichirEnchere(reference);
         return;
       }
       const connexionOffre = event.target.closest("[data-offer-login]");
@@ -1628,6 +1731,12 @@
         ouvrirFiche(detail.dataset.detail);
         return;
       }
+      if (event.target.closest("[data-withdraw]")) {
+        await retirerEnchere(event.target.closest("[data-withdraw]"));
+        ouvrirEspace();
+        document.querySelector('#account-body [data-account-view="offers"]')?.click();
+        return;
+      }
       if (event.target.closest("[data-logout]")) {
         try {
           await api("/api/logout", { method: "POST" });
@@ -1667,7 +1776,11 @@
     });
 
     updateView();
-    chargerCatalogue().then(chargerCompte).finally(()=>{const ref=new URLSearchParams(location.search).get("lot");if(ref)ouvrirFiche(ref);});
+    chargerCatalogue().then(chargerCompte).finally(() => {
+      // Lien depuis une page véhicule (/?lot=REF) : ouvre directement sa fiche, avec enchère et achat.
+      const reference = new URLSearchParams(location.search).get("lot");
+      if (reference) ouvrirFiche(reference);
+    });
   </script>
 </body>
 </html>

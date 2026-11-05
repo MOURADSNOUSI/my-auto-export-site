@@ -1,13 +1,15 @@
 {
 	"name": "my-auto-export-site",
-	"keep_vars": true,
-    "compatibility_date": "2026-10-01",
+	"compatibility_date": "2026-10-01",
 	"main": "worker/main.js",
-    "vars": {"LEGACY_AUCTIONS_ENABLED":"false"},
 	"assets": {
 		"directory": "./my-auto-export",
 		"binding": "ASSETS",
-        "run_worker_first": true
+		// Ces fichiers passent par le Worker (worker/index.js, servirFichier) : liste des véhicules insérée dans
+		// l'accueil (et mode « propositions seules » si LEGACY_AUCTIONS_ENABLED n'est pas "true"), en-têtes X-Robots-Tag
+		// et Cache-Control des pages privées. Les autres fichiers sont servis directement ; les adresses sans fichier
+		// (/vehicules, /mes-offres, /api/…) arrivent au Worker dans tous les cas.
+		"run_worker_first": ["/", "/index.html", "/admin", "/admin.html", "/vendre", "/vendre.html", "/admin-vendeurs", "/admin-vendeurs.html"]
 	},
 	// Base de l'espace acheteur (production). Pour une nouvelle base : `npx wrangler d1 create my-auto-export`,
 	// puis remplacer database_id par l'identifiant affiché (voir README).
@@ -19,20 +21,41 @@
 			"migrations_dir": "migrations"
 		}
 	],
-	// Documents vendeurs privés : aucun accès public au bucket.
-    // Photos envoyées depuis /admin.html (créé avec `npx wrangler r2 bucket create my-auto-export-photos`).
+	// Photos envoyées depuis /admin.html (créé avec `npx wrangler r2 bucket create my-auto-export-photos`).
 	// Le Worker lit env.PHOTOS ; en local, `wrangler dev` utilise un stockage local, pas celui de production.
 	// Pas de binding DOCUMENTS : le téléchargement des factures PDF reste désactivé (voir README, « Factures PDF »).
-    "triggers":{"crons":["0 5 * * *","0 6 * * *"]},
-    "previews":{
-        "d1_databases":[{"binding":"DB","database_name":"my-auto-export-preview","database_id":"a658cc29-3472-4c95-b877-080b77335edf"}],
-        "r2_buckets":[{"binding":"PHOTOS","bucket_name":"my-auto-export-photos-preview"},{"binding":"SELLER_DOCUMENTS","bucket_name":"my-auto-export-seller-private-preview"}]
-    },
 	"r2_buckets": [
-        {"binding":"SELLER_DOCUMENTS","bucket_name":"my-auto-export-seller-private"},
+		{"binding": "SELLER_DOCUMENTS", "bucket_name": "my-auto-export-seller-private"},
 		{
 			"binding": "PHOTOS",
 			"bucket_name": "my-auto-export-photos"
 		}
-	]
+	],
+	// PREVISUALISATION - ressources séparées
+	"previews": {
+		"d1_databases": [
+			{
+				"binding": "DB",
+				"database_name": "my-auto-export-preview",
+				"database_id": "a658cc29-3472-4c95-b877-080b77335edf"
+			}
+		],
+		"r2_buckets": [
+			{"binding": "SELLER_DOCUMENTS", "bucket_name": "my-auto-export-seller-private-preview"},
+			{
+				"binding": "PHOTOS",
+				"bucket_name": "my-auto-export-photos-preview"
+			}
+		]
+	},
+	// LEGACY_AUCTIONS_ENABLED : "true" garde les enchères, l'achat immédiat et les dépôts de garantie actifs ; "false"
+	// passe le site en « propositions seules » (Lot 1, worker/proposal-domain.js). Choix du propriétaire.
+	// SELLER_RETENTION_DAYS : repli si marketplace_policy.retention_days est absent.
+	"vars": {"SELLER_RETENTION_DAYS": "180", "LEGACY_AUCTIONS_ENABLED": "true"},
+	// 02:30 UTC : expiration des offres privées et purge des dossiers vendeurs inactifs (marketplace).
+	// Contrôle SEO quotidien à 07:00, heure de Paris (worker/seo.js). Le Cron est en UTC : 05:00 UTC en été,
+	// 06:00 UTC en hiver ; le Worker n'exécute que celui qui tombe à 07:00 à Paris. Inclus dans le plan gratuit.
+	"triggers": {
+		"crons": ["30 2 * * *", "0 5 * * *", "0 6 * * *"]
+	}
 }

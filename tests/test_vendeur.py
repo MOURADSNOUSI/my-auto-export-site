@@ -32,7 +32,7 @@ class SellerFixture(unittest.TestCase):
         cls.addClassCleanup(cls.tmp.cleanup)
         cls.config = Path(cls.tmp.name) / 'wrangler.json'
         cls.config.write_text(json.dumps({
-            'name':'seller-test','compatibility_date':'2026-10-01','vars':getattr(cls,'ENV_VARS',{}),
+            'name':'seller-test','compatibility_date':'2026-10-01','vars':{'LEGACY_AUCTIONS_ENABLED':'false',**getattr(cls,'ENV_VARS',{})},
             'main':str(ROOT/'worker/main.js'),
             'assets':{'directory':str(ROOT/'my-auto-export'),'binding':'ASSETS','run_worker_first':True},
             'd1_databases':[{'binding':'DB','database_name':'seller-test','database_id':str(uuid.uuid4()),'migrations_dir':str(ROOT/'migrations')}],

@@ -124,6 +124,25 @@ class SecuriteTest(unittest.TestCase):
     def decider(self, offre_id, action):
         return self.requete(f"/api/admin/offers/{offre_id}/{action}", {}, "POST", self.cookies["admin@ex.com"])
 
+    def test_enchere_refusee_ne_bloque_pas_la_vente(self):
+        corps = {"make": "BMW", "model": "X5", "status": "open", "endsAt": dans(seconds=5), "startingPriceTnd": 100000}
+        self.assertEqual(self.requete("/api/admin/vehicles/SEC-1", corps, "PUT", self.cookies["admin@ex.com"])[0], 200)
+        self.assertEqual(self.encherir("alice", "SEC-1", 100000)[0], 201)
+        self.assertEqual(self.encherir("bob", "SEC-1", 10_000_000)[0], 201)  # enchère fantaisiste
+        self.assertEqual(self.decider(self.offres("SEC-1")["bob@ex.com"]["id"], "refuse")[0], 200)
+
+        detail = self.requete("/api/auctions/SEC-1")[1]
+        self.assertEqual((detail["auction"]["currentBidTnd"], detail["auction"]["minNextBidTnd"]), (100000, 101000))
+        self.assertEqual([bid["amountTnd"] for bid in detail["bids"]], [100000], "l'enchère refusée sort de l'historique public")
+        self.assertTrue(self.offres("SEC-1")["alice@ex.com"]["best"])
+        self.assertEqual(self.encherir("bob", "SEC-1", 101000)[0], 201, "la vente continue au prix réel")
+
+        self.sql("UPDATE offers SET created_at = '2000-01-01T00:00:00.000Z' WHERE reference = 'SEC-1'")
+        time.sleep(5)
+        offres = self.offres("SEC-1")
+        gagnante = max((o for o in offres.values() if o["status"] == "pending"), key=lambda o: o["amountTnd"])
+        self.assertEqual(self.decider(gagnante["id"], "accept")[0], 200)
+
     def test_faux_mots_de_passe_ne_bloquent_pas_le_titulaire(self):
         for _ in range(5):
             self.assertEqual(self.requete("/api/login", {"email": "alice@ex.com", "password": "mauvais"}, "POST", ip="10.0.1.1")[0], 401)
@@ -143,6 +162,18 @@ class SecuriteTest(unittest.TestCase):
         corps = {"name": "Masse Test", "email": "masse10@ex.com", "password": MOT_DE_PASSE}
         self.assertEqual(self.requete("/api/register", corps, "POST", ip="10.0.3.1")[0], 429)
         self.assertEqual(self.requete("/api/register", corps, "POST", ip="10.0.3.2")[0], 201)
+
+    def test_refus_d_une_enchere_de_derniere_minute_garde_la_prolongation(self):
+        # Sinon refuser l'enchère fantaisiste d'un complice fermerait la vente au prix « gelé » juste avant.
+        corps = {"make": "Audi", "model": "Q5", "status": "open", "endsAt": dans(seconds=30), "startingPriceTnd": 100000}
+        self.assertEqual(self.requete("/api/admin/vehicles/SEC-2", corps, "PUT", self.cookies["admin@ex.com"])[0], 200)
+        self.assertEqual(self.encherir("alice", "SEC-2", 100000)[0], 201)
+        self.assertEqual(self.encherir("bob", "SEC-2", 10_000_000)[0], 201)
+        avant = self.requete("/api/auctions/SEC-2")[1]["auction"]
+        self.assertTrue(avant["extended"])
+        self.assertEqual(self.decider(self.offres("SEC-2")["bob@ex.com"]["id"], "refuse")[0], 200, "refus possible pendant la vente")
+        apres = self.requete("/api/auctions/SEC-2")[1]["auction"]
+        self.assertEqual((apres["status"], apres["endsAt"], apres["minNextBidTnd"]), ("live", avant["endsAt"], 101000))
 
     def test_rotation_d_adresses_ipv6_dans_un_meme_bloc(self):
         for i in range(5):
@@ -199,10 +230,7 @@ class SecuriteTest(unittest.TestCase):
         for chemin in ("/", "/admin.html", "/lots.json", "/api/catalogue", "/api/me", "/media/vehicules/X/absente.jpg"):
             entetes = self.entetes(chemin)
             for cle, valeur in entetes_worker().items():
-                if cle == "Content-Security-Policy" and chemin.startswith("/api/"):
-                    self.assertIn("frame-ancestors 'none'", entetes[cle])
-                else:
-                    self.assertEqual(entetes.get(cle), valeur, f"{chemin} : {cle}")
+                self.assertEqual(entetes.get(cle), valeur, f"{chemin} : {cle}")
         self.assertEqual(self.requete("/_headers")[0], 404, "le fichier de configuration n'est pas servi")
 
     def test_pages_sans_violation_de_la_csp(self):
