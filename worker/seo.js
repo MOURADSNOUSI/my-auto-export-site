@@ -243,9 +243,10 @@ export function boutonWhatsapp(ctx) {
   return `<a class="bouton-whatsapp" href="https://wa.me/${whatsappChiffres(ctx)}" target="_blank" rel="noopener" aria-label="${escapeHtml(t("whatsapp_aria"))}">${escapeHtml(t("whatsapp"))}</a>`;
 }
 
-function badgesEligibilite(r) {
+// Badge résident seulement si prix_resident_actif : aucune règle résident n'est encore vérifiée.
+function badgesEligibilite(r, ctx) {
   const badges = [];
-  if (r && r.motifNonEligibleResident === null) badges.push(`<li class="badge badge-resident">${escapeHtml(t("badge_resident"))}</li>`);
+  if (r && ctx.site.prix_resident_actif && r.motifNonEligibleResident === null) badges.push(`<li class="badge badge-resident">${escapeHtml(t("badge_resident"))}</li>`);
   if (r && r.motifNonEligibleFcr === null) badges.push(`<li class="badge badge-fcr">${escapeHtml(t("badge_fcr"))}</li>`);
   return badges.length ? `<ul class="badges">${badges.join("")}</ul>` : "";
 }
@@ -278,7 +279,7 @@ function blocPrix(lot, r, ctx, options) {
 // Badges et prix d'un véhicule, pour une carte ou une fiche.
 export function estimationVehicule(lot, ctx, options = {}) {
   const r = estimation(lot, ctx);
-  return `${badgesEligibilite(r)}<div class="bloc-prix">${blocPrix(lot, r, ctx, options)}</div>`;
+  return `${badgesEligibilite(r, ctx)}<div class="bloc-prix">${blocPrix(lot, r, ctx, options)}</div>`;
 }
 
 function photoCarte(lot) {

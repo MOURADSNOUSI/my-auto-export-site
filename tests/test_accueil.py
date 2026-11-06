@@ -183,6 +183,9 @@ class AccueilTest(unittest.TestCase):
         self.assertIn('<section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title">', html)
         self.assertRegex(html.replace("&#39;", "'"), r'<h1 id="page-title"[^>]*>Votre voiture d\'Europe, livrée en Tunisie\.</h1>')
         self.assertIn("Prix estimé, détail complet.", html)
+        self.assertIn("Achat sur mandat", html)
+        self.assertNotIn("Enchères ou achat direct", html)
+        self.assertNotIn("Prix en dinars tunisiens", html)
         for ancre in ("tous-vehicules", "comment-ca-marche", "nos-prix", "questions"):
             self.assertIn(f'href="#{ancre}"', html)
             self.assertIn(f'id="{ancre}"', html)
@@ -243,15 +246,19 @@ class AccueilTest(unittest.TestCase):
 
     def test_badges_suivent_l_eligibilite(self):
         attendus = {"ACC-JEUNE": (True, True), "ACC-FCR": (False, True), "ACC-VIEUX": (False, False), "ACC-SANS": (False, False)}
-        _, accueil, _ = self.page("/")
-        for reference, (resident, fcr) in attendus.items():
-            e = self.estimations.get(reference)
-            if e:
-                self.assertEqual((e["motifNonEligibleResident"] is None, e["motifNonEligibleFcr"] is None), (resident, fcr), reference)
-            _, fiche, _ = self.page(self.fiches[reference])
-            for html in (self.carte(accueil, reference), fiche):
-                self.assertEqual("Importable par un résident" in html, resident, reference)
-                self.assertEqual("Tunisiens à l&#39;étranger (FCR)" in html, fcr, reference)
+        # Badge résident masqué tant que prix_resident_actif est faux (règles résident non vérifiées).
+        for resident_actif in (False, True):
+            self.regler("prix_resident_actif", resident_actif)
+            _, accueil, _ = self.page("/")
+            for reference, (resident, fcr) in attendus.items():
+                e = self.estimations.get(reference)
+                if e:
+                    self.assertEqual((e["motifNonEligibleResident"] is None, e["motifNonEligibleFcr"] is None), (resident, fcr), reference)
+                _, fiche, _ = self.page(self.fiches[reference])
+                for html in (self.carte(accueil, reference), fiche):
+                    self.assertEqual("Importable par un résident" in html, resident and resident_actif, reference)
+                    self.assertEqual("Tunisiens à l&#39;étranger (FCR)" in html, fcr, reference)
+        self.regler("prix_resident_actif", False)
 
     # --- Prix ---
 

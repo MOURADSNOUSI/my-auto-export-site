@@ -21,6 +21,13 @@ export const fr = {
   public_resident: "J'habite en Tunisie · TND",
   public_tre: "À l'étranger · €",
 
+  // Bandeau d'atouts et pied de page
+  atout_prix_titre: "Prix détaillé ligne par ligne",
+  atout_prix_texte: "Achat, transport, douane, frais et commission : chaque ligne est visible. Devis définitif avec notre transitaire.",
+  atout_mandat_titre: "Achat sur mandat",
+  atout_mandat_texte: "Nous achetons le véhicule en Europe pour votre compte, sur mandat écrit.",
+  pied_mention: "Achat sur mandat, devis sur demande",
+
   // Badges d'éligibilité
   badge_resident: "Importable par un résident",
   badge_fcr: "Tunisiens à l'étranger (FCR)",
