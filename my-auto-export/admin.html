@@ -201,6 +201,17 @@
         <h2 id="reglages-title">Automatisations</h2>
         <ul class="todo-list" id="reglages-list"></ul>
       </section>
+      <section class="reglages" id="site" aria-labelledby="site-title">
+        <h2 id="site-title">Site</h2>
+        <form class="stack" id="site-form" novalidate>
+          <div class="field"><label for="s-whatsapp_numero">Numéro WhatsApp</label><input id="s-whatsapp_numero" name="whatsapp_numero" inputmode="tel" maxlength="20" placeholder="+21612345678"><small>Format international, chiffres seulement. Vide : aucun bouton WhatsApp sur le site.</small></div>
+          <div class="field"><label for="s-public_par_defaut">Public par défaut</label><select id="s-public_par_defaut" name="public_par_defaut"><option value="tre">À l'étranger · €</option><option value="resident">J'habite en Tunisie · TND</option></select><small>Appliqué tant que le visiteur n'a pas fait son choix.</small></div>
+          <button class="button" type="submit">Enregistrer</button>
+        </form>
+        <p class="message info"><strong>À activer seulement après validation des paramètres de prix par le transitaire.</strong></p>
+        <ul class="todo-list" id="site-cases"></ul>
+        <small id="site-temoignages"></small>
+      </section>
       <div class="toolbar">
         <div class="field"><label for="search">Rechercher</label><input id="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off"></div>
         <div class="field" style="flex: 0 1 200px"><label for="show">Afficher</label>
@@ -229,6 +240,8 @@
             <div class="field"><label for="f-year">Année</label><input id="f-year" name="year" type="number" inputmode="numeric" min="1950" max="2100"></div>
             <div class="field"><label for="f-mileageKm">Kilométrage</label><input id="f-mileageKm" name="mileageKm" type="number" inputmode="numeric" min="0"></div>
             <div class="field"><label for="f-fuel">Énergie</label><input id="f-fuel" name="fuel" maxlength="120" list="fuels"></div>
+            <div class="field"><label for="f-engineCc">Cylindrée (cm³)</label><input id="f-engineCc" name="engineCc" type="number" inputmode="numeric" min="1" max="20000" step="1"><small>Vide pour un électrique</small></div>
+            <div class="field"><label for="f-premiereImmatriculation">Date de première immatriculation</label><input id="f-premiereImmatriculation" name="premiereImmatriculation" type="date"><small>Âge exact pour l'éligibilité ; sinon l'année</small></div>
             <div class="field"><label for="f-bodyType">Catégorie</label><input id="f-bodyType" name="bodyType" maxlength="120" list="bodies"></div>
             <div class="field"><label for="f-country">Pays d'origine</label><input id="f-country" name="country" maxlength="120"></div>
           </div>
@@ -240,6 +253,7 @@
             <div class="field"><label for="f-status">Statut *</label>
               <select id="f-status" name="status"><option value="stock">En stock (vente directe)</option><option value="upcoming">Enchère à venir</option><option value="open">Enchère en cours</option></select></div>
             <div class="field wide" id="ends-field"><label for="f-endsAt">Fin de l'enchère *</label><input id="f-endsAt" name="endsAt" type="datetime-local"></div>
+            <div class="field"><label for="f-prixEur">Prix d'achat en EUR</label><input id="f-prixEur" name="prixEur" type="number" inputmode="numeric" min="0" step="1"><small>Base des prix estimés</small></div>
             <div class="field"><label for="f-indicativePriceTnd">Prix de vente</label><input id="f-indicativePriceTnd" name="indicativePriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
             <div class="field"><label for="f-startingPriceTnd">Mise à prix</label><input id="f-startingPriceTnd" name="startingPriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
             <div class="field"><label for="f-reservePriceTnd">Prix de réserve</label><input id="f-reservePriceTnd" name="reservePriceTnd" type="number" inputmode="numeric" min="0" step="1"></div>
@@ -300,8 +314,8 @@
 
   <script>
     const STATUTS = { stock: "En stock", upcoming: "Enchère à venir", open: "Enchère en cours" };
-    const CHAMPS_TEXTE = ["make", "model", "trim", "fuel", "bodyType", "country", "availableFrom", "pickupLocation", "seller", "sourceUrl"];
-    const CHAMPS_NOMBRE = ["year", "mileageKm", "indicativePriceTnd", "startingPriceTnd", "reservePriceTnd", "buyNowPriceTnd", "bidIncrementTnd"];
+    const CHAMPS_TEXTE = ["make", "model", "trim", "fuel", "bodyType", "country", "availableFrom", "pickupLocation", "seller", "sourceUrl", "premiereImmatriculation"];
+    const CHAMPS_NOMBRE = ["year", "mileageKm", "engineCc", "prixEur", "indicativePriceTnd", "startingPriceTnd", "reservePriceTnd", "buyNowPriceTnd", "bidIncrementTnd"];
     const TAILLE_MAX = 1600; // côté le plus long des photos envoyées, en pixels
 
     const etat = { user: null, vehicles: [], photosEnabled: false, edition: null, photos: [], envois: 0, aSupprimer: new Set() };
@@ -354,7 +368,7 @@
       etat.offres = offres.offers;
       etat.lotsOffres = offres.lots;
       renderAFaire();
-      await Promise.all([chargerVirements(), chargerReglages()]);
+      await Promise.all([chargerVirements(), chargerReglages(), chargerSite()]);
       etat.photosEnabled = data.photosEnabled;
       $("photos-off").classList.toggle("hidden", etat.photosEnabled);
       $("makes").innerHTML = [...new Set(etat.vehicles.map((item) => item.lot.make))].sort().map((m) => `<option value="${escapeHtml(m)}">`).join("");
@@ -487,6 +501,58 @@
         await api(`/api/admin/reglages/${encodeURIComponent(caseACocher.dataset.reglage)}`, { method: "PUT", body: { valeur: caseACocher.checked } });
         flash(`${LIBELLES_REGLAGES[caseACocher.dataset.reglage][0]} : ${caseACocher.checked ? "activé" : "désactivé"}.`);
         await chargerReglages();
+      } catch (error) {
+        caseACocher.checked = !caseACocher.checked;
+        caseACocher.disabled = false;
+        alert(error.message);
+      }
+    });
+
+    // Rubrique « Site » (chantier 3) : WhatsApp, public par défaut et affichage public des prix estimés.
+    const CASES_SITE = {
+      prix_publics_actifs: ["Prix estimés visibles du public", "Sinon : « Estimation sur demande » sur les cartes et les fiches."],
+      prix_resident_actif: ["Prix résidents visibles du public", "Sinon : « Prix résident sur devis » (régime résident en attente de textes d'application)."]
+    };
+
+    async function chargerSite() {
+      const { reglages } = await api("/api/admin/site");
+      const valeurs = Object.fromEntries(reglages.map((r) => [r.cle, r]));
+      $("s-whatsapp_numero").value = valeurs.whatsapp_numero.valeur;
+      $("s-public_par_defaut").value = valeurs.public_par_defaut.valeur;
+      $("site-cases").innerHTML = Object.entries(CASES_SITE).map(([cle, [libelle, aide]]) => `<li>
+        <label><input type="checkbox" data-site="${cle}"${valeurs[cle].valeur ? " checked" : ""}> ${escapeHtml(libelle)}</label>
+        <small>${escapeHtml(aide)}${valeurs[cle].misAJour ? ` Modifié le ${dateHeure(valeurs[cle].misAJour)}.` : ""}</small></li>`).join("");
+      $("site-temoignages").textContent = `Témoignages publiés : ${valeurs.temoignages.valeur.length} (section masquée tant qu'il n'y en a aucun ; saisie prévue dans un prochain chantier).`;
+    }
+
+    async function ecrireSite(cle, valeur) {
+      await api(`/api/admin/site/${cle}`, { method: "PUT", body: { valeur } });
+    }
+
+    $("site-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        await ecrireSite("whatsapp_numero", $("s-whatsapp_numero").value.trim());
+        await ecrireSite("public_par_defaut", $("s-public_par_defaut").value);
+        flash("Réglages du site enregistrés.");
+        await chargerSite();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    $("site-cases").addEventListener("change", async (event) => {
+      const caseACocher = event.target.closest("[data-site]");
+      if (!caseACocher) return;
+      if (caseACocher.checked && !confirm("À activer seulement après validation des paramètres de prix par le transitaire. Continuer ?")) {
+        caseACocher.checked = false;
+        return;
+      }
+      caseACocher.disabled = true;
+      try {
+        await ecrireSite(caseACocher.dataset.site, caseACocher.checked);
+        flash(`${CASES_SITE[caseACocher.dataset.site][0]} : ${caseACocher.checked ? "activé" : "désactivé"}.`);
+        await chargerSite();
       } catch (error) {
         caseACocher.checked = !caseACocher.checked;
         caseACocher.disabled = false;

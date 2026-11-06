@@ -464,6 +464,15 @@
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
 
+    .catalogue-tabs { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-block-end: 14px; }
+    .catalogue-tabs a { position: relative; padding-block: 8px; padding-inline-end: 16px; color: var(--ink-soft); font-size: 14px; white-space: nowrap; }
+    .catalogue-tabs a[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -3px var(--green); }
+    .catalogue-tabs .nav-count { inset-block-start: -6px; inset-inline-end: -8px; right: auto; }
+    .header-tools .bouton-whatsapp { margin-inline-end: 6px; }
+    @media (max-width: 680px) {
+      .header-tools .bouton-whatsapp { min-block-size: 36px; padding-inline: 10px; font-size: 13px; }
+      #nav-favorites, #nav-offers { display: none; }
+    }
 .seller-banner{margin:1rem auto;padding:1.4rem;background:#edf4ff;border:1px solid #b6cff7;border-radius:14px;max-width:1240px}.seller-banner a{display:inline-block;color:#144da2;font-weight:700;margin:.4rem .6rem .4rem 0}
 </style>
 <link rel="stylesheet" href="/proposal-dialog.css">
@@ -496,14 +505,12 @@
         <img src="logo.png" alt="Logo M&Y AUTO EXPORT">
         <span class="brand-name">M&Y AUTO EXPORT<small>Véhicules sans frontières</small></span>
       </a>
+      <!-- Libellés (data-texte) insérés par le Worker depuis worker/textes.js. -->
       <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
-        <a href="/vendre">Vendre mon véhicule</a>
-        <a href="#ventes" data-nav="all" aria-current="true">Tous les véhicules <span class="nav-count" id="nav-count-all">0</span></a>
-        <a href="#ventes" data-nav="stock">Notre stock <span class="nav-count" id="nav-count-stock">0</span></a>
-        <a href="#ventes" data-nav="auction">Enchères <span class="nav-count" id="nav-count-auction">0</span></a>
-        <a href="#ventes" data-nav="fixed">Prix fixes <span class="nav-count" id="nav-count-fixed">0</span></a>
-        <a href="#ventes" data-nav="exclusive">Exclusivités <span class="nav-count hot" id="nav-count-exclusive">0</span></a>
-        <a class="nav-gap" href="#contact">Contact</a>
+        <a href="#tous-vehicules" data-texte="menu_vehicules"></a>
+        <a href="#comment-ca-marche" data-texte="menu_comment"></a>
+        <a href="#nos-prix" data-texte="menu_prix"></a>
+        <a href="#questions" data-texte="menu_questions"></a>
       </nav>
       <div class="header-tools">
         <button class="icon-button" type="button" id="nav-search" aria-label="Rechercher un véhicule"><svg><use href="#i-search"/></svg></button>
@@ -515,7 +522,7 @@
         </button>
         <button class="account-chip" type="button" id="account-button" data-open-account>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="filled" cx="12" cy="8" r="4"/><path class="filled" d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7Z"/></svg>
-          <span id="account-label"><strong><span class="account-dot" id="account-dot" aria-hidden="true"></span>Se connecter</strong><small>Créer un compte</small></span>
+          <span id="account-label"><strong><span class="account-dot" id="account-dot" aria-hidden="true"></span><span data-texte="compte_titre"></span></strong><small data-texte="compte_action"></small></span>
         </button>
         <button class="icon-button menu-button" type="button" id="menu-button" aria-label="Menu" aria-expanded="false" aria-controls="main-nav"><svg><use href="#i-menu"/></svg></button>
       </div>
@@ -525,8 +532,10 @@
   <section class="hero" id="accueil" aria-labelledby="page-title">
     <picture><source srcset="/photos/web/MY-0001-1.webp" type="image/webp"><img class="hero-photo" src="photos/MY-0001-1.jpg" alt="" width="960" height="1280" fetchpriority="high" decoding="async" onerror="this.remove()"></picture>
     <div class="shell hero-inner">
-      <h1 id="page-title">Votre prochaine voiture, au meilleur prix, livrée chez vous !</h1>
-      <p class="hero-lead">Avec <strong>M&amp;Y AUTO EXPORT</strong>, découvrez une sélection de véhicules européens et américains à prix compétitifs, disponibles en <strong>achat direct ou aux enchères</strong>.</p>
+      <h1 id="page-title" data-texte="hero_titre"></h1>
+      <p class="hero-lead" data-texte="hero_sous_titre"></p>
+      <!-- Choix du public (cookie « public ») rendu par le Worker. -->
+      <div id="choix-public"></div>
       <div class="hero-actions">
         <a class="hero-cta" href="#ventes">Voir les véhicules</a>
         <a class="hero-cta hero-cta-secondary" href="#contact">Nous contacter</a>
@@ -543,15 +552,24 @@
 
   <section class="features" aria-label="Nos engagements">
     <div class="shell features-inner">
-      <div class="feature"><svg class="icon"><use href="#i-coin"/></svg><h2>Prix en dinars tunisiens</h2><p>Prix indicatifs calculés selon une formule publiée, sans conversion à faire.</p></div>
+      <div class="feature"><svg class="icon"><use href="#i-coin"/></svg><h2 data-texte="atout_prix_titre"></h2><p data-texte="atout_prix_texte"></p></div>
       <div class="feature"><svg class="icon"><use href="#i-shield"/></svg><h2>Véhicules sélectionnés</h2><p>Chaque annonce est vérifiée par l'équipe M&Y AUTO EXPORT avant publication.</p></div>
       <div class="feature"><svg class="icon"><use href="#i-truck"/></svg><h2>Livraison en Tunisie</h2><p>De l'Europe jusqu'à vous : enlèvement et acheminement organisés avec vous.</p></div>
-      <div class="feature"><svg class="icon"><use href="#i-gavel"/></svg><h2>Enchères ou achat direct</h2><p>Faites une offre depuis votre espace acheteur ou achetez au prix affiché.</p></div>
+      <div class="feature"><svg class="icon"><use href="#i-gavel"/></svg><h2 data-texte="atout_mandat_titre"></h2><p data-texte="atout_mandat_texte"></p></div>
       <div class="feature"><svg class="icon"><use href="#i-file"/></svg><h2>Démarches accompagnées</h2><p>Régime FCR, dédouanement et immatriculation confirmés selon votre situation.</p></div>
     </div>
   </section>
 
   <main class="shell">
+    <section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title" hidden>
+      <div class="section-title"><h2 id="tous-vehicules-title">Tous nos véhicules</h2><a class="text-action" href="/vehicules">Voir la liste complète</a></div>
+      <!-- Rempli par le Worker (worker/seo.js) : cartes des véhicules, lisibles sans JavaScript. -->
+      <ul class="cartes-vehicules" id="liste-vehicules"></ul>
+    </section>
+
+    <section class="block" id="comment-ca-marche" aria-labelledby="comment-titre"></section>
+    <section class="block" id="nos-prix" aria-labelledby="prix-titre"></section>
+
 <section class="seller-banner"><h2>Vendez votre véhicule sur M&amp;Y AUTO EXPORT</h2><p>Déposez un dossier privé. Publication après vérification du diagnostic par notre équipe.</p><a href="/vendre">Déposer mon véhicule</a> · <a href="/mes-vehicules">Espace vendeur</a> · <a href="/mes-offres">Mes offres privées</a></section>
 
     <section class="block" id="arrivages" aria-labelledby="recent-title" hidden>
@@ -585,6 +603,13 @@
       </aside>
 
       <div class="listing-panel">
+        <nav class="catalogue-tabs" aria-label="Rubriques du catalogue">
+          <a href="#ventes" data-nav="all" aria-current="true">Tous les véhicules <span class="nav-count" id="nav-count-all">0</span></a>
+          <a href="#ventes" data-nav="stock">Notre stock <span class="nav-count" id="nav-count-stock">0</span></a>
+          <a href="#ventes" data-nav="auction">Enchères <span class="nav-count" id="nav-count-auction">0</span></a>
+          <a href="#ventes" data-nav="fixed">Prix fixes <span class="nav-count" id="nav-count-fixed">0</span></a>
+          <a href="#ventes" data-nav="exclusive">Exclusivités <span class="nav-count hot" id="nav-count-exclusive">0</span></a>
+        </nav>
         <div class="section-title results-head">
           <h2 id="result-count">Résultats</h2>
           <label class="hidden" for="sort">Trier les véhicules</label>
@@ -645,15 +670,13 @@
       </article>
     </section>
 
-    <section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title" hidden>
-      <div class="section-title"><h2 id="tous-vehicules-title">Tous nos véhicules</h2><a class="text-action" href="/vehicules">Voir la liste complète</a></div>
-      <!-- Rempli par le Worker (worker/seo.js) : liens vers chaque fiche, lisibles sans JavaScript. -->
-      <ul class="liste-vehicules" id="liste-vehicules"></ul>
-    </section>
+    <!-- Sections remplies par le Worker (worker/seo.js, textes de worker/textes.js). Témoignages masqués tant qu'il n'y en a pas. -->
+    <section class="block" id="temoignages" aria-labelledby="temoignages-titre" hidden></section>
+    <section class="block" id="questions" aria-labelledby="questions-titre"></section>
   </main>
 
   <footer>
-    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules à votre critère</span><span>Prix en dinars tunisiens · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules à votre critère</span><span><span data-texte="pied_mention"></span> · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span>
       <p class="footer-note">Dépôt de garantie : somme déposée sur votre compte client, retirable à chaque enchère. C'est une caution d'engagement à l'achat en cas d'enchère remportée, sous réserve de la loi tunisienne.</p></div>
   </footer>
 
@@ -711,6 +734,8 @@
   </dialog>
 
   <script>
+    // Textes servis par le Worker (worker/textes.js).
+    const TEXTES = (() => { try { return JSON.parse(document.getElementById("textes")?.textContent || "{}"); } catch { return {}; } })();
     let lots = [];
     let catalogueEtat = "loading";
     let watchlist = new Set();
@@ -779,7 +804,8 @@
       if (sort === "newest") visibleLots.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
       ["all", "stock", "auction", "fixed", "exclusive"].forEach((categorie) => {
-        document.getElementById(`nav-count-${categorie}`).textContent = lots.filter(CATEGORIES[categorie]).length;
+        const compteur = document.getElementById(`nav-count-${categorie}`);
+        if (compteur) compteur.textContent = lots.filter(CATEGORIES[categorie]).length;
       });
       majCompteurs();
       const rubrique = watchOnly ? "Mes favoris" : { all: "Résultats", stock: "Notre stock", auction: "Enchères", fixed: "Prix fixes", exclusive: "Exclusivités" }[activeTab] || "Résultats";
@@ -898,7 +924,7 @@
 
     const PROPOSALS_ONLY=document.documentElement.dataset.proposalOnly==='true';
     const FREE_OFFERS=document.documentElement.dataset.freeOffers==='true';
-    if(PROPOSALS_ONLY){const auctionLink=document.querySelector('[data-nav="auction"]');auctionLink.setAttribute('aria-disabled','true');auctionLink.title='Les enchères sont désactivées pendant le Lot 1';auctionLink.style.opacity='.5';const accroche=document.querySelector('.hero-lead');if(accroche)accroche.textContent='Des véhicules sélectionnés en Europe et aux États-Unis. Proposez une offre privée au vendeur, dans la devise de l’annonce.';}
+    if(PROPOSALS_ONLY){const auctionLink=document.querySelector('[data-nav="auction"]');auctionLink.setAttribute('aria-disabled','true');auctionLink.title='Les enchères sont désactivées pendant le Lot 1';auctionLink.style.opacity='.5';}
     function choisirOnglet(onglet) {
       if(PROPOSALS_ONLY&&onglet==='auction')return;
       activeTab = onglet;
@@ -1217,7 +1243,7 @@
       const user = compte.user;
       document.getElementById("account-label").innerHTML = user
         ? `<strong><span class="account-dot on" aria-hidden="true"></span>${escapeHtml(user.name.split(" ")[0])} ${numeroMembre(user)}</strong><small>${user.profiles.buyer && user.profiles.seller ? "Acheteur · Vendeur" : user.profiles.seller ? "Vendeur" : "Acheteur"}</small>`
-        : `<strong><span class="account-dot" aria-hidden="true"></span>Se connecter</strong><small>Créer un compte</small>`;
+        : `<strong><span class="account-dot" aria-hidden="true"></span>${escapeHtml(TEXTES.compte_titre || "")}</strong><small>${escapeHtml(TEXTES.compte_action || "Se connecter")}</small>`;
       document.getElementById("account-button").setAttribute("aria-label", user ? `Mon espace acheteur, ${user.name}` : "Se connecter ou créer un compte");
       majCompteurs();
     }
@@ -1548,7 +1574,7 @@
       const ouvert = siteHeader.classList.toggle("menu-open");
       menuButton.setAttribute("aria-expanded", String(ouvert));
     });
-    document.querySelector("#main-nav a[href='#contact']").addEventListener("click", fermerMenu);
+    document.querySelectorAll("#main-nav a").forEach((lien) => lien.addEventListener("click", fermerMenu));
 
     document.getElementById("hero-make").addEventListener("change", () => {
       remplirModeles("hero-model", valeur("hero-make"), "Tous");

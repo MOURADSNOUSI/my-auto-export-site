@@ -8,9 +8,9 @@ import { marketplace } from "./marketplace.js";
 import { diagnosticValid, expireOffers, policy } from "./marketplace-domain.js";
 import { marketplacePage } from "./marketplace-pages.js";
 import { estRouteMcp, routeMcp } from "./mcp.js";
-import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, listeIndexable, page404, routeSeo } from "./seo.js";
+import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, page404, redirectionPublic, routeSeo, vitrineAccueil } from "./seo.js";
 import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
-import { REGLAGES_INTERRUPTEURS, ecrireInterrupteur, journaliser, listerReglages } from "./reglages.js";
+import { REGLAGES_INTERRUPTEURS, REGLAGES_SITE, ecrireInterrupteur, ecrireReglageSite, journaliser, listerReglages, listerReglagesSite, validerReglageSite } from "./reglages.js";
 import { mettreAJourTaux, routeAdminPrix } from "./prix.js";
 
 const SESSION_COOKIE = "my_session";
@@ -110,6 +110,8 @@ async function repondre(request, env, ctx) {
   if (estRouteMcp(url.pathname)) return routeMcp(request, env, url);
   if (estRouteSeo(url.pathname) && lecture) return routeSeo(request, env, url);
   if (!url.pathname.startsWith("/api/")) {
+    // Choix du public sans JavaScript (/?public=resident) : cookie puis redirection 303.
+    if (url.pathname === "/" && url.searchParams.has("public") && lecture) return redirectionPublic(url);
     if (url.pathname === "/mes-vehicules" && lecture) return servirFichier(request, env, url, "/vendre");
     if (PAGES_MARKETPLACE.includes(url.pathname) && lecture) return marketplacePage(url.pathname);
     return servirFichier(request, env, url);
@@ -129,7 +131,15 @@ async function repondre(request, env, ctx) {
 
 // alias : autre fichier servi à cette adresse (/mes-vehicules sert l'espace vendeur /vendre).
 async function servirFichier(request, env, url, alias) {
-  const reponse = await env.ASSETS.fetch(alias ? new Request(new URL(alias, url), request) : request);
+  // Accueil : le rendu dépend du cookie « public » ; pas de 304 sur le fichier statique, qui ne change pas avec lui.
+  const accueilDemande = url.pathname === "/" && request.method === "GET";
+  const sansConditions = () => {
+    const entetes = new Headers(request.headers);
+    entetes.delete("If-None-Match");
+    entetes.delete("If-Modified-Since");
+    return new Request(request.url, { method: request.method, headers: entetes });
+  };
+  const reponse = await env.ASSETS.fetch(alias ? new Request(new URL(alias, url), request) : accueilDemande ? sansConditions() : request);
   if (reponse.status === 404 && (request.headers.get("Accept") || "").includes("text/html")) return page404();
   if (["/admin", "/admin.html", "/vendre", "/vendre.html", "/admin-vendeurs", "/admin-vendeurs.html"].includes(url.pathname)) {
     const entetes = new Headers(reponse.headers);
@@ -146,19 +156,9 @@ async function servirFichier(request, env, url, alias) {
     } })
     .transform(reponse);
   if (url.pathname !== "/") return accueil;
-  // Accueil : la liste des véhicules est insérée côté serveur, lisible par les moteurs qui n'exécutent pas JavaScript.
-  let liste;
-  try {
-    liste = await listeIndexable(request, env);
-  } catch (error) {
-    console.error("homepage_catalogue_failed");
-    return accueil;
-  }
-  if (!liste) return accueil;
-  return new HTMLRewriter()
-    .on("#tous-vehicules", { element: (element) => element.removeAttribute("hidden") })
-    .on("#liste-vehicules", { element: (element) => element.setInnerContent(liste, { html: true }) })
-    .transform(accueil);
+  // Accueil : textes, choix du public et cartes des véhicules insérés côté serveur (worker/seo.js), lisibles sans
+  // JavaScript.
+  return vitrineAccueil(request, env, accueil);
 }
 
 export class ApiError extends Error {
@@ -877,6 +877,17 @@ async function routeAdmin(request, env, path, method, ctx) {
     await ecrireInterrupteur(env, reglage[1], valeur, user.id);
     return json({ reglages: await listerReglages(env) });
   }
+  // Rubrique « Site » : WhatsApp, public par défaut, affichage des prix, témoignages.
+  if (path === "/api/admin/site" && method === "GET") return json({ reglages: await listerReglagesSite(env) });
+  const reglageSite = path.match(/^\/api\/admin\/site\/([a-z_]{1,64})$/);
+  if (reglageSite && method === "PUT") {
+    if (!Object.hasOwn(REGLAGES_SITE, reglageSite[1])) throw new ApiError(404, "Réglage inconnu.");
+    const { valeur } = await lireJson(request);
+    const { texte, erreur } = validerReglageSite(reglageSite[1], valeur);
+    if (erreur) throw new ApiError(400, erreur);
+    await ecrireReglageSite(env, reglageSite[1], texte, user.id);
+    return json({ reglages: await listerReglagesSite(env) });
+  }
   if (path.includes("/auctions/") && !legacyAuctionsEnabled(env)) throw new ApiError(410, "Les enchères sont désactivées pendant le Lot 1.");
   if (path === "/api/admin/seo" && method === "GET") {
     const { results } = await env.DB.prepare("SELECT ran_at, declencheur, ok, resume FROM seo_journal ORDER BY id DESC LIMIT 30").all();
@@ -1095,7 +1106,7 @@ function validerVehicule(body, reference) {
     if (!Number.isInteger(annee) || annee < 1950 || annee > 2100) throw new ApiError(400, "Année invalide.");
     lot.year = annee;
   }
-  for (const [cle, nom] of [["mileageKm", "Kilométrage"], ["indicativePriceTnd", "Prix"], ["startingPriceTnd", "Mise à prix"], ["reservePriceTnd", "Prix de réserve"], ["buyNowPriceTnd", "Achat immédiat"], ["bidIncrementTnd", "Pas d'enchère"]]) {
+  for (const [cle, nom] of [["mileageKm", "Kilométrage"], ["indicativePriceTnd", "Prix"], ["startingPriceTnd", "Mise à prix"], ["reservePriceTnd", "Prix de réserve"], ["buyNowPriceTnd", "Achat immédiat"], ["bidIncrementTnd", "Pas d'enchère"], ["prixEur", "Prix d'achat en EUR"]]) {
     const valeur = nombre(body[cle], nom);
     if (valeur !== null) lot[cle] = valeur;
   }
@@ -1104,6 +1115,12 @@ function validerVehicule(body, reference) {
     if (valeur === null) continue;
     if (!Number.isInteger(valeur) || valeur < 1 || valeur > max) throw new ApiError(400, `${nom} : valeur invalide.`);
     lot[cle] = valeur;
+  }
+  // Date de première immatriculation (AAAA-MM-JJ) : âge exact du véhicule pour l'éligibilité des prix estimés.
+  const immatriculation = texte(body.premiereImmatriculation, 20);
+  if (immatriculation) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(immatriculation) || !Number.isFinite(Date.parse(immatriculation))) throw new ApiError(400, "Date de première immatriculation invalide (AAAA-MM-JJ).");
+    lot.premiereImmatriculation = immatriculation;
   }
   const sourceUrl = texte(body.sourceUrl, 500);
   if (sourceUrl) {
