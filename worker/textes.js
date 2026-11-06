@@ -21,6 +21,14 @@ export const fr = {
   public_resident: "J'habite en Tunisie · TND",
   public_tre: "À l'étranger · €",
 
+  // Déposer une annonce (accueil)
+  deposer_bouton: "Déposer une annonce",
+  deposer_quitter: "Quitter",
+  deposer_bonjour: "Bonjour !",
+  deposer_texte: "Connectez-vous ou créez un compte pour déposer votre annonce.",
+  deposer_connexion: "Me connecter",
+  deposer_inscription: "Créer un compte",
+
   // Bandeau d'atouts et pied de page
   atout_prix_titre: "Prix détaillé ligne par ligne",
   atout_prix_texte: "Achat, transport, douane, frais et commission : chaque ligne est visible. Devis définitif avec notre transitaire.",
