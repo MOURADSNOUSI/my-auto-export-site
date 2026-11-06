@@ -16,11 +16,6 @@ export const fr = {
   hero_titre: "Votre voiture d'Europe, livrée en Tunisie.",
   hero_sous_titre: "Prix estimé, détail complet.",
 
-  // Choix du public
-  public_groupe: "Votre situation",
-  public_resident: "J'habite en Tunisie · TND",
-  public_tre: "À l'étranger · €",
-
   // Connexion avec Google (accueil, /vendre, formulaire de mandat)
   google_bouton: "Continuer avec Google",
   connexion_ou: "Ou",

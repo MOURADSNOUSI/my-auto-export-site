@@ -224,35 +224,31 @@ class AccueilTest(unittest.TestCase):
             self.assertEqual((statut, entetes.get("Location"), entetes.get("Set-Cookie")), (303, "/", None), invalide)
 
     def test_cookie_bascule_l_affichage(self):
+        # Plus de boutons de choix : le public vient du cookie (ou du lien ?public=), sinon du réglage par défaut.
         for chemin in ("/", "/vehicules", self.fiches["ACC-JEUNE"]):
-            if chemin == "/":
-                # Accueil sans cartes : seul le choix du public bascule.
-                self.assertIn('data-public="resident" aria-pressed="true"', self.page(chemin, "resident")[1])
-                self.assertIn('data-public="tre" aria-pressed="true"', self.page(chemin, "tre")[1])
-                continue
+            self.assertNotIn("data-public", self.page(chemin)[1], chemin)
+            self.assertNotIn("J&#39;habite en Tunisie · TND", self.page(chemin)[1], chemin)
+        for chemin in ("/vehicules", self.fiches["ACC-JEUNE"]):
             _, html, _ = self.page(chemin, "resident")
-            self.assertIn('data-public="resident" aria-pressed="true"', html, chemin)
-            self.assertIn('data-public="tre" aria-pressed="false"', html, chemin)
             self.assertIn("Prix résident sur devis", html, chemin)
             self.assertIn("régime en attente de textes d&#39;application", html, chemin)
             _, html, _ = self.page(chemin, "tre")
-            self.assertIn('data-public="tre" aria-pressed="true"', html, chemin)
             self.assertNotIn("Prix résident sur devis", html, chemin)
             self.assertIn("Estimation sur demande", html, chemin)
 
     def test_cookie_invalide_ignore(self):
         for valeur in ("admin", "TRE", "resident2", "<b>"):
-            _, html, _ = self.page("/", valeur)
-            self.assertIn('data-public="tre" aria-pressed="true"', html, valeur)
+            _, html, _ = self.page("/vehicules", valeur)
             self.assertNotIn("Prix résident sur devis", html, valeur)
+            self.assertIn("Estimation sur demande", html, valeur)
 
     def test_public_par_defaut(self):
         self.regler("public_par_defaut", "resident")
         self.addCleanup(self.regler, "public_par_defaut", "tre")
-        _, html, _ = self.page("/")
-        self.assertIn('data-public="resident" aria-pressed="true"', html)
-        _, html, _ = self.page("/", "tre")
-        self.assertIn('data-public="tre" aria-pressed="true"', html, "le cookie l'emporte sur le réglage")
+        _, html, _ = self.page("/vehicules")
+        self.assertIn("Prix résident sur devis", html)
+        _, html, _ = self.page("/vehicules", "tre")
+        self.assertNotIn("Prix résident sur devis", html, "le cookie l'emporte sur le réglage")
 
     # --- Badges ---
 
@@ -429,16 +425,6 @@ class AccueilTest(unittest.TestCase):
         if CAPTURES:
             page.screenshot(path=str(Path(CAPTURES) / "accueil-390.png"), full_page=True)
             page.screenshot(path=str(Path(CAPTURES) / "accueil-390-haut.png"))
-        self.assertEqual(page.get_attribute("[data-public='tre']", "aria-pressed"), "true")
-        page.focus("[data-public='resident']")
-        with page.expect_navigation():
-            page.keyboard.press("Enter")
-        self.assertEqual(page.get_attribute("[data-public='resident']", "aria-pressed"), "true")
-        self.assertIn({"name": "public", "value": "resident"}, [{"name": c["name"], "value": c["value"]} for c in context.cookies()])
-        with page.expect_navigation():
-            page.click("[data-public='tre']")
-        self.assertEqual(page.get_attribute("[data-public='tre']", "aria-pressed"), "true")
-        page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
         page.click("#account-button")
         page.wait_for_selector("#auth-dialog[open]")
         self.assertIn("Mon compte", page.text_content("#account-label"))
@@ -449,16 +435,16 @@ class AccueilTest(unittest.TestCase):
             self.assertLessEqual(largeurs[0], largeurs[1], chemin)
         self.assertEqual(erreurs, [])
 
-    def test_sans_javascript_le_choix_fonctionne_par_lien(self):
+    def test_sans_javascript_cartes_et_lien_public(self):
         context = self.browser.new_context(java_script_enabled=False, viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
         page.goto(self.base + "/vehicules")
         self.assertTrue(page.is_visible(".cartes-vehicules .carte-vehicule"))
-        page.goto(self.base + "/")
-        page.click("[data-public='resident']")
-        page.wait_for_url(self.base + "/")
-        self.assertEqual(page.get_attribute("[data-public='resident']", "aria-pressed"), "true")
+        # Le lien ?public= (à partager, par exemple) pose toujours le cookie.
+        page.goto(self.base + "/vehicules?public=resident")
+        page.wait_for_url(self.base + "/vehicules")
+        self.assertIn("Prix résident sur devis", page.text_content("main"))
 
     def test_deposer_une_annonce(self):
         _, html, _ = self.page("/")
