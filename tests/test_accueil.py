@@ -452,6 +452,42 @@ class AccueilTest(unittest.TestCase):
         page.wait_for_url(self.base + "/")
         self.assertEqual(page.get_attribute("[data-public='resident']", "aria-pressed"), "true")
 
+    def test_deposer_une_annonce(self):
+        _, html, _ = self.page("/")
+        self.assertIn('id="deposer-annonce" href="/vendre"', html, "lien direct sans JavaScript")
+        self.assertNotIn("Vendez votre véhicule sur", html)
+        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.addCleanup(context.close)
+        page = context.new_page()
+        erreurs = []
+        page.on("pageerror", lambda e: erreurs.append(str(e)))
+        page.goto(self.base + "/")
+        page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
+        # Non connecté : choix connexion ou inscription, sans quitter l'accueil.
+        page.click("#deposer-annonce")
+        page.wait_for_selector("#deposer-dialog[open]")
+        self.assertIn("Connectez-vous ou créez un compte pour déposer votre annonce.", page.text_content("#deposer-dialog"))
+        if CAPTURES:
+            page.screenshot(path=str(Path(CAPTURES) / "deposer-390.png"))
+        page.click("#deposer-dialog [data-close]")
+        self.assertFalse(page.is_visible("#deposer-dialog"))
+        page.click("#deposer-annonce")
+        page.click("[data-deposer='register']")
+        page.wait_for_selector("#auth-dialog[open]")
+        self.assertTrue(page.is_visible("#register-form"))
+        page.keyboard.press("Escape")
+        page.click("#deposer-annonce")
+        page.click("[data-deposer='login']")
+        page.wait_for_selector("#auth-dialog[open]")
+        self.assertTrue(page.is_visible("#login-form"))
+        # Connexion depuis ce choix : direction le dépôt d'annonce.
+        page.fill("#login-form [name=email]", "admin@ex.com")
+        page.fill("#login-form [name=password]", MOT_DE_PASSE)
+        with page.expect_navigation():
+            page.click("#login-form [type=submit]")
+        self.assertTrue(page.url.startswith(self.base + "/vendre"), page.url)
+        self.assertEqual(erreurs, [])
+
     def test_capture_bureau(self):
         context = self.browser.new_context(viewport={"width": 1440, "height": 900})
         self.addCleanup(context.close)

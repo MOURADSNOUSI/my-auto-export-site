@@ -462,7 +462,8 @@
       .header-tools .bouton-whatsapp { min-block-size: 36px; padding-inline: 10px; font-size: 13px; }
       #nav-favorites, #nav-offers { display: none; }
     }
-.seller-banner{margin:1rem auto;padding:1.4rem;background:#edf4ff;border:1px solid #b6cff7;border-radius:14px;max-width:1240px}.seller-banner a{display:inline-block;color:#144da2;font-weight:700;margin:.4rem .6rem .4rem 0}
+.deposer{display:flex;justify-content:center;margin-block:1rem;padding-inline:16px}.bouton-deposer{display:inline-flex;align-items:center;gap:8px;min-block-size:48px;padding-inline:22px;border-radius:24px;background:var(--green);color:#fff;font-size:16px;font-weight:750;text-decoration:none}.bouton-deposer svg{inline-size:20px;block-size:20px;fill:none;stroke:currentColor;stroke-width:2}.bouton-deposer:hover{background:var(--green-dark,#185740)}
+    #deposer-dialog .dialog-head{align-items:center}#deposer-dialog .bonjour{margin-block:18px 4px;font-size:22px;font-weight:750}#deposer-dialog .actions-deposer{display:grid;gap:10px;margin-block-start:18px}#deposer-dialog .actions-deposer button{inline-size:100%;min-block-size:48px;justify-content:center;font-size:15px}
 </style>
 <link rel="stylesheet" href="/proposal-dialog.css">
 <script type="module" src="/proposal-dialog.js"></script>
@@ -487,6 +488,7 @@
     <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></symbol>
   </svg>
 
   <header class="site-header" id="site-header">
@@ -560,7 +562,7 @@
     <section class="block" id="comment-ca-marche" aria-labelledby="comment-titre"></section>
     <section class="block" id="nos-prix" aria-labelledby="prix-titre"></section>
 
-<section class="seller-banner"><h2>Vendez votre véhicule sur M&amp;Y AUTO EXPORT</h2><p>Déposez un dossier privé. Publication après vérification du diagnostic par notre équipe.</p><a href="/vendre">Déposer mon véhicule</a> · <a href="/mes-vehicules">Espace vendeur</a> · <a href="/mes-offres">Mes offres privées</a></section>
+<section class="deposer" aria-label="Vendre un véhicule"><a class="bouton-deposer" id="deposer-annonce" href="/vendre"><svg aria-hidden="true"><use href="#i-plus"/></svg><span data-texte="deposer_bouton">Déposer une annonce</span></a></section>
 
     <section class="block" id="arrivages" aria-labelledby="recent-title" hidden>
       <div class="section-title"><h2 id="recent-title">Arrivages récents</h2>
@@ -641,6 +643,18 @@
   <footer>
     <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules à votre critère</span><span><span data-texte="pied_mention"></span> · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span></div>
   </footer>
+
+  <dialog id="deposer-dialog" aria-labelledby="deposer-title">
+    <div class="dialog-inner">
+      <div class="dialog-head"><h2 id="deposer-title" data-texte="deposer_bouton">Déposer une annonce</h2><button class="text-action" type="button" data-close data-texte="deposer_quitter">Quitter</button></div>
+      <p class="bonjour" data-texte="deposer_bonjour">Bonjour !</p>
+      <p data-texte="deposer_texte">Connectez-vous ou créez un compte pour déposer votre annonce.</p>
+      <div class="actions-deposer">
+        <button class="primary-action" type="button" data-deposer="login" data-texte="deposer_connexion">Me connecter</button>
+        <button class="text-action" type="button" data-deposer="register" data-texte="deposer_inscription">Créer un compte</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
     <div class="dialog-inner">
@@ -1698,6 +1712,22 @@
 
     const authDialog = document.getElementById("auth-dialog");
     const accountDialog = document.getElementById("account-dialog");
+    // « Déposer une annonce » : connecté, vers le dépôt (/vendre) ; sinon, choix connexion ou inscription, puis /vendre.
+    const deposerDialog = document.getElementById("deposer-dialog");
+    const versDepot = () => { location.href = "/vendre"; };
+    document.getElementById("deposer-annonce").addEventListener("click", (event) => {
+      if (compte.user || !compte.disponible) return;
+      event.preventDefault();
+      deposerDialog.showModal();
+    });
+    deposerDialog.addEventListener("click", (event) => {
+      const choix = event.target.closest("[data-deposer]");
+      if (choix) {
+        deposerDialog.close();
+        ouvrirConnexion(choix.dataset.deposer, versDepot);
+      }
+      if (event.target === deposerDialog || event.target.closest("[data-close]")) deposerDialog.close();
+    });
     authDialog.addEventListener("click", (event) => {
       const onglet = event.target.closest("[data-auth]");
       if (onglet) choisirFormulaire(onglet.dataset.auth);
