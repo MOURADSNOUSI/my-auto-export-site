@@ -61,7 +61,6 @@ export const fr = {
   contact_email: "Nous contacter",
   contact_message: "Bonjour, je souhaite un devis pour le véhicule réf. {reference}.",
   voir_fiche: "Voir la fiche",
-  liste_vide: "Aucun véhicule en ligne pour le moment.",
 
   // Comment ça marche
   comment_titre: "Comment ça marche",

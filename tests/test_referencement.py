@@ -48,7 +48,7 @@ class ReferencementTest(unittest.TestCase):
         self.assertEqual(len(re.findall(r"<h1[ >]", page)), 1)
         donnees = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S).group(1))
         self.assertEqual((donnees["@type"], donnees["url"], donnees["email"]), ("AutoDealer", f"{DOMAINE}/", "contact@myautoexport.com"))
-        self.assertIn('id="liste-vehicules"', page, "emplacement de la liste insérée par le Worker")
+        self.assertIn('href="/vehicules"', page, "lien vers la liste des véhicules lisible sans JavaScript")
 
     def test_administration_non_indexee(self):
         self.assertIn('<meta name="robots" content="noindex, nofollow">', (SITE / "admin.html").read_text())

@@ -184,9 +184,6 @@
     .lot-title { margin: 0; font-size: 17px; line-height: 1.3; }
     .lot-title a { color: inherit; text-decoration: none; }
     .lot-title a:hover, .lot-title a:focus-visible { text-decoration: underline; }
-    .liste-vehicules { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
-    .liste-vehicules a { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); text-decoration: none; }
-    .liste-vehicules small { color: var(--muted); }
     .lot-meta { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
     .lot-specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; margin: 0; padding: 10px 0; border-block: 1px solid var(--line); list-style: none; }
     .lot-specs li { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 13px; }
@@ -500,7 +497,7 @@
       </a>
       <!-- Libellés (data-texte) insérés par le Worker depuis worker/textes.js. -->
       <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
-        <a href="#tous-vehicules" data-texte="menu_vehicules"></a>
+        <a href="/vehicules" data-texte="menu_vehicules"></a>
         <a href="#comment-ca-marche" data-texte="menu_comment"></a>
         <a href="#nos-prix" data-texte="menu_prix"></a>
         <a href="#questions" data-texte="menu_questions"></a>
@@ -554,12 +551,6 @@
   </section>
 
   <main class="shell">
-    <section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title" hidden>
-      <div class="section-title"><h2 id="tous-vehicules-title">Tous nos véhicules</h2><a class="text-action" href="/vehicules">Voir la liste complète</a></div>
-      <!-- Rempli par le Worker (worker/seo.js) : cartes des véhicules, lisibles sans JavaScript. -->
-      <ul class="cartes-vehicules" id="liste-vehicules"></ul>
-    </section>
-
     <section class="block" id="comment-ca-marche" aria-labelledby="comment-titre"></section>
     <section class="block" id="nos-prix" aria-labelledby="prix-titre"></section>
 
