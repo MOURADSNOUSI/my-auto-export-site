@@ -322,6 +322,83 @@ et `enregistrer_vehicule`.
 ⚠️ Appliquer la migration **avant** de déployer le code (`npx wrangler d1 migrations apply DB --remote`, 0019).
 Faire d'abord une sauvegarde : `npx wrangler d1 export DB --remote --output sauvegarde.sql`.
 
+## Prix estimés (chantier 2)
+
+⚠️ **Valeurs à faire valider par le transitaire, textes officiels à consulter** : loi de finances 2026 (loi n° 2025-17,
+JORT n° 148, [texte officiel en français](https://lake.jort.tn/journal-officiel/fr/2025/148.pdf)) et note commune n° 6 de
+la DGELF. Aucune valeur n'est présentée comme certaine : chaque paramètre et chaque ligne de grille porte une note avec sa
+source et la mention « À VÉRIFIER » ou « À REMPLACER », chaque régime un `statut_verification` à `a_verifier`.
+
+- **Aucun prix public** : le réglage `prix_publics_actifs` (table `reglages`, `false`) bloque toute exposition publique.
+  Il n'est pas modifiable depuis `/admin` ; l'affichage public relève du chantier 3.
+- **Administration** : `/admin-prix` (lien depuis `/admin`) : paramètres, taux, régimes, grille, éligibilité, simulation,
+  bandeau « Valeurs à vérifier par le transitaire » tant qu'un régime actif n'est pas vérifié. API : `GET /api/admin/prix`,
+  `PUT /api/admin/prix/parametres/<cle>`, `/taux-manuel`, `/grille/<id>`, `/regimes/<code>`, `/eligibilite/<resident|fcr>`,
+  `POST /api/admin/prix/simulation`. Les écritures sont journalisées (`audit_logs`, acteur `admin`).
+- **Code** : `worker/prix.js` (`calculerPrix`, fonction pure ; `mettreAJourTaux` ; routes). Tests : `tests/prix.test.js`,
+  `tests/test_prix.py`.
+
+### Formules
+
+Chaque ligne du détail est arrondie à l'entier (TND ou EUR) avant l'étape suivante ; chaque total est la somme des lignes.
+
+- **Taux** = taux manuel s'il est actif, sinon taux automatique, × (1 + `marge_change_pct`). Sans taux : aucun prix, motif
+  explicite, pas de taux par défaut.
+- **Valeur en douane (CAF)** = (prix EUR + transport EUR) × (1 + `assurance_transport_pct`) × taux. Transport : celui du
+  véhicule, sinon `transport_defaut_eur`. Hypothèse À VÉRIFIER (Code des douanes art. 23 et 24 selon le commentaire InFirst,
+  non officiel) : la Douane applique sa propre évaluation.
+- **Droits en cascade** (hypothèse À VÉRIFIER) : DD = valeur × dd % ; DC = (valeur + DD) × dc % ; TVA = (valeur + DD + DC)
+  × tva %. Divergence : un exemple de presse calcule le DC sur la valeur CAF seule (sans effet quand le DD est à 0 %).
+- **Redevance de prestations douanières** = max(droits et taxes payés × `redevance_douane_pct`, `redevance_douane_min_tnd`)
+  (3 %, minimum 10 TND, commentaire InFirst, À VÉRIFIER). En FCR, elle porte sur la part payée (hypothèse À VÉRIFIER).
+- **Commission** = prix d'achat EUR × `commission_pct` (le pourcentage porte sur le seul prix du véhicule, hors transport
+  et taxes) + `commission_fixe_tnd` (convertie en EUR pour le prix TRE).
+- **Résident** (`prixResidentTnd`) = valeur + DD + DC + TVA + redevance + transitaire + port + immatriculation × (1 −
+  réduction) + commission. Régime selon le carburant (hybride rechargeable, hybride, électrique → régime LF 2026 s'il est
+  actif, sinon droit commun), après contrôle de `eligibilite_resident` (âge, cylindrée, carburants).
+- **TRE** : `prixTreEur` = véhicule + transport + commission (EUR) ; `dedouanementFcrEstimeTnd` = (DD + DC + TVA) ×
+  part payée + redevance + transitaire + port, après contrôle de `eligibilite_fcr`.
+- **Non comptés** (montants non trouvés) : taxe de formation et de développement, FODEC, droit de timbre, taxe de maîtrise
+  de l'énergie. Carte grise et vignette : montant fixe d'exemple (`frais_immatriculation_tnd`), À REMPLACER.
+
+### Régimes et sources
+
+- `resident_droit_commun` : barème du droit de consommation 2026 du commentaire LF 2026 du cabinet InFirst (non officiel,
+  tableau « concessionnaire », applicabilité aux particuliers à confirmer) ; essence 20/38/48/65/84 % (seuils 1 300, 1 500,
+  1 700, 2 000 cm³), diesel 48/50/69/79/88/110 % (seuils 1 700, 1 900, 2 100, 2 300, 2 500 cm³), TVA 19 %. Droit de douane
+  des voitures particulières (87.03) **non trouvé** : 20 % d'exemple À REMPLACER (taux 87.03 et origine UE, EUR.1, à
+  confirmer par le transitaire).
+- `resident_phev_lf2026` (art. 47 LF 2026) : DC exonéré, TVA 7 %. Droit de douane 0 % seulement pour Ex 87.02 et Ex 87.04 ;
+  voitures particulières 87.03 : droit commun, à confirmer. Carte grise et vignette −50 % : non vérifié dans le texte.
+- `resident_hev_lf2026` (art. 47) : DC −50 % pour l'essence ≤ 1 700 cm³ et le diesel « mixte » ≤ 2 100 cm³ (hybrides
+  traités comme essence dans la grille) ; TVA et DD de droit commun. Taxe de maîtrise de l'énergie −50 % non comptée.
+- `resident_electrique_lf2026` : DC exonéré, TVA 7 % (art. 47 LF 2026) ; DD 0 % (art. 30 LF 2022, note commune DGELF
+  n° 2/2024, citée par InFirst, À VÉRIFIER).
+- Mesures LF 2026 en vigueur depuis le 01/01/2026 ; la loi ne distingue ni neuf et occasion, ni FCR et droit commun.
+  Presse consultée avant le texte : [Finco](https://finco.tn/blog/voitures-hybrides-electriques-tunisie-2026),
+  [Managers](https://managers.tn/2026/03/17/voitures-hybrides-et-electriques-ce-que-vous-paierez-moins-cette-2026-en-tunisie/).
+- `fcr_classique` (TRE) : extraits du portail de la Douane (https://old.douane.gov.tn/index.php?id=126, non lu
+  directement) : 5 ans au plus depuis la première mise en circulation, 25 % des droits et taxes (essence ≤ 2 000 cm³,
+  diesel ≤ 2 500 cm³, électriques et utilitaires), 30 % au-delà ; un ancien guide applique 30 % à tous les diesels.
+  FCR utilisable une fois tous les 10 ans (décret n° 2024-370), non contrôlé par le calcul.
+- **Représentation** : chaque ligne de grille est complète. Les lignes LF 2026 portent les pourcentages du droit commun
+  déjà réduits ; les lignes FCR les recopient avec `part_payee_pct` (25 ou 30). Modifier une ligne de droit commun ne met
+  pas à jour les autres : les recalculer à la main (les notes le rappellent).
+- **Piste future** : l'article 55 (« avantage familles », véhicules de moins de 8 ans) n'est pas modélisé, ses textes
+  d'application n'étant pas publiés.
+
+### Taux EUR→TND
+
+Mis à jour par le passage quotidien de 06:00 UTC (cron `0 6 * * *` existant). Source principale : page de la BCT
+(https://www.bct.gov.tn/bct/siteprod/cours.jsp, ligne « EURO EUR 1 3,3834 »). Secours : ExchangeRate-API
+(https://open.er-api.com/v6/latest/EUR, `rates.TND`), mention « Rates By Exchange Rate API » affichée dans `/admin-prix`
+selon ses conditions d'utilisation. Contrôle de vraisemblance entre 2 et 6 ; en cas d'échec des deux sources, le dernier
+taux est gardé. Chaque passage est journalisé (acteur `systeme`, action `prix.taux_auto`). Adresses surchargeables par
+`PRIX_URL_BCT` et `PRIX_URL_SECOURS` (tests).
+
+⚠️ Appliquer la migration **avant** de déployer le code : `npx wrangler d1 migrations apply DB --remote` (0020), après
+une sauvegarde (`npx wrangler d1 export DB --remote --output sauvegarde.sql`).
+
 ## Marketplace vendeurs et diagnostic obligatoire (issue #5)
 
 `/vendre` propose huit étapes de dépôt, les brouillons, photos, dommages, diagnostics et documents

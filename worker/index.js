@@ -11,6 +11,7 @@ import { estRouteMcp, routeMcp } from "./mcp.js";
 import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, listeIndexable, page404, routeSeo } from "./seo.js";
 import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
 import { REGLAGES_INTERRUPTEURS, ecrireInterrupteur, journaliser, listerReglages } from "./reglages.js";
+import { mettreAJourTaux, routeAdminPrix } from "./prix.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -54,7 +55,7 @@ export const ENTETES_SECURITE = {
 // Pages de la marketplace rendues par le Worker (worker/marketplace-pages.js).
 const PAGES_MARKETPLACE = ["/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/confidentialite", "/conditions-marketplace", "/droits-donnees"];
 // Pages privées : jamais en cache partagé ni indexées.
-const PAGES_PRIVEES = ["/vendre", "/vendre.html", "/mes-vehicules", "/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/admin-vendeurs", "/admin-vendeurs.html"];
+const PAGES_PRIVEES = ["/vendre", "/vendre.html", "/mes-vehicules", "/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/admin-vendeurs", "/admin-vendeurs.html", "/admin-prix", "/admin-prix.html"];
 // CSP des pages privées qui n'en fixent pas déjà une : pas de script en ligne.
 const CSP_PAGES_PRIVEES = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; "
   + "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
@@ -76,12 +77,16 @@ export default {
 
   // 02:30 UTC : expiration des offres privées et diagnostics, puis purge des dossiers vendeurs inactifs.
   // 05:00 et 06:00 UTC : contrôle SEO (seul celui de 07:00 à Paris s'exécute).
+  // 06:00 UTC : taux EUR→TND des prix estimés (worker/prix.js), une fois par jour.
   async scheduled(controller, env) {
     if (controller.cron === "30 2 * * *") {
       await expireOffers(env);
       const regles = await policy(env);
       await purgeSeller(env, regles?.retention_days ?? (env.SELLER_RETENTION_DAYS || 180));
-    } else await controleQuotidien(controller, env);
+    } else {
+      if (controller.cron === "0 6 * * *") await mettreAJourTaux(env).catch(() => console.error("taux_auto_failed"));
+      await controleQuotidien(controller, env);
+    }
   }
 };
 
@@ -862,6 +867,7 @@ async function routeAdminJournalisee(request, env, path, method, ctx) {
 
 async function routeAdmin(request, env, path, method, ctx) {
   const user = await exigerAdmin(request, env);
+  if (path === "/api/admin/prix" || path.startsWith("/api/admin/prix/")) return routeAdminPrix(request, env, path, method, user, { json, ApiError, lireJson });
   if (path === "/api/admin/reglages" && method === "GET") return json({ reglages: await listerReglages(env) });
   const reglage = path.match(/^\/api\/admin\/reglages\/([a-z_]{1,64})$/);
   if (reglage && method === "PUT") {
