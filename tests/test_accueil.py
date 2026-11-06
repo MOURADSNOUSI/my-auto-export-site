@@ -186,6 +186,9 @@ class AccueilTest(unittest.TestCase):
         self.assertIn("Achat sur mandat", html)
         self.assertNotIn("Enchères ou achat direct", html)
         self.assertNotIn("Prix en dinars tunisiens", html)
+        self.assertNotIn("Comment acheter", html)
+        self.assertNotIn("Questions sur le dépôt de garantie", html)
+        self.assertNotIn("retirable à chaque enchère", html)
         for ancre in ("tous-vehicules", "comment-ca-marche", "nos-prix", "questions"):
             self.assertIn(f'href="#{ancre}"', html)
             self.assertIn(f'id="{ancre}"', html)
