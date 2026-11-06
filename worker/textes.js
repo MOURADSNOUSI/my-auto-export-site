@@ -71,6 +71,56 @@ export const fr = {
   // Témoignages
   temoignages_titre: "Ils ont reçu leur voiture",
 
+  // Demande d'achat sur mandat (chantier 4)
+  mandat_bouton: "Je veux ce véhicule",
+  mandat_titre: "Demande d'achat sur mandat",
+  mandat_intro: "Vous fixez un prix maximum. Nous achetons le véhicule pour votre compte s'il est obtenu à ce prix, puis organisons le transport et le dédouanement.",
+  mandat_residence: "Où habitez-vous ?",
+  mandat_resident: "En Tunisie",
+  mandat_tre: "À l'étranger",
+  mandat_pays: "Pays de résidence",
+  mandat_fcr_question: "Avez-vous déjà bénéficié du régime FCR ces 10 dernières années ?",
+  mandat_oui: "Oui",
+  mandat_non: "Non",
+  mandat_fcr_info: "Le régime FCR ne s'accorde qu'une fois tous les 10 ans (décret n° 2024-370). Nous vérifierons votre situation avec vous.",
+  mandat_prix_max: "Prix maximum accepté ({devise})",
+  mandat_prix_aide: "Montant entier. Nous n'achetons pas au-delà.",
+  mandat_telephone: "Téléphone ou WhatsApp",
+  mandat_lire: "Lire le mandat, les CGV et les conditions de l'acompte",
+  mandat_texte_mandat: "Mandat d'achat",
+  mandat_texte_cgv: "Conditions générales",
+  mandat_texte_acompte: "Conditions de l'acompte",
+  mandat_accepte: "J'ai lu et j'accepte le mandat d'achat, les conditions générales et les conditions de l'acompte.",
+  mandat_envoyer: "Envoyer ma demande",
+  mandat_connexion: "Connectez-vous pour envoyer votre demande",
+  mandat_email: "E-mail",
+  mandat_mot_de_passe: "Mot de passe",
+  mandat_se_connecter: "Se connecter",
+  mandat_creer_compte: "Créer un compte",
+  mandat_chargement: "Chargement…",
+  mandat_fermer: "Fermer",
+  mandat_succes: "Demande envoyée. Nous vérifions votre éligibilité et vous indiquons le montant de l'acompte.",
+  mandat_suivi: "Suivre mes demandes",
+  mandat_indisponible: "Ce véhicule n'est pas ouvert à l'achat sur mandat.",
+  mandat_deja_en_cours: "Vous avez déjà une demande en cours pour ce véhicule.",
+  mandat_annulation_impossible: "Cette demande ne peut plus être annulée en ligne : contactez-nous.",
+  mandat_mes_titre: "Mes demandes d'achat",
+  mandat_mes_vide: "Aucune demande pour le moment.",
+  mandat_mes_connexion: "Connectez-vous depuis l'accueil pour voir vos demandes.",
+  mandat_prix_max_court: "Prix maximum",
+  mandat_acompte: "Acompte demandé",
+  mandat_annuler: "Annuler ma demande",
+  mandat_annuler_confirmer: "Annuler cette demande ?",
+  mandat_reference: "Réf.",
+  statut_demande: "Demande reçue",
+  statut_eligibilite_verifiee: "Éligibilité vérifiée",
+  statut_acompte_recu: "Acompte reçu",
+  statut_achat_en_cours: "Achat en cours",
+  statut_achete: "Véhicule acheté",
+  statut_non_obtenu: "Véhicule non obtenu",
+  statut_livre: "Livré",
+  statut_annule: "Annulée",
+
   // Questions
   questions_titre: "Questions",
   faq1_question: "Comment fonctionne l'achat sur mandat ?",
@@ -95,4 +145,4 @@ export function t(cle, valeurs = {}) {
 }
 
 // Textes lus par le JavaScript de l'accueil, servis dans un <script type="application/json" id="textes">.
-export const TEXTES_NAVIGATEUR = ["compte_titre", "compte_action"];
+export const TEXTES_NAVIGATEUR = ["compte_titre", "compte_action", "mandat_bouton", "mandat_mes_titre"];

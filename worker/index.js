@@ -10,8 +10,9 @@ import { marketplacePage } from "./marketplace-pages.js";
 import { estRouteMcp, routeMcp } from "./mcp.js";
 import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, page404, redirectionPublic, routeSeo, vitrineAccueil } from "./seo.js";
 import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
-import { REGLAGES_INTERRUPTEURS, REGLAGES_SITE, ecrireInterrupteur, ecrireReglageSite, journaliser, listerReglages, listerReglagesSite, validerReglageSite } from "./reglages.js";
+import { REGLAGES_INTERRUPTEURS, REGLAGES_SITE, reglageActif, ecrireInterrupteur, ecrireReglageSite, journaliser, listerReglages, listerReglagesSite, validerReglageSite } from "./reglages.js";
 import { mettreAJourTaux, routeAdminPrix } from "./prix.js";
+import { estRouteMandats, routeAdminMandats, routeMandats, vehiculeMandat } from "./mandats.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -55,7 +56,7 @@ export const ENTETES_SECURITE = {
 // Pages de la marketplace rendues par le Worker (worker/marketplace-pages.js).
 const PAGES_MARKETPLACE = ["/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/confidentialite", "/conditions-marketplace", "/droits-donnees"];
 // Pages privées : jamais en cache partagé ni indexées.
-const PAGES_PRIVEES = ["/vendre", "/vendre.html", "/mes-vehicules", "/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/admin-vendeurs", "/admin-vendeurs.html", "/admin-prix", "/admin-prix.html"];
+const PAGES_PRIVEES = ["/vendre", "/vendre.html", "/mes-vehicules", "/mes-offres", "/vendeur/offres", "/garages", "/admin/marketplace", "/admin-vendeurs", "/admin-vendeurs.html", "/admin-prix", "/admin-prix.html", "/mes-mandats", "/mes-mandats.html", "/admin-mandats", "/admin-mandats.html"];
 // CSP des pages privées qui n'en fixent pas déjà une : pas de script en ligne.
 const CSP_PAGES_PRIVEES = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; "
   + "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
@@ -186,6 +187,7 @@ async function routeApi(request, env, url, ctx) {
     if (publication && method === "POST" && response.ok) await controlerApresPublication(env, ctx, `SV-${publication[1]}`);
     return response;
   }
+  if (estRouteMandats(path)) return routeMandats(request, env, url, { json, ApiError, exigerUtilisateur, lireJson, catalogueComplet });
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/account/profiles" && method === "POST") return activerProfil(request, env);
   if (path === "/api/catalogue" && method === "GET") {
@@ -719,10 +721,13 @@ export async function catalogueComplet(request, env) {
 
 // Lots publics, avec l'état de leur enchère (prix actuel, fin effective…) pour les lots open et upcoming.
 async function catalogue(request, env) {
-  if(!legacyAuctionsEnabled(env))return (await catalogueComplet(request,env)).filter(item=>!item.removed&&(freeOffersEnabled(env)||item.offerOwnerAssigned||item.lot.status!=='open'||!item.lot.endsAt||Date.parse(item.lot.endsAt)>Date.now())).map(item=>({...lot1Public(item.lot),url:cheminVehicule(item.lot)}));
+  // Mandat (réglage mandats_actifs) : véhicules de M&Y ; avec les enchères actives, ceux en stock seulement, les ventes
+  // en cours continuant jusqu'à leur fin.
+  const mandats = await reglageActif(env, "mandats_actifs");
+  if(!legacyAuctionsEnabled(env))return (await catalogueComplet(request,env)).filter(item=>!item.removed&&(freeOffersEnabled(env)||item.offerOwnerAssigned||item.lot.status!=='open'||!item.lot.endsAt||Date.parse(item.lot.endsAt)>Date.now())).map(item=>({...lot1Public(item.lot),url:cheminVehicule(item.lot),mandat:vehiculeMandat(item,mandats)}));
   const [items, resumes] = await Promise.all([catalogueComplet(request, env), resumesEncheres(env)]);
   const maintenant = Date.now();
-  return items.filter((item) => !item.removed).map((item) => avecEnchere(item.lot, resumes, maintenant));
+  return items.filter((item) => !item.removed).map((item) => ({ ...avecEnchere(item.lot, resumes, maintenant), mandat: vehiculeMandat(item, mandats) && item.lot.status === "stock" }));
 }
 
 function avecEnchere(lot, resumes, maintenant) {
@@ -868,6 +873,7 @@ async function routeAdminJournalisee(request, env, path, method, ctx) {
 async function routeAdmin(request, env, path, method, ctx) {
   const user = await exigerAdmin(request, env);
   if (path === "/api/admin/prix" || path.startsWith("/api/admin/prix/")) return routeAdminPrix(request, env, path, method, user, { json, ApiError, lireJson });
+  if (path === "/api/admin/mandats" || path.startsWith("/api/admin/mandats/")) return routeAdminMandats(request, env, new URL(request.url), user, { json, ApiError, lireJson, catalogueComplet });
   if (path === "/api/admin/reglages" && method === "GET") return json({ reglages: await listerReglages(env) });
   const reglage = path.match(/^\/api\/admin\/reglages\/([a-z_]{1,64})$/);
   if (reglage && method === "PUT") {

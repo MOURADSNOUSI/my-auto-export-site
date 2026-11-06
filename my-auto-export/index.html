@@ -466,6 +466,7 @@
 </style>
 <link rel="stylesheet" href="/proposal-dialog.css">
 <script type="module" src="/proposal-dialog.js"></script>
+<script type="module" src="/mandat-dialog.js"></script>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -1091,6 +1092,7 @@
     }
 
     function boutonAchat(lot) {
+      if(lot.mandat)return `<button type="button" class="buy-now" data-mandat-ref="${escapeHtml(lot.reference)}">${escapeHtml(TEXTES.mandat_bouton || "Je veux ce véhicule")}</button>`;
       if(PROPOSALS_ONLY||lot.marketplace)return `<button type="button" class="buy-now" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`;
       return Number.isFinite(lot.buyNowPriceTnd)
         ? `<button class="buy-now" type="button" data-buynow="${escapeHtml(lot.reference)}">Acheter maintenant · ${formatTnd(lot.buyNowPriceTnd)}</button>`
@@ -1284,7 +1286,7 @@
           <button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
         ${user.depositTnd>0?`<p class="deposit-history"><strong>Solde du dépôt de garantie existant : ${formatTnd(user.depositTnd)}</strong><br>Pour toute question ou demande de restitution, <a href="mailto:contact@myautoexport.com?subject=D%C3%A9p%C3%B4t%20de%20garantie">contactez l’équipe</a>.</p>`:""}
         ${profils}
-        <p><a class="text-action" href="/mes-offres">Mes propositions d'achat</a></p>
+        <p><a class="text-action" href="/mes-mandats">${escapeHtml(TEXTES.mandat_mes_titre || "Mes demandes d'achat")}</a> · <a class="text-action" href="/mes-offres">Mes propositions d'achat</a></p>
         <nav class="account-nav" aria-label="Rubriques de l'espace acheteur">${vues.map(([id, label, count], index) => `<button type="button" data-account-view="${id}" aria-pressed="${index === 0}"><span>${count}</span>${label}</button>`).join("")}</nav>
         <section class="account-panel" data-account-panel="vehicles">
           <h3>Mes véhicules (${compte.vehicles.length})</h3><p>Véhicules rattachés à ton compte acheteur.</p>
