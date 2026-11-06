@@ -170,17 +170,21 @@ class AccueilTest(unittest.TestCase):
     # --- Cartes sans JavaScript ---
 
     def test_accueil_et_liste_montrent_les_cartes_sans_javascript(self):
-        for chemin in ("/", "/vehicules"):
-            statut, html, entetes = self.page(chemin)
-            self.assertEqual(statut, 200, chemin)
-            self.assertIn("Cookie", entetes.get("Vary", ""), chemin)
-            carte = self.carte(html, "ACC-JEUNE")
-            self.assertIn("Peugeot 208", carte)
-            self.assertIn(f"{ANNEE - 1} · 20 000 km · Essence", carte.replace("\xa0", " "))
-            self.assertIn('loading="lazy"' if "<img" in carte else "carte-sans-photo", carte)
-            self.assertNotIn("acc-retire", html, chemin)
-        _, html, _ = self.page("/")
-        self.assertIn('<section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title">', html)
+        statut, html, entetes = self.page("/vehicules")
+        self.assertEqual(statut, 200)
+        self.assertIn("Cookie", entetes.get("Vary", ""))
+        carte = self.carte(html, "ACC-JEUNE")
+        self.assertIn("Peugeot 208", carte)
+        self.assertIn(f"{ANNEE - 1} · 20 000 km · Essence", carte.replace("\xa0", " "))
+        self.assertIn('loading="lazy"' if "<img" in carte else "carte-sans-photo", carte)
+        self.assertNotIn("acc-retire", html)
+        # L'accueil n'a plus la liste « Tous nos véhicules » : le menu « Véhicules » mène à /vehicules.
+        statut, html, entetes = self.page("/")
+        self.assertEqual(statut, 200)
+        self.assertIn("Cookie", entetes.get("Vary", ""))
+        self.assertNotIn("Tous nos véhicules", html)
+        self.assertNotIn('class="carte-vehicule"', html)
+        self.assertIn('href="/vehicules"', html)
         self.assertRegex(html.replace("&#39;", "'"), r'<h1 id="page-title"[^>]*>Votre voiture d\'Europe, livrée en Tunisie\.</h1>')
         self.assertIn("Prix estimé, détail complet.", html)
         self.assertIn("Achat sur mandat", html)
@@ -189,7 +193,7 @@ class AccueilTest(unittest.TestCase):
         self.assertNotIn("Comment acheter", html)
         self.assertNotIn("Questions sur le dépôt de garantie", html)
         self.assertNotIn("retirable à chaque enchère", html)
-        for ancre in ("tous-vehicules", "comment-ca-marche", "nos-prix", "questions"):
+        for ancre in ("comment-ca-marche", "nos-prix", "questions"):
             self.assertIn(f'href="#{ancre}"', html)
             self.assertIn(f'id="{ancre}"', html)
         self.assertEqual(html.count('<details class="faq">'), 5)
@@ -199,7 +203,7 @@ class AccueilTest(unittest.TestCase):
         statut, data, _ = self.api("/api/admin/vehicles/ACC-XSS", {**VEHICULES["ACC-SANS"], "model": "<script>alert(1)</script>"}, "PUT", self.cookie)
         self.assertEqual(statut, 200, data)
         self.addCleanup(self.api, "/api/admin/vehicles/ACC-XSS", None, "DELETE", self.cookie)
-        for chemin in ("/", "/vehicules"):
+        for chemin in ("/vehicules",):
             _, html, _ = self.page(chemin)
             self.assertNotIn("<script>alert(1)</script>", html)
             self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", html)
@@ -221,6 +225,11 @@ class AccueilTest(unittest.TestCase):
 
     def test_cookie_bascule_l_affichage(self):
         for chemin in ("/", "/vehicules", self.fiches["ACC-JEUNE"]):
+            if chemin == "/":
+                # Accueil sans cartes : seul le choix du public bascule.
+                self.assertIn('data-public="resident" aria-pressed="true"', self.page(chemin, "resident")[1])
+                self.assertIn('data-public="tre" aria-pressed="true"', self.page(chemin, "tre")[1])
+                continue
             _, html, _ = self.page(chemin, "resident")
             self.assertIn('data-public="resident" aria-pressed="true"', html, chemin)
             self.assertIn('data-public="tre" aria-pressed="false"', html, chemin)
@@ -252,7 +261,7 @@ class AccueilTest(unittest.TestCase):
         # Badge résident masqué tant que prix_resident_actif est faux (règles résident non vérifiées).
         for resident_actif in (False, True):
             self.regler("prix_resident_actif", resident_actif)
-            _, accueil, _ = self.page("/")
+            _, accueil, _ = self.page("/vehicules")
             for reference, (resident, fcr) in attendus.items():
                 e = self.estimations.get(reference)
                 if e:
@@ -277,7 +286,7 @@ class AccueilTest(unittest.TestCase):
                     self.assertNotIn("prixTre", bloc)
                     for montant in self.montants_estimes():
                         self.assertIsNone(montant_regex(montant).search(bloc), (public, chemin, montant))
-        _, html, _ = self.page("/", "tre")
+        _, html, _ = self.page("/vehicules", "tre")
         self.assertIn("Estimation sur demande", self.carte(html, "ACC-JEUNE"))
         self.assertIn("mailto:contact@myautoexport.com", self.carte(html, "ACC-JEUNE"))
 
@@ -285,7 +294,7 @@ class AccueilTest(unittest.TestCase):
         self.regler("prix_publics_actifs", True)
         self.addCleanup(self.regler, "prix_publics_actifs", False)
         jeune = self.estimations["ACC-JEUNE"]
-        _, html, _ = self.page("/", "tre")
+        _, html, _ = self.page("/vehicules", "tre")
         carte = self.carte(html, "ACC-JEUNE")
         self.assertIsNotNone(montant_regex(jeune["prixTreEur"]).search(carte))
         self.assertIn("€", carte)
@@ -305,21 +314,21 @@ class AccueilTest(unittest.TestCase):
                 for montant in (e["prixResidentTnd"], e["prixTreEur"]):
                     if montant:
                         self.assertIsNone(montant_regex(montant).search(html), (chemin, montant))
-        _, html, _ = self.page("/", "resident")
+        _, html, _ = self.page("/vehicules", "resident")
         self.assertIn("Prix résident sur devis", self.carte(html, "ACC-JEUNE"))
         self.assertIn("Réservé aux Tunisiens résidant à l&#39;étranger", self.carte(html, "ACC-FCR"))
         self.assertIn("Prix résident sur devis", self.carte(html, "ACC-SANS"), "éligibilité inconnue sans prix d'achat")
-        _, html, _ = self.page("/", "tre")
+        _, html, _ = self.page("/vehicules", "tre")
         self.assertIn("Estimation sur demande", self.carte(html, "ACC-SANS"))
 
     def test_prix_resident_visible_seulement_avec_les_deux_reglages(self):
         self.regler("prix_resident_actif", True)
         self.addCleanup(self.regler, "prix_resident_actif", False)
-        _, html, _ = self.page("/", "resident")
+        _, html, _ = self.page("/vehicules", "resident")
         self.assertIn("Prix résident sur devis", self.carte(html, "ACC-JEUNE"), "prix_publics_actifs encore faux")
         self.regler("prix_publics_actifs", True)
         self.addCleanup(self.regler, "prix_publics_actifs", False)
-        _, html, _ = self.page("/", "resident")
+        _, html, _ = self.page("/vehicules", "resident")
         carte = self.carte(html, "ACC-JEUNE")
         self.assertIsNotNone(montant_regex(self.estimations["ACC-JEUNE"]["prixResidentTnd"]).search(carte))
         self.assertIn("TND", carte)
@@ -337,7 +346,7 @@ class AccueilTest(unittest.TestCase):
         for chemin in ("/", "/vehicules", self.fiches["ACC-JEUNE"]):
             _, html, _ = self.page(chemin)
             self.assertIn('<a class="bouton-whatsapp" href="https://wa.me/21612345678" target="_blank" rel="noopener"', html, chemin)
-        _, html, _ = self.page("/")
+        _, html, _ = self.page("/vehicules")
         self.assertIn("https://wa.me/21612345678?text=", self.carte(html, "ACC-JEUNE"))
 
     def test_api_reglages_site(self):
@@ -420,14 +429,12 @@ class AccueilTest(unittest.TestCase):
         if CAPTURES:
             page.screenshot(path=str(Path(CAPTURES) / "accueil-390.png"), full_page=True)
             page.screenshot(path=str(Path(CAPTURES) / "accueil-390-haut.png"))
-            page.locator("#tous-vehicules").screenshot(path=str(Path(CAPTURES) / "accueil-390-cartes.png"))
         self.assertEqual(page.get_attribute("[data-public='tre']", "aria-pressed"), "true")
         page.focus("[data-public='resident']")
         with page.expect_navigation():
             page.keyboard.press("Enter")
         self.assertEqual(page.get_attribute("[data-public='resident']", "aria-pressed"), "true")
         self.assertIn({"name": "public", "value": "resident"}, [{"name": c["name"], "value": c["value"]} for c in context.cookies()])
-        self.assertIn("Prix résident sur devis", page.text_content("#liste-vehicules"))
         with page.expect_navigation():
             page.click("[data-public='tre']")
         self.assertEqual(page.get_attribute("[data-public='tre']", "aria-pressed"), "true")
@@ -446,8 +453,9 @@ class AccueilTest(unittest.TestCase):
         context = self.browser.new_context(java_script_enabled=False, viewport={"width": 390, "height": 844})
         self.addCleanup(context.close)
         page = context.new_page()
+        page.goto(self.base + "/vehicules")
+        self.assertTrue(page.is_visible(".cartes-vehicules .carte-vehicule"))
         page.goto(self.base + "/")
-        self.assertTrue(page.is_visible("#liste-vehicules .carte-vehicule"))
         page.click("[data-public='resident']")
         page.wait_for_url(self.base + "/")
         self.assertEqual(page.get_attribute("[data-public='resident']", "aria-pressed"), "true")
