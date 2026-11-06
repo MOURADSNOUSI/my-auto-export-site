@@ -6,3 +6,7 @@ EUR_TND_RATE=1
 # Jeton de l'agent local pour le serveur MCP (32 caractères au moins). En production : `npx wrangler secret put AGENT_TOKEN`.
 # Générer une vraie valeur avec `openssl rand -hex 32`. Valeur factice ci-dessous.
 AGENT_TOKEN=jeton-agent-factice-a-remplacer-0000000000
+# Connexion avec Google en local (facultatif) : identifiant client OAuth et secret factices ; sans eux, le bouton est masqué.
+# En production : GOOGLE_CLIENT_ID dans wrangler.jsonc, `npx wrangler secret put GOOGLE_CLIENT_SECRET` pour le secret.
+# GOOGLE_CLIENT_ID=identifiant-factice.apps.googleusercontent.com
+# GOOGLE_CLIENT_SECRET=secret-factice-a-remplacer

@@ -203,6 +203,9 @@ function renderAdmin(detail){
  $('publish-form')?.addEventListener('submit',safely(async()=>{const f=$('publish-form');await api(prefix+'submissions/'+current.id+'/publish',{method:'POST',body:{revision:current.revision}});await refresh();await openSubmission(current.id);message('Annonce publiée après validation.');}));
  $('archive-submission')?.addEventListener('click',safely(async()=>{await api(prefix+'submissions/'+current.id+'/archive',{method:'POST',body:{revision:current.revision}});await refresh();await openSubmission(current.id);}));
 }
+// Connexion avec Google : bouton affiché seulement si elle est configurée ; issue d'un retour refusé ou annulé.
+fetch('/api/auth/google/etat').then(r=>r.json()).then(({actif})=>{if(actif)document.querySelectorAll('[data-google]').forEach(e=>e.hidden=false);}).catch(()=>{});
+{const issue=new URLSearchParams(location.search).get('connexion');const textes={refusee:'Connexion avec Google refusée. Réessayez ou utilisez votre e-mail.',annulee:'Connexion avec Google annulée.',limite:"Trop d'inscriptions depuis cette connexion. Réessayez dans une heure."};if(textes[issue]&&$('message'))$('message').textContent=textes[issue];}
 // Connexion en étapes : accueil « Bonjour ! », puis connexion ou inscription (?etape=login|register pour y aller directement).
 const etapeAuth=etape=>{for(const e of ['accueil','login','register'])$('auth-'+e).hidden=e!==etape;$('auth-'+etape).querySelector('input,select')?.focus();};
 document.querySelectorAll('[data-auth-etape]').forEach(b=>b.addEventListener('click',()=>etapeAuth(b.dataset.authEtape)));

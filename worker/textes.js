@@ -21,6 +21,13 @@ export const fr = {
   public_resident: "J'habite en Tunisie · TND",
   public_tre: "À l'étranger · €",
 
+  // Connexion avec Google (accueil, /vendre, formulaire de mandat)
+  google_bouton: "Continuer avec Google",
+  connexion_ou: "Ou",
+  connexion_refusee: "Connexion avec Google refusée. Réessayez ou utilisez votre e-mail.",
+  connexion_annulee: "Connexion avec Google annulée.",
+  connexion_limite: "Trop d'inscriptions depuis cette connexion. Réessayez dans une heure.",
+
   // Déposer une annonce (accueil)
   deposer_bouton: "Déposer une annonce",
   deposer_quitter: "Quitter",
@@ -105,6 +112,7 @@ export const fr = {
   mandat_mot_de_passe: "Mot de passe",
   mandat_se_connecter: "Se connecter",
   mandat_creer_compte: "Créer un compte",
+  mandat_google: "Continuer avec Google",
   mandat_chargement: "Chargement…",
   mandat_fermer: "Fermer",
   mandat_succes: "Demande envoyée. Nous vérifions votre éligibilité et vous indiquons le montant de l'acompte.",
@@ -153,4 +161,4 @@ export function t(cle, valeurs = {}) {
 }
 
 // Textes lus par le JavaScript de l'accueil, servis dans un <script type="application/json" id="textes">.
-export const TEXTES_NAVIGATEUR = ["compte_titre", "compte_action", "mandat_bouton", "mandat_mes_titre"];
+export const TEXTES_NAVIGATEUR = ["compte_titre", "compte_action", "mandat_bouton", "mandat_mes_titre", "connexion_refusee", "connexion_annulee", "connexion_limite"];

@@ -451,6 +451,21 @@ textes provisoires et acomptes par défaut dans `reglages`). Les tables d'enchè
 - **Textes** : modèles provisoires À FAIRE RELIRE PAR UN JURISTE avant d'ouvrir les demandes.
 - Tests : `tests/mandats.test.js` (Vitest) et `tests/test_mandats.py`.
 
+## Connexion avec Google
+
+« Continuer avec Google » sur `/vendre`, dans la connexion de l'accueil et dans le formulaire de mandat (`worker/google.js`,
+migration `0022_connexion_google.sql`). Code d'autorisation OpenID Connect avec `state` lié au navigateur (cookie) et
+PKCE, sans script Google dans les pages ; seuls le nom, l'e-mail et l'identifiant Google sont demandés.
+
+- **Activation** : `GOOGLE_CLIENT_ID` dans `wrangler.jsonc` et `npx wrangler secret put GOOGLE_CLIENT_SECRET`. Sans les
+  deux, le bouton est masqué et les routes répondent 404. Adresse de retour à déclarer chez Google :
+  `https://www.myautoexport.com/api/auth/google/retour`.
+- **Comptes** : identifiant Google déjà connu, sinon compte existant du même e-mail (vérifié par Google, le mot de passe
+  reste valable), sinon nouveau compte sans mot de passe utilisable, soumis à la limite d'inscriptions par IP.
+- **Refus** (e-mail non vérifié, jeton d'une autre application, état falsifié ou rejoué, annulation) : retour sur la
+  page de départ avec `?connexion=refusee|annulee|limite`. Chaque connexion est journalisée (`auth.google`).
+- Tests : `tests/test_google.py`, contre un faux Google local.
+
 ## Marketplace vendeurs et diagnostic obligatoire (issue #5)
 
 `/vendre` propose huit étapes de dépôt, les brouillons, photos, dommages, diagnostics et documents
