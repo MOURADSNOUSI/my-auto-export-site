@@ -3,6 +3,8 @@
 
 ## Branche principale et déploiement
 
+2026-11-06 — Chantier 2, prix estimés — Claude Code, branche locale `feat/prix-estimes` : migration 0020, `worker/prix.js`, `/admin-prix`, taux BCT quotidien ; valeurs À VÉRIFIER par le transitaire, aucun prix public ; non poussé, non déployé.
+
 2026-11-06 — Profils Acheteur et Vendeur séparés, suivi #5 — Copilot,
 branche `feature/profils-acheteur-vendeur` depuis `master`.
 Implémentation locale : une identité et une connexion communes, choix Acheteur,

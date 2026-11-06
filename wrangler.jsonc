@@ -9,7 +9,7 @@
 		// l'accueil (et mode « propositions seules » si LEGACY_AUCTIONS_ENABLED n'est pas "true"), en-têtes X-Robots-Tag
 		// et Cache-Control des pages privées. Les autres fichiers sont servis directement ; les adresses sans fichier
 		// (/vehicules, /mes-offres, /api/…) arrivent au Worker dans tous les cas.
-		"run_worker_first": ["/", "/index.html", "/admin", "/admin.html", "/vendre", "/vendre.html", "/admin-vendeurs", "/admin-vendeurs.html"]
+		"run_worker_first": ["/", "/index.html", "/admin", "/admin.html", "/vendre", "/vendre.html", "/admin-vendeurs", "/admin-vendeurs.html", "/admin-prix", "/admin-prix.html"]
 	},
 	// Base de l'espace acheteur (production). Pour une nouvelle base : `npx wrangler d1 create my-auto-export`,
 	// puis remplacer database_id par l'identifiant affiché (voir README).
