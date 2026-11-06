@@ -3,6 +3,7 @@
 
 ## Branche principale et déploiement
 
+2026-11-06 — « Déposer une annonce » dans l'en-tête — Claude Code, branche `feat/deposer-entete` (sur `fix/google-masque`) : bouton déplacé dans l'en-tête de l'accueil, de /vehicules et des fiches (icône seule sur téléphone) ; tests : test_accueil OK (20).
 2026-11-06 — Correctif bouton Google — Claude Code, branche `fix/google-masque` : bouton « Continuer avec Google » réellement masqué sans configuration (accueil, formulaire de mandat), lien suivi quand même : retour sur la page avec ?connexion=indisponible ; tests : test_google, test_accueil, test_profils_comptes OK (35).
 2026-11-06 — Connexion avec Google — Claude Code, branche `feat/connexion-google` (sur `feat/vendre-connexion`) : migration 0022, `worker/google.js`, bouton sur /vendre, l'accueil et le formulaire de mandat ; inactif tant que GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET ne sont pas déclarés ; tests : 240 Python et 62 Vitest OK ; non poussé, non déployé.
 2026-11-06 — Page /vendre en étapes — Claude Code, branche `feat/vendre-connexion` : « Bonjour ! », puis « Me connecter » ou « Créer un compte » (?etape=login|register) ; tests : 233 Python et 62 Vitest OK.

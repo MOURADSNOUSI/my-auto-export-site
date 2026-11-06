@@ -471,6 +471,13 @@ class AccueilTest(unittest.TestCase):
         page.on("pageerror", lambda e: erreurs.append(str(e)))
         page.goto(self.base + "/")
         page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
+        # Dans l'en-tête, visible aussi sur téléphone (icône seule, libellé pour les lecteurs d'écran).
+        self.assertEqual(page.locator("#site-header #deposer-annonce").count(), 1)
+        self.assertTrue(page.is_visible("#deposer-annonce"))
+        self.assertEqual(page.get_attribute("#deposer-annonce", "href"), "/vendre")
+        self.assertIn("Déposer une annonce", page.text_content("#deposer-annonce"))
+        for chemin in ("/vehicules", self.fiches["ACC-JEUNE"]):
+            self.assertIn('<a class="bouton-deposer" href="/vendre">', self.page(chemin)[1], chemin)
         # Non connecté : choix connexion ou inscription, sans quitter l'accueil.
         page.click("#deposer-annonce")
         page.wait_for_selector("#deposer-dialog[open]")

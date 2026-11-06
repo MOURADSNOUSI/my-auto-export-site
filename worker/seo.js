@@ -405,6 +405,9 @@ header a{color:#fff;text-decoration:none;font-weight:700}header img{width:36px;h
 .marque{display:inline-flex;align-items:center;gap:10px}
 .menu{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:15px}.menu a{font-weight:600;padding-block:6px}
 .outils{display:flex;align-items:center;gap:8px;margin-inline-start:auto}.compte{padding-block:6px}
+.bouton-deposer{display:inline-flex;align-items:center;gap:8px;min-block-size:40px;padding-inline:14px;border-radius:20px;background:var(--accent);color:#fff;font-size:14px;white-space:nowrap}
+.bouton-deposer svg{inline-size:18px;block-size:18px;fill:none;stroke:currentColor;stroke-width:2}
+@media(max-width:680px){.bouton-deposer{padding-inline:9px}.bouton-deposer span{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
 nav.ariane{font-size:14px;color:var(--soft);margin:16px 0}nav.ariane a{color:var(--soft)}
 h1{font-size:clamp(24px,5vw,36px);line-height:1.2;margin:0 0 8px}
 .meta{color:var(--soft);margin:0 0 16px}
@@ -432,7 +435,7 @@ function entete(ctx) {
   const lien = (ancre, cle) => `<a href="${ancre === "vehicules" ? "/vehicules" : `/#${ancre}`}">${escapeHtml(t(cle))}</a>`;
   return `<header><div class="shell"><a class="marque" href="/"><img src="/logo.png" alt="Logo M&amp;Y AUTO EXPORT" width="36" height="36">M&amp;Y AUTO EXPORT</a>
     <nav class="menu" aria-label="Navigation principale">${lien("vehicules", "menu_vehicules")}${lien("comment-ca-marche", "menu_comment")}${lien("nos-prix", "menu_prix")}${lien("questions", "menu_questions")}</nav>
-    <div class="outils">${ctx ? boutonWhatsapp(ctx) : ""}<a class="compte" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a></div></div></header>`;
+    <div class="outils"><a class="bouton-deposer" href="/vendre"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg><span>${escapeHtml(t("deposer_bouton"))}</span></a>${ctx ? boutonWhatsapp(ctx) : ""}<a class="compte" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a></div></div></header>`;
 }
 
 function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [], ctx = null }) {
