@@ -67,9 +67,9 @@ Tests JavaScript (Vitest, `fetch` simulé) : `npm install`, puis `npm run test:j
 `GET /api/voitures-europe` renvoie des voitures lues chez TheCarApi (`worker/voitures-europe.js`), sous la forme
 `{ total, voitures: [{ id, titre, annee, km, carburant, boite, prixEur, prixTnd, source, finEnchere, image }] }`.
 
-- **Préfiltre M&Y**, toujours appliqué (constantes en haut du fichier) : sites `openlane,ecarstrade`, année ≥ 2019,
-  150 000 km au plus, 30 000 € au plus, 24 résultats. `mileage_to`, `price_to` et `page` ne sont pas documentés par
-  TheCarApi : à vérifier (`PREFILTRE_A_VERIFIER`, `PARAMETRES_A_VERIFIER`).
+- **Préfiltre M&Y**, toujours appliqué (`PREFILTRE` en haut du fichier) : source `openlane`, année ≥ 2019,
+  150 000 km au plus (`kilometers_to`), 30 000 € au plus, 24 résultats. Noms conformes à la documentation TheCarApi
+  (contrat 2026-10-05). eCarsTrade n'y figure pas comme source : une source inconnue fait échouer toute la recherche (400).
 - **Affinages du visiteur** : `brand`, `model`, `fuel`, `year_from`, `price_to`, `page` uniquement (40 caractères au plus,
   lettres, chiffres, espaces, virgules, points, tirets), sinon 400. `year_from` et `price_to` ne peuvent que resserrer
   le préfiltre. Tout autre paramètre est ignoré.

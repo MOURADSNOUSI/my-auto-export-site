@@ -42,7 +42,7 @@ describe("préfiltre M&Y", () => {
     await appeler();
     const envoyes = parametresEnvoyes();
     expect(Object.fromEntries(envoyes)).toEqual({
-      site: "openlane,ecarstrade", year_from: "2019", mileage_to: "150000", price_to: "30000", limit: "24"
+      site: "openlane", year_from: "2019", kilometers_to: "150000", price_to: "30000", limit: "24"
     });
     expect(fetch.mock.calls[0][0].startsWith("https://api.thecarapi.com/api/search?")).toBe(true);
     expect(fetch.mock.calls[0][1].headers["X-API-Key"]).toBe("cle-de-test");
@@ -61,9 +61,9 @@ describe("préfiltre M&Y", () => {
 
 describe("paramètres du visiteur", () => {
   it("ignore un paramètre non autorisé, même s'il recouvre le préfiltre", async () => {
-    await appeler("?site=autre&limit=500&mileage_to=999999&cle=x&brand=BMW");
+    await appeler("?site=autre&limit=500&kilometers_to=999999&cle=x&brand=BMW");
     const envoyes = Object.fromEntries(parametresEnvoyes());
-    expect(envoyes).toMatchObject({ site: "openlane,ecarstrade", limit: "24", mileage_to: "150000", brand: "BMW" });
+    expect(envoyes).toMatchObject({ site: "openlane", limit: "24", kilometers_to: "150000", brand: "BMW" });
     expect(envoyes).not.toHaveProperty("cle");
   });
 
@@ -116,6 +116,24 @@ describe("normalisation", () => {
     });
   });
 
+  it("lit la carte de l'exemple de la documentation (contrat 2026-10-05)", () => {
+    const resultat = normaliser({
+      success: true, total: 18342,
+      results: [{ auction_id: 38112900, auction_id_str: "38112900", site_name: "encar", clean_make: "BMW", clean_model: "320d",
+        registration_year: 2020, mileage: 45000, public_price_eur: 21500, thumbnail_url: "https://cdn.example/photo.webp" }]
+    }, 3.5);
+    expect(resultat).toEqual({
+      total: 18342,
+      voitures: [{ id: "encar-38112900", titre: "BMW 320d", annee: 2020, km: 45000, carburant: null, boite: null,
+        prixEur: 21500, prixTnd: 75250, source: "encar", finEnchere: null, image: "https://cdn.example/photo.webp" }]
+    });
+  });
+
+  it("préfère auction_id_str, exact au-delà de 2^53", () => {
+    const { voitures } = normaliser({ results: [{ auction_id: 12345678901234567000, auction_id_str: "12345678901234567890", site_name: "japan" }] }, null);
+    expect(voitures[0].id).toBe("japan-12345678901234567890");
+  });
+
   it("distingue deux enchères de même numéro sur deux sources", () => {
     const { voitures } = normaliser({ results: [{ auction_id: 42, site_name: "OPENLANE" }, { auction_id: 42, site_name: "eCarsTrade" }] }, null);
     expect(voitures.map((voiture) => voiture.id)).toEqual(["openlane-42", "ecarstrade-42"]);
@@ -158,7 +176,7 @@ describe("cache", () => {
     const seconde = await appeler("?brand=BMW&fuel=Diesel");
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(await seconde.json()).toEqual({ total: 0, voitures: [] });
-    expect([...cache.entrees.keys()]).toEqual([`${ORIGINE}/api/voitures-europe?brand=BMW&fuel=Diesel&limit=24&mileage_to=150000&price_to=30000&site=openlane%2Cecarstrade&year_from=2019`]);
+    expect([...cache.entrees.keys()]).toEqual([`${ORIGINE}/api/voitures-europe?brand=BMW&fuel=Diesel&kilometers_to=150000&limit=24&price_to=30000&site=openlane&year_from=2019`]);
   });
 });
 
@@ -171,10 +189,18 @@ describe("erreurs", () => {
     expect(erreur.status).toBe(502);
     expect(erreur.message).toMatch(/momentanément indisponible/);
     expect(erreur.message).not.toMatch(/cle-de-test|Invalid|401|403|429/);
-    expect(journal).toHaveBeenCalledWith("thecarapi", status);
+    expect(journal).toHaveBeenCalledWith("thecarapi", status, null);
     expect(JSON.stringify(journal.mock.calls)).not.toContain("cle-de-test");
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it("400 : journalise le motif donné par l'API et l'identifiant de requête, sans la clé", async () => {
+    const journal = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ success: false, error: "Unknown site: foo" }),
+      { status: 400, headers: { "Content-Type": "application/json", "X-Request-ID": "req-123" } }));
+    await expect(appeler()).rejects.toMatchObject({ status: 502 });
+    expect(journal).toHaveBeenCalledWith("thecarapi", 400, "req-123", "Unknown site: foo");
   });
 
   it("réseau coupé ou réponse illisible : 502", async () => {
