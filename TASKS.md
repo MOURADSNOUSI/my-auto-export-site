@@ -81,6 +81,7 @@ et le nom de sa branche dédiée. L'issue reste la référence si un statut dive
 | Issue | Tâche | Agent | Statut | Branche |
 |---|---|---|---|---|
 | [#5](https://github.com/MOURADSNOUSI/my-auto-export-site/issues/5) | Vendre mon véhicule : dossier vendeur et diagnostic validé | OpenAI Codex | En revue (PR [#7](https://github.com/MOURADSNOUSI/my-auto-export-site/pull/7)), 160 tests réussis, non déployé | `feature/marketplace-vendeurs-diagnostic` |
+| — (mission « achat sur mandat », chantier 1) | Interrupteur des automatisations, accès agent local (AGENT_TOKEN), journal des actions | Claude Code | En cours, local, non poussé | `feat/journal-actions` |
 | — | Aucune issue ouverte | — | — | — |
 
 Après chaque intervention, commenter l'issue et actualiser la ligne correspondante avec le statut,
