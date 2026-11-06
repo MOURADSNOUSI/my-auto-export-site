@@ -31,7 +31,8 @@ class ProductionCompatibilityTest(fixtures.SellerFixture):
         self.assertIn(('https://www.myautoexport.com'+path).encode(), html)
         self.assertIn(b'data-proposal-ref="'+ref.encode(), html)
         self.assertIn(b'Prix de r\xc3\xa9serve', html)
-        self.assertIn(path.encode(), self.call('GET', '/', who=None)[1])
+        # Liens vers les fiches lisibles sans JavaScript sur /vehicules (l'accueil n'a plus de liste).
+        self.assertIn(path.encode(), self.call('GET', '/vehicules', who=None)[1])
         self.assertIn(path.encode(), self.call('GET', '/sitemap.xml', who=None)[1])
         self.assertEqual(self.call('GET', '/vehicules/ancienne-adresse-'+ref.lower(), who=None)[0], 200)
         for width in [1440, 390]:

@@ -361,16 +361,10 @@ function sectionsAccueil(ctx) {
   };
 }
 
-// Accueil : textes (data-texte), choix du public, WhatsApp, sections et cartes insérés dans index.html.
-// Le catalogue en échec laisse la section des véhicules masquée ; le reste de la page est servi.
+// Accueil : textes (data-texte), choix du public, WhatsApp et sections insérés dans index.html. Les cartes des véhicules
+// lisibles sans JavaScript sont sur /vehicules, lié depuis le menu.
 export async function vitrineAccueil(request, env, reponse) {
   const ctx = await contexteVitrine(request, env);
-  let liste = null;
-  try {
-    liste = await listeIndexable(request, env, ctx);
-  } catch {
-    console.error("homepage_catalogue_failed");
-  }
   const sections = sectionsAccueil(ctx);
   const textesNavigateur = JSON.stringify(Object.fromEntries(TEXTES_NAVIGATEUR.map((cle) => [cle, t(cle)]))).replace(/</g, "\\u003c");
   const remplir = (html) => ({ element: (element) => element.setInnerContent(html, { html: true }) });
@@ -391,11 +385,6 @@ export async function vitrineAccueil(request, env, reponse) {
       element.removeAttribute("hidden");
       element.setInnerContent(sections.temoignages, { html: true });
     } });
-  }
-  if (liste !== null) {
-    rewriter = rewriter
-      .on("#tous-vehicules", { element: (element) => element.removeAttribute("hidden") })
-      .on("#liste-vehicules", remplir(liste || `<li>${escapeHtml(t("liste_vide"))}</li>`));
   }
   const entetes = new Headers(reponse.headers);
   entetes.delete("ETag");
@@ -440,9 +429,9 @@ footer{margin-top:48px;padding:24px 0;border-top:1px solid var(--line);font-size
 // En-tête commun : menu vers les ancres de l'accueil, « Mon compte » (espace acheteur de l'accueil), WhatsApp si un
 // numéro est saisi (ctx absent : page d'erreur, sans WhatsApp).
 function entete(ctx) {
-  const lien = (ancre, cle) => `<a href="/#${ancre}">${escapeHtml(t(cle))}</a>`;
+  const lien = (ancre, cle) => `<a href="${ancre === "vehicules" ? "/vehicules" : `/#${ancre}`}">${escapeHtml(t(cle))}</a>`;
   return `<header><div class="shell"><a class="marque" href="/"><img src="/logo.png" alt="Logo M&amp;Y AUTO EXPORT" width="36" height="36">M&amp;Y AUTO EXPORT</a>
-    <nav class="menu" aria-label="Navigation principale">${lien("tous-vehicules", "menu_vehicules")}${lien("comment-ca-marche", "menu_comment")}${lien("nos-prix", "menu_prix")}${lien("questions", "menu_questions")}</nav>
+    <nav class="menu" aria-label="Navigation principale">${lien("vehicules", "menu_vehicules")}${lien("comment-ca-marche", "menu_comment")}${lien("nos-prix", "menu_prix")}${lien("questions", "menu_questions")}</nav>
     <div class="outils">${ctx ? boutonWhatsapp(ctx) : ""}<a class="compte" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a></div></div></header>`;
 }
 
@@ -631,12 +620,6 @@ async function pageVehicule(request, env, url) {
     contenu,
     ctx
   }), 200, ENTETES_VITRINE);
-}
-
-// Cartes des véhicules indexables, insérées dans l'accueil par le Worker : lisibles sans JavaScript.
-export async function listeIndexable(request, env, ctx) {
-  const lots = (await lotsAvecEtat(request, env)).filter(indexable).map((item) => item.lot);
-  return lots.map((lot) => carteVehicule(lot, ctx)).join("");
 }
 
 async function pageListe(request, env) {
