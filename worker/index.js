@@ -14,6 +14,7 @@ import { REGLAGES_INTERRUPTEURS, REGLAGES_SITE, reglageActif, ecrireInterrupteur
 import { mettreAJourTaux, routeAdminPrix } from "./prix.js";
 import { estRouteMandats, routeAdminMandats, routeMandats, vehiculeMandat } from "./mandats.js";
 import { estRouteGoogle, routeGoogle } from "./google.js";
+import { routeAdminImport, suivreImports } from "./import-openlane.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -83,6 +84,7 @@ export default {
   async scheduled(controller, env) {
     if (controller.cron === "30 2 * * *") {
       await expireOffers(env);
+      await suivreImports(env).catch(() => console.error("suivi_imports_failed"));
       const regles = await policy(env);
       await purgeSeller(env, regles?.retention_days ?? (env.SELLER_RETENTION_DAYS || 180));
     } else {
@@ -884,6 +886,14 @@ async function routeAdminJournalisee(request, env, path, method, ctx) {
 async function routeAdmin(request, env, path, method, ctx) {
   const user = await exigerAdmin(request, env);
   if (path === "/api/admin/prix" || path.startsWith("/api/admin/prix/")) return routeAdminPrix(request, env, path, method, user, { json, ApiError, lireJson });
+  if (path === "/api/admin/import" || path.startsWith("/api/admin/import/")) {
+    try {
+      return await routeAdminImport(request, env, new URL(request.url), user, { json, ApiError, lireJson, enregistrerBrouillon });
+    } catch (error) {
+      if (error instanceof ErreurCatalogue) throw new ApiError(error.status, error.message);
+      throw error;
+    }
+  }
   if (path === "/api/admin/mandats" || path.startsWith("/api/admin/mandats/")) return routeAdminMandats(request, env, new URL(request.url), user, { json, ApiError, lireJson, catalogueComplet });
   if (path === "/api/admin/reglages" && method === "GET") return json({ reglages: await listerReglages(env) });
   const reglage = path.match(/^\/api\/admin\/reglages\/([a-z_]{1,64})$/);
@@ -1164,12 +1174,25 @@ export async function enregistrerVehicule(env, user, reference, body, ctx) {
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(reference)) throw new ApiError(400, "Référence invalide (lettres, chiffres, . _ - ; 40 caractères maximum).");
   if(reference.startsWith('SV-'))throw new ApiError(409,'Les annonces vendeur passent par la validation marketplace.');
   const lot = validerVehicule(body, reference);
+  // Annonce importée (worker/import-openlane.js) : la source suivie est gardée quand l'administration la modifie.
+  const existant = await env.DB.prepare("SELECT json_extract(data, '$.importSource') AS source FROM vehicles WHERE reference = ?").bind(reference).first();
+  if (existant?.source) lot.importSource = { ...JSON.parse(existant.source), termine: false };
   await env.DB.prepare(
     `INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 0, ?, ?)
      ON CONFLICT(reference) DO UPDATE SET data = excluded.data, removed = 0, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
   ).bind(reference, JSON.stringify(lot), new Date().toISOString(), user.id).run();
   await controlerApresPublication(env, ctx, reference);
   return { vehicle: lot, url: cheminVehicule(lot) };
+}
+
+// Brouillon d'une annonce importée : véhicule retiré (invisible du public) jusqu'à sa remise en ligne depuis /admin.
+// Faux si la référence existe déjà (annonce déjà importée).
+export async function enregistrerBrouillon(env, user, reference, corps, source) {
+  const lot = { ...validerVehicule(corps, reference), importSource: source };
+  const resultat = await env.DB.prepare(
+    "INSERT INTO vehicles (reference, data, removed, updated_at, updated_by) VALUES (?, ?, 1, ?, ?) ON CONFLICT(reference) DO NOTHING"
+  ).bind(reference, JSON.stringify(lot), new Date().toISOString(), user.id ?? null).run();
+  return resultat.meta.changes > 0;
 }
 
 export async function retirerVehicule(request, env, user, reference, ctx) {

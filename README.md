@@ -466,6 +466,28 @@ PKCE, sans script Google dans les pages ; seuls le nom, l'e-mail et l'identifian
   page de départ avec `?connexion=refusee|annulee|limite`. Chaque connexion est journalisée (`auth.google`).
 - Tests : `tests/test_google.py`, contre un faux Google local.
 
+## Import d'annonces OpenLane
+
+`/admin-import` (lien depuis `/admin`) cherche des annonces OpenLane via TheCarApi, dans le préfiltre M&Y
+(`worker/voitures-europe.js`), et les importe dans le catalogue (`worker/import-openlane.js`). Sans migration : la source
+est gardée dans les données du véhicule (`importSource`).
+
+- **Brouillon** : une annonce importée est un véhicule retiré (référence `OL-<numéro>`), invisible du public. Elle se
+  relit dans `/admin` (« Retirés ») puis se publie par « Remettre en ligne ». Rien n'est publié automatiquement.
+- **Champs repris** : marque, modèle, année, kilométrage, carburant, boîte, cylindrée, couleur, prix d'achat en EUR (pour
+  les prix estimés), lien de l'annonce, photos en https (laissées à leur adresse d'origine, pas de copie dans R2).
+- **Limites** : pas de doublon (même référence) ; 100 annonces suivies au plus.
+- **Suivi** : le cron de 02:30 UTC retire du site les annonces publiées dont l'enchère est terminée (sans appel à
+  l'API), journalisé (`import.openlane.termine`) ; coupé par `automations_actives`.
+- **MCP** : `rechercher_openlane` (lecture) et `importer_annonce_openlane` (`confirmer: true`, droits de l'agent).
+- **Vérifié** sur une vraie réponse (7 novembre 2026, contrat 2026-10-05) : `auction_end_at`, `fuel_group`,
+  `gearbox_group`, `original_url`, `date_first_registration`, `hp`, `images[]`. La cylindrée n'est pas fournie : à
+  saisir dans `/admin` avant d'afficher un prix estimé. Photos : adresse d'origine d'OpenLane, sinon copie signée de
+  TheCarApi (valable jusqu'au 1er janvier 2027). Les serveurs d'OpenLane refusent une photo demandée avec la provenance
+  du site : les images des véhicules portent `referrerpolicy="no-referrer"`.
+- **À vérifier de votre côté** : droits de republication des annonces et photos (conditions OpenLane et TheCarApi).
+- Tests : `tests/import-openlane.test.js` (Vitest) et `tests/test_import_openlane.py` (faux TheCarApi local).
+
 ## Marketplace vendeurs et diagnostic obligatoire (issue #5)
 
 `/vendre` propose huit étapes de dépôt, les brouillons, photos, dommages, diagnostics et documents

@@ -3,6 +3,7 @@
 
 ## Branche principale et déploiement
 
+2026-11-07 — Import OpenLane — Claude Code, branche `feat/import-openlane` : correction TheCarApi (filtre openlane seul, cause du 502), `/admin-import`, import en brouillon (référence OL-…), suivi de fin d'enchère au cron de 02:30, outils MCP `rechercher_openlane` et `importer_annonce_openlane`, sans migration ; vérifié en local contre la vraie API (recherche, import, remise en ligne, 8 photos affichées) ; date du taux à l'heure de Tunis ; non poussé, non déployé.
 2026-11-06 — Connexion avec Google — Claude Code, branche `feat/connexion-google` (sur `feat/vendre-connexion`) : migration 0022, `worker/google.js`, bouton sur /vendre, l'accueil et le formulaire de mandat ; inactif tant que GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET ne sont pas déclarés ; tests : 240 Python et 62 Vitest OK ; non poussé, non déployé.
 2026-11-06 — Page /vendre en étapes — Claude Code, branche `feat/vendre-connexion` : « Bonjour ! », puis « Me connecter » ou « Créer un compte » (?etape=login|register) ; tests : 233 Python et 62 Vitest OK.
 2026-11-06 — Accueil sans liste « Tous nos véhicules » — Claude Code, branche `feat/accueil-sans-liste` : section retirée de l'accueil, menu « Véhicules » vers /vehicules (cartes sans JavaScript) ; tests : 233 Python (1 test corrigé puis relancé) et 62 Vitest OK.

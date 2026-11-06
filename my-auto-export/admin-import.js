@@ -1,0 +1,77 @@
+// Page /admin-import : recherche d'annonces OpenLane (via TheCarApi) et import en brouillon (worker/import-openlane.js).
+// Les textes et adresses viennent d'un tiers : tout passe par echapper(), les liens et photos sont en https seulement.
+const $ = (id) => document.getElementById(id);
+let annonces = [];
+
+function echapper(valeur) {
+  return String(valeur ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c]);
+}
+
+async function api(chemin, { method = "GET", body } = {}) {
+  const reponse = await fetch(chemin, {
+    method, credentials: "same-origin",
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!(reponse.headers.get("Content-Type") || "").includes("application/json")) throw new Error("Serveur indisponible. Réessaie dans un instant.");
+  const data = await reponse.json();
+  if (!reponse.ok) throw new Error(data.error || "Erreur inattendue.");
+  return data;
+}
+
+function message(texte, ok = true) {
+  $("succes").hidden = !ok;
+  $("erreur").hidden = ok;
+  $(ok ? "succes" : "erreur").textContent = texte;
+}
+
+const https = (adresse) => (typeof adresse === "string" && /^https:\/\//.test(adresse) ? adresse : "");
+const euros = (n) => (Number.isFinite(n) ? new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n) : "Prix non communiqué");
+const dateHeure = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Tunis" }) : "—");
+
+function carte(a, index) {
+  const titre = a.titre || [a.marque, a.modele].filter(Boolean).join(" ") || "Annonce sans titre";
+  const infos = [a.annee, Number.isFinite(a.km) ? `${new Intl.NumberFormat("fr-FR").format(a.km)} km` : null, a.carburant, a.boite, a.cylindree ? `${a.cylindree} cm³` : null].filter(Boolean);
+  const photo = https(a.photos?.[0] || a.image);
+  const importable = a.reference && a.marque && a.modele && !a.dejaImporte;
+  return `<li class="annonce">
+    ${photo ? `<img src="${echapper(photo)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
+    <h3>${echapper(titre)}</h3>
+    <p>${echapper(infos.join(" · "))}</p>
+    <p><strong>${echapper(euros(a.prixEur))}</strong> · fin de l'enchère : ${echapper(dateHeure(a.finEnchere))}</p>
+    <p>Réf. future : ${echapper(a.reference || "—")}${https(a.lien) ? ` · <a href="${echapper(https(a.lien))}" target="_blank" rel="noopener noreferrer">Annonce OpenLane ↗</a>` : ""}</p>
+    ${a.dejaImporte ? "<p><strong>Déjà importée</strong></p>" : importable ? `<button class="button primary" type="button" data-importer="${index}">Importer en brouillon</button>` : "<p>Marque ou modèle manquant : import impossible.</p>"}
+  </li>`;
+}
+
+$("form-recherche").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const recherche = new URLSearchParams([...new FormData(event.currentTarget)].filter(([, v]) => String(v).trim() !== ""));
+  $("resume").textContent = "Recherche…";
+  try {
+    const data = await api(`/api/admin/import/recherche?${recherche}`);
+    annonces = data.annonces;
+    $("resume").textContent = `${data.total} annonce(s) chez OpenLane, ${annonces.length} affichée(s). Annonces suivies : ${data.suivis} sur ${data.max}.`;
+    $("annonces").innerHTML = annonces.map(carte).join("");
+  } catch (error) {
+    $("resume").textContent = "";
+    message(error.message, false);
+  }
+});
+
+$("annonces").addEventListener("click", async (event) => {
+  const bouton = event.target.closest("[data-importer]");
+  if (!bouton) return;
+  const annonce = annonces[Number(bouton.dataset.importer)];
+  if (!confirm(`Importer « ${annonce.titre || annonce.reference} » en brouillon ? Elle ne sera pas publiée avant votre relecture.`)) return;
+  bouton.disabled = true;
+  try {
+    const resultat = await api("/api/admin/import", { method: "POST", body: { annonce } });
+    message(`${resultat.reference} : ${resultat.message}`);
+    annonce.dejaImporte = true;
+    bouton.outerHTML = "<p><strong>Déjà importée</strong></p>";
+  } catch (error) {
+    message(error.message, false);
+    bouton.disabled = false;
+  }
+});

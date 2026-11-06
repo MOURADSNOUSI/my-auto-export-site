@@ -160,6 +160,7 @@
         <a class="button small" href="/admin-vendeurs">Annonces vendeurs à valider</a>
         <a class="button small" href="/admin-prix">Prix estimés</a>
         <a class="button small" href="/admin-mandats">Mandats</a>
+        <a class="button small" href="/admin-import">Import OpenLane</a>
         <a class="button small" href="/">Voir le site</a>
         <button class="button small hidden" type="button" id="logout">Déconnexion</button>
       </div>
@@ -638,7 +639,7 @@
         const lot = item.lot;
         const photo = (lot.photos || []).find((p) => p && p.url)?.url;
         return `<li class="vehicle${item.removed ? " removed" : ""}">
-          <div class="thumb">${photo ? `<img src="${escapeHtml(photo)}" alt="" loading="lazy">` : ""}</div>
+          <div class="thumb">${photo ? `<img src="${escapeHtml(photo)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}</div>
           <div><h2>${escapeHtml(titre(lot))}</h2>
             <div class="meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="badge ${escapeHtml(lot.status)}">${item.auction?.status === "ended" ? "Enchère terminée" : STATUTS[lot.status] || escapeHtml(lot.status)}</span>
               ${item.removed ? `<span class="badge removed">Retiré</span>` : ""}${offresDe(lot.reference).some((o) => o.status === "accepted") ? `<span class="badge sold">Vendu</span>` : ""}<span>${escapeHtml(prix(lot))}</span><span>${(lot.photos || []).length} photo(s)</span></div>
@@ -698,7 +699,7 @@
       $("photo-grid").innerHTML = etat.photos.map((url, index) => `
         <li class="photo${url.startsWith("blob:") ? " pending" : ""}">
           ${index === 0 ? `<span class="first">Couverture</span>` : ""}
-          <img src="${escapeHtml(url)}" alt="Photo ${index + 1}">
+          <img src="${escapeHtml(url)}" alt="Photo ${index + 1}" referrerpolicy="no-referrer">
           <div class="photo-tools">
             <button type="button" data-move="-1" data-index="${index}" aria-label="Déplacer vers la gauche" ${index === 0 ? "disabled" : ""}>←</button>
             <button type="button" data-delete="${index}" aria-label="Supprimer la photo ${index + 1}">✕</button>

@@ -222,8 +222,10 @@ const montant = (n, devise) => (devise === "EUR" ? eur(n) : tnd(n));
 
 // Date du taux (JJ/MM/AAAA) : date du taux automatique, sinon dernière modification du taux manuel, sinon aujourd'hui.
 function dateTaux(r, ctx) {
-  const iso = r.taux.date || ctx.parametres.lignesParametres?.find((l) => l.cle === "taux_manuel")?.mis_a_jour || ctx.parametres.aujourdhui;
-  const [a, m, j] = String(iso).slice(0, 10).split("-");
+  const iso = String(r.taux.date || ctx.parametres.lignesParametres?.find((l) => l.cle === "taux_manuel")?.mis_a_jour || ctx.parametres.aujourdhui);
+  // Date et heure (UTC) : jour affiché à l'heure de Tunis, sinon la veille s'afficherait après minuit.
+  if (iso.length > 10 && Number.isFinite(Date.parse(iso))) return new Date(iso).toLocaleDateString("fr-FR", { timeZone: "Africa/Tunis", day: "2-digit", month: "2-digit", year: "numeric" });
+  const [a, m, j] = iso.slice(0, 10).split("-");
   return `${j}/${m}/${a}`;
 }
 
@@ -288,7 +290,8 @@ function photoCarte(lot) {
   if (!url) return `<span class="carte-sans-photo"></span>`;
   const src = url.startsWith("photos/") ? `/${url}` : url;
   const webp = url.match(/^photos\/([^/]+)\.(?:jpe?g|png)$/i);
-  const img = `<img src="${escapeHtml(src)}" alt="" width="400" height="300" loading="lazy" decoding="async">`;
+  // Sans provenance : les serveurs d'images d'OpenLane refusent les photos demandées depuis un autre site (403).
+  const img = `<img src="${escapeHtml(src)}" alt="" width="400" height="300" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
   return webp ? `<picture><source srcset="/photos/web/${escapeHtml(webp[1])}.webp" type="image/webp">${img}</picture>` : img;
 }
 
@@ -499,7 +502,7 @@ async function variantesWebp(env, request, photos) {
 function image(url, webp, alt, { principale = false } = {}) {
   const src = url.startsWith("photos/") ? `/${url}` : url;
   const attributs = principale ? `fetchpriority="high" decoding="async"` : `loading="lazy" decoding="async"`;
-  const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" ${attributs}>`;
+  const img = `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" ${attributs} referrerpolicy="no-referrer">`;
   return webp ? `<picture><source srcset="${escapeHtml(webp)}" type="image/webp">${img}</picture>` : img;
 }
 

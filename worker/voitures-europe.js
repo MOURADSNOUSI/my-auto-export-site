@@ -62,9 +62,26 @@ export async function voituresEurope(request, env, url, ctx) {
   const enCache = cache && await cache.match(cle);
   if (enCache) return enCache;
 
+  const donnees = await appelerTheCarApi(env, parametres);
+  const corps = JSON.stringify(normaliser(donnees, tauxTnd(env)));
+  const resultat = new Response(corps, {
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${CACHE_SECONDES}` }
+  });
+  if (cache) {
+    const enregistrement = cache.put(cle, resultat.clone());
+    if (ctx?.waitUntil) ctx.waitUntil(enregistrement);
+    else await enregistrement;
+  }
+  return resultat;
+}
+
+// Réponse brute de TheCarApi pour des paramètres déjà validés (parametresRecherche), sans cache : partagée par le
+// catalogue public et l'import de /admin-import. Adresse surchargeable par THECARAPI_URL (tests).
+export async function appelerTheCarApi(env, parametres) {
+  if (!env.THECARAPI_KEY) throw new ErreurCatalogue(503, "Le catalogue Europe n'est pas encore disponible.");
   let reponse;
   try {
-    reponse = await fetch(`${API_THECARAPI}?${requete}`, {
+    reponse = await fetch(`${env.THECARAPI_URL || API_THECARAPI}?${chaineTriee(parametres)}`, {
       headers: { "X-API-Key": env.THECARAPI_KEY, Accept: "application/json" },
       signal: AbortSignal.timeout(DELAI_API_MS)
     });
@@ -79,24 +96,12 @@ export async function voituresEurope(request, env, url, ctx) {
     console.error("thecarapi", reponse.status, reponse.headers.get("X-Request-ID"), ...(message ? [message] : []));
     throw indisponible();
   }
-  let donnees;
   try {
-    donnees = await reponse.json();
+    return await reponse.json();
   } catch {
     console.error("thecarapi", "réponse illisible");
     throw indisponible();
   }
-
-  const corps = JSON.stringify(normaliser(donnees, tauxTnd(env)));
-  const resultat = new Response(corps, {
-    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${CACHE_SECONDES}` }
-  });
-  if (cache) {
-    const enregistrement = cache.put(cle, resultat.clone());
-    if (ctx?.waitUntil) ctx.waitUntil(enregistrement);
-    else await enregistrement;
-  }
-  return resultat;
 }
 
 function indisponible() {
@@ -118,7 +123,7 @@ export function normaliser(donnees, taux) {
   return { total: total ?? voitures.length, voitures };
 }
 
-function normaliserVoiture(voiture, taux) {
+export function normaliserVoiture(voiture, taux) {
   const prixEur = nombre(voiture.public_price_eur ?? voiture.price_eur ?? voiture.price);
   const source = texte(voiture.site_name ?? voiture.site, 60);
   // auction_id_str : sûr même au-delà de 2^53 (identifiants japonais).
@@ -131,22 +136,22 @@ function normaliserVoiture(voiture, taux) {
     titre: texte(voiture.car_name_en ?? voiture.title ?? voiture.name, 200) ?? (marqueModele || null),
     annee: annee(voiture.registration_year ?? voiture.year),
     km: nombre(voiture.mileage_km ?? voiture.mileage ?? voiture.km ?? voiture.odometer),
-    carburant: texte(voiture.fuel ?? voiture.fuel_type, 60),
-    boite: texte(voiture.gearbox ?? voiture.transmission, 60),
+    carburant: texte(voiture.fuel_group ?? voiture.fuel ?? voiture.fuel_type, 60),
+    boite: texte(voiture.gearbox_group ?? voiture.gearbox ?? voiture.transmission, 60),
     prixEur,
     prixTnd: prixEur !== null && taux ? Math.round(prixEur * taux) : null,
     source,
-    finEnchere: date(voiture.auction_end ?? voiture.end_date ?? voiture.ends_at ?? voiture.auction_end_date),
+    finEnchere: date(voiture.auction_end_at ?? voiture.auction_end ?? voiture.end_date ?? voiture.ends_at ?? voiture.auction_end_date),
     image: image(voiture)
   };
 }
 
-function texte(valeur, max) {
+export function texte(valeur, max) {
   if (typeof valeur === "number" && Number.isFinite(valeur)) return String(valeur);
   return typeof valeur === "string" && valeur.trim() ? valeur.trim().slice(0, max) : null;
 }
 
-function nombre(valeur) {
+export function nombre(valeur) {
   if (typeof valeur === "number") return Number.isFinite(valeur) ? valeur : null;
   if (typeof valeur !== "string") return null;
   const propre = valeur.replace(/[\s  ]/g, "").replace(",", ".");
@@ -158,7 +163,7 @@ function annee(valeur) {
   return resultat ? Number(resultat[0]) : null;
 }
 
-function date(valeur) {
+export function date(valeur) {
   if (valeur === null || valeur === undefined || valeur === "") return null;
   const instant = typeof valeur === "number" ? (valeur < 1e12 ? valeur * 1000 : valeur) : Date.parse(valeur);
   return Number.isFinite(instant) ? new Date(instant).toISOString() : null;
@@ -166,7 +171,8 @@ function date(valeur) {
 
 // Première image en https : une autre adresse (http, javascript:…) n'est jamais renvoyée au site.
 function image(voiture) {
-  const candidats = [voiture.thumbnail_url, voiture.image, voiture.image_url, voiture.thumbnail, voiture.photo, ...(Array.isArray(voiture.images) ? voiture.images : [])];
+  // thumbnail_url est une adresse relative de TheCarApi (signée, expirante) : écartée au profit de l'adresse d'origine.
+  const candidats = [voiture.original_thumbnail_url, voiture.thumbnail_url, voiture.image, voiture.image_url, voiture.thumbnail, voiture.photo, ...(Array.isArray(voiture.images) ? voiture.images : [])];
   for (const candidat of candidats) {
     const adresse = typeof candidat === "string" ? candidat : candidat?.url;
     if (typeof adresse === "string" && /^https:\/\/[^\s"'<>]+$/.test(adresse) && adresse.length <= 1000) return adresse;
