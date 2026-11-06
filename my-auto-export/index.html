@@ -236,21 +236,11 @@
     .side-panel { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     .side-panel h2 { margin: 0 0 10px; font-size: 18px; }
     .side-panel p { margin: 0; color: var(--muted); font-size: 14px; }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 20px; margin-top: 18px; }
-    .deposit-faq { margin-top: 18px; font-size: 13px; color: var(--ink-soft); }
-    .deposit-faq summary { cursor: pointer; color: var(--green); font-weight: 700; }
-    .deposit-faq p { margin: 8px 0 0; }
-    .step { padding-top: 11px; border-top: 2px solid var(--gold); }
-    .step b { display: block; margin-bottom: 5px; color: var(--green); font-size: 14px; }
-    .step span { color: var(--ink-soft); font-size: 13px; }
-    .price-note { border-left: 3px solid var(--gold); background: #fbf8f0; }
-    .price-note strong { color: var(--gold-ink); }
     .contact-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
     .text-action { display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; background: white; color: var(--ink); font-size: 14px; font-weight: 700; }
     .text-action:hover { border-color: var(--green); color: var(--green); }
 
     footer { padding: 26px 0; background: var(--dark); color: #d6ddd8; }
-    .footer-note { flex: 1 0 100%; margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
     .footer-inner { flex-wrap: wrap; display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 13px; }
     .footer-inner strong { color: white; }
 
@@ -443,7 +433,6 @@
       .lot-body .pickup-lines div { display: flex; justify-content: space-between; }
       .lot-side { display: flex; align-items: stretch; }
       .sort-control { width: 100%; }
-      .steps { grid-template-columns: 1fr; gap: 10px; }
       .account-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .footer-inner { align-items: start; flex-direction: column; gap: 5px; }
     }
@@ -631,33 +620,6 @@
       </div>
     </section>
 
-    <section class="block below-grid" id="fonctionnement">
-      <article class="side-panel">
-        <h2>Comment acheter</h2>
-        <p>Chaque vente précise ses propres conditions. Voici le parcours habituel, de la fiche du véhicule à la livraison.</p>
-        <div class="steps">
-          <div class="step"><b>01 · Consulter</b><span>Lire la fiche, les photos, l'état du véhicule et les conditions de la vente : mise à prix, réserve, date de fin.</span></div>
-          <div class="step"><b>02 · Créer son espace</b><span>Un compte acheteur gratuit pour suivre vos favoris, vos enchères et vos documents. Acceptez les conditions générales de vente.</span></div>
-          <div class="step"><b>03 · Verser le dépôt de garantie</b><span>de 500 à 3 000 TND selon la valeur du véhicule (voir le barème ci-dessous), par carte bancaire (enchères ouvertes dès le paiement accepté) ou par virement (ouvertes dès réception des fonds).</span></div>
-          <div class="step"><b>04 · Enchérir</b><span>Placez votre enchère depuis la fiche. Une enchère dans les 2 dernières minutes prolonge la vente de 2 minutes.</span></div>
-          <div class="step"><b>05 · Adjudication</b><span>Le meilleur enchérisseur, réserve atteinte, est confirmé par écrit par l'équipe M&amp;Y AUTO EXPORT.</span></div>
-          <div class="step"><b>06 · Paiement et livraison</b><span>Règlement du véhicule, dédouanement et immatriculation en Tunisie. Retrouvez vos véhicules et factures dans votre espace.</span></div>
-        </div>
-        <details class="deposit-faq">
-          <summary>Questions sur le dépôt de garantie</summary>
-          <p><strong>À quoi sert-il ?</strong> Il garantit le sérieux des enchères : une enchère est une offre d'achat ferme.</p>
-          <p><strong>Barème (valeur du véhicule → dépôt) :</strong> jusqu'à 30 000 TND : 500 TND · jusqu'à 50 000 : 1 000 · jusqu'à 70 000 : 1 500 · jusqu'à 100 000 : 2 000 · jusqu'à 200 000 : 2 500 · à partir de 200 000 : 3 000 TND. La valeur retenue est le prix de réserve, à défaut la mise à prix.</p>
-          <p><strong>Est-il à verser pour chaque véhicule ?</strong> Non : il est cumulatif. Votre dépôt vous donne accès à tous les véhicules dont la caution est inférieure ou égale ; pour un véhicule plus cher, vous versez seulement le complément.</p>
-          <p><strong>Une question sur la restitution ?</strong> Écrivez à <a href="mailto:contact@myautoexport.com?subject=D%C3%A9p%C3%B4t%20de%20garantie">contact@myautoexport.com</a>.</p>
-        </details>
-      </article>
-      <article class="side-panel price-note" id="conditions">
-        <h2>Prix affichés en TND</h2>
-        <p><strong>Un prix indicatif n'est pas un prix dédouané.</strong> Le régime FCR, les frais éventuels, le dédouanement et l'immatriculation en Tunisie sont confirmés selon le véhicule et votre situation.</p>
-        <div class="contact-actions"><a class="text-action" href="mailto:contact@myautoexport.com?subject=Conditions%20des%20ventes%20M%26Y">Demander les conditions</a><a class="text-action" href="mailto:contact@myautoexport.com?subject=Recherche%20de%20v%C3%A9hicule">Décrire ma recherche</a></div>
-      </article>
-    </section>
-
     <section class="block below-grid" id="contact">
       <article class="side-panel">
         <h2>Une question sur un véhicule ?</h2>
@@ -676,8 +638,7 @@
   </main>
 
   <footer>
-    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules à votre critère</span><span><span data-texte="pied_mention"></span> · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span>
-      <p class="footer-note">Dépôt de garantie : somme déposée sur votre compte client, retirable à chaque enchère. C'est une caution d'engagement à l'achat en cas d'enchère remportée, sous réserve de la loi tunisienne.</p></div>
+    <div class="shell footer-inner"><span><strong>M&Y AUTO EXPORT</strong> · Véhicules à votre critère</span><span><span data-texte="pied_mention"></span> · <a href="/conditions">Conditions générales de vente</a> · <a href="/conditions#donnees">Données personnelles</a></span></div>
   </footer>
 
   <dialog id="auth-dialog" aria-labelledby="auth-title">
