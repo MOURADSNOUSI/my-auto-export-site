@@ -205,7 +205,7 @@ function renderAdmin(detail){
 }
 // Connexion avec Google : bouton affiché seulement si elle est configurée ; issue d'un retour refusé ou annulé.
 fetch('/api/auth/google/etat').then(r=>r.json()).then(({actif})=>{if(actif)document.querySelectorAll('[data-google]').forEach(e=>e.hidden=false);}).catch(()=>{});
-{const issue=new URLSearchParams(location.search).get('connexion');const textes={refusee:'Connexion avec Google refusée. Réessayez ou utilisez votre e-mail.',annulee:'Connexion avec Google annulée.',limite:"Trop d'inscriptions depuis cette connexion. Réessayez dans une heure."};if(textes[issue]&&$('message'))$('message').textContent=textes[issue];}
+{const issue=new URLSearchParams(location.search).get('connexion');const textes={refusee:'Connexion avec Google refusée. Réessayez ou utilisez votre e-mail.',annulee:'Connexion avec Google annulée.',limite:"Trop d'inscriptions depuis cette connexion. Réessayez dans une heure.",indisponible:"La connexion avec Google n'est pas encore disponible. Utilisez votre e-mail."};if(textes[issue]&&$('message'))$('message').textContent=textes[issue];}
 // Connexion en étapes : accueil « Bonjour ! », puis connexion ou inscription (?etape=login|register pour y aller directement).
 const etapeAuth=etape=>{for(const e of ['accueil','login','register'])$('auth-'+e).hidden=e!==etape;$('auth-'+etape).querySelector('input,select')?.focus();};
 document.querySelectorAll('[data-auth-etape]').forEach(b=>b.addEventListener('click',()=>etapeAuth(b.dataset.authEtape)));
