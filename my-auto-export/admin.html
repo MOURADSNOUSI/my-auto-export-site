@@ -99,6 +99,10 @@
     .todo { margin-bottom: 16px; padding: 14px 16px; border: 2px solid var(--gold); border-radius: var(--radius); background: #fffaf0; }
     .todo h2 { margin: 0 0 8px; font-size: 17px; }
     .todo-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .reglages { margin-bottom: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); }
+    .reglages h2 { margin: 0 0 8px; font-size: 17px; }
+    .reglages label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+    .reglages small { display: block; margin-inline-start: 26px; color: var(--muted); }
     .todo-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 10px 12px; border-radius: 6px; background: white; }
     .todo-list li div { display: grid; }
     .todo-list li span { color: var(--muted); font-size: 13px; }
@@ -191,6 +195,10 @@
       <section class="todo hidden" id="todo" aria-labelledby="todo-title">
         <h2 id="todo-title">À traiter</h2>
         <ul class="todo-list" id="todo-list"></ul>
+      </section>
+      <section class="reglages" id="reglages" aria-labelledby="reglages-title">
+        <h2 id="reglages-title">Automatisations</h2>
+        <ul class="todo-list" id="reglages-list"></ul>
       </section>
       <div class="toolbar">
         <div class="field"><label for="search">Rechercher</label><input id="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off"></div>
@@ -345,7 +353,7 @@
       etat.offres = offres.offers;
       etat.lotsOffres = offres.lots;
       renderAFaire();
-      await chargerVirements();
+      await Promise.all([chargerVirements(), chargerReglages()]);
       etat.photosEnabled = data.photosEnabled;
       $("photos-off").classList.toggle("hidden", etat.photosEnabled);
       $("makes").innerHTML = [...new Set(etat.vehicles.map((item) => item.lot.make))].sort().map((m) => `<option value="${escapeHtml(m)}">`).join("");
@@ -455,6 +463,35 @@
       $("bids-dialog").dataset.reference = reference;
       if (!$("bids-dialog").open) $("bids-dialog").showModal();
     }
+
+    // Interrupteurs : automations_actives coupe tous les outils d'écriture du MCP ; agent_ecriture_autorisee les ouvre
+    // à l'agent local (jeton AGENT_TOKEN), qui est sinon en lecture seule.
+    const LIBELLES_REGLAGES = {
+      automations_actives: ["Automatisations actives", "Outils d'écriture du MCP (Claude) et de l'agent local."],
+      agent_ecriture_autorisee: ["Écriture autorisée à l'agent local", "Sinon, l'agent n'a accès qu'aux outils en lecture."]
+    };
+
+    async function chargerReglages() {
+      const { reglages } = await api("/api/admin/reglages");
+      $("reglages-list").innerHTML = reglages.filter((r) => LIBELLES_REGLAGES[r.cle]).map((r) => `<li>
+        <label><input type="checkbox" data-reglage="${escapeHtml(r.cle)}"${r.valeur ? " checked" : ""}> ${escapeHtml(LIBELLES_REGLAGES[r.cle][0])}</label>
+        <small>${escapeHtml(LIBELLES_REGLAGES[r.cle][1])}${r.misAJour ? ` Modifié le ${dateHeure(r.misAJour)}.` : ""}</small></li>`).join("");
+    }
+
+    $("reglages-list").addEventListener("change", async (event) => {
+      const caseACocher = event.target.closest("[data-reglage]");
+      if (!caseACocher) return;
+      caseACocher.disabled = true;
+      try {
+        await api(`/api/admin/reglages/${encodeURIComponent(caseACocher.dataset.reglage)}`, { method: "PUT", body: { valeur: caseACocher.checked } });
+        flash(`${LIBELLES_REGLAGES[caseACocher.dataset.reglage][0]} : ${caseACocher.checked ? "activé" : "désactivé"}.`);
+        await chargerReglages();
+      } catch (error) {
+        caseACocher.checked = !caseACocher.checked;
+        caseACocher.disabled = false;
+        alert(error.message);
+      }
+    });
 
     async function chargerVirements() {
       const { transfers } = await api("/api/admin/deposits");

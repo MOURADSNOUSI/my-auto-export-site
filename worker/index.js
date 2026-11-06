@@ -10,6 +10,7 @@ import { marketplacePage } from "./marketplace-pages.js";
 import { estRouteMcp, routeMcp } from "./mcp.js";
 import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, listeIndexable, page404, routeSeo } from "./seo.js";
 import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
+import { REGLAGES_INTERRUPTEURS, ecrireInterrupteur, journaliser, listerReglages } from "./reglages.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -195,7 +196,7 @@ async function routeApi(request, env, url, ctx) {
   }
   const enchere = path.match(/^\/api\/auctions\/([^/]{1,64})$/);
   if (enchere && method === "GET") return detailEnchere(request, env, decodeURIComponent(enchere[1]));
-  if (path.startsWith("/api/admin/")) return routeAdmin(request, env, path, method, ctx);
+  if (path.startsWith("/api/admin/")) return routeAdminJournalisee(request, env, path, method, ctx);
   const invoiceDocument = path.match(/^\/api\/invoices\/(\d+)\/document$/);
   if (invoiceDocument && method === "GET") return telechargerFacture(request, env, Number(invoiceDocument[1]));
   if (path === "/api/register" && method === "POST") return register(request, env);
@@ -841,8 +842,35 @@ async function exigerAdmin(request, env) {
   return user;
 }
 
+// Chaque requête d'écriture d'un administrateur connecté est journalisée (acteur admin), réussie ou non. Les requêtes
+// non authentifiées ne le sont pas : elles ne doivent pas pouvoir remplir le journal.
+async function routeAdminJournalisee(request, env, path, method, ctx) {
+  if (method === "GET" || method === "HEAD") return routeAdmin(request, env, path, method, ctx);
+  const admin = await utilisateurConnecte(request, env);
+  if (admin?.role !== "admin") return routeAdmin(request, env, path, method, ctx);
+  const trace = { acteur: "admin", acteurId: admin.id, action: `${method} ${path}`, reference: decodeURIComponent(path.split("/").at(-1)) };
+  try {
+    const reponse = await routeAdmin(request, env, path, method, ctx);
+    await journaliser(env, { ...trace, resultat: reponse.ok ? "ok" : "erreur", details: { status: reponse.status } });
+    return reponse;
+  } catch (error) {
+    const refuse = error instanceof ApiError && error.status < 500;
+    await journaliser(env, { ...trace, resultat: refuse ? "refuse" : "erreur", details: { status: error instanceof ApiError ? error.status : 500 } });
+    throw error;
+  }
+}
+
 async function routeAdmin(request, env, path, method, ctx) {
   const user = await exigerAdmin(request, env);
+  if (path === "/api/admin/reglages" && method === "GET") return json({ reglages: await listerReglages(env) });
+  const reglage = path.match(/^\/api\/admin\/reglages\/([a-z_]{1,64})$/);
+  if (reglage && method === "PUT") {
+    if (!Object.hasOwn(REGLAGES_INTERRUPTEURS, reglage[1])) throw new ApiError(404, "Réglage inconnu.");
+    const { valeur } = await lireJson(request);
+    if (typeof valeur !== "boolean") throw new ApiError(400, "Valeur attendue : vrai ou faux.");
+    await ecrireInterrupteur(env, reglage[1], valeur, user.id);
+    return json({ reglages: await listerReglages(env) });
+  }
   if (path.includes("/auctions/") && !legacyAuctionsEnabled(env)) throw new ApiError(410, "Les enchères sont désactivées pendant le Lot 1.");
   if (path === "/api/admin/seo" && method === "GET") {
     const { results } = await env.DB.prepare("SELECT ran_at, declencheur, ok, resume FROM seo_journal ORDER BY id DESC LIMIT 30").all();

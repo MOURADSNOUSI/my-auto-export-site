@@ -303,6 +303,25 @@ Claude est invité à demander confirmation avant toute modification, mais c'est
 dans Claude (« Toujours demander ») qui l'impose : à garder pour `accepter_offre`, `refuser_offre`, `retirer_vehicule`
 et `enregistrer_vehicule`.
 
+### Interrupteurs, agent local et journal des actions
+
+- **Interrupteurs** (`/admin`, rubrique « Automatisations », table `reglages`) :
+  - « Automatisations actives » (`automations_actives`) : décoché, tous les outils d'écriture du MCP sont refusés avec
+    un message clair, pour Claude comme pour l'agent local. Les outils en lecture restent disponibles.
+  - « Écriture autorisée à l'agent local » (`agent_ecriture_autorisee`, décoché par défaut) : sans lui, l'agent n'a
+    accès qu'aux outils en lecture.
+- **Agent local** : `Authorization: Bearer <AGENT_TOKEN>` sur `/mcp`, en plus de l'accès OAuth. Le secret fait au moins
+  32 caractères (`openssl rand -hex 32`), se déclare avec `npx wrangler secret put AGENT_TOKEN`, et `.dev.vars` en local.
+  Sans secret, l'accès agent est fermé. Une écriture de l'agent laisse `updated_by` vide.
+- **Journal** (`audit_logs`, colonnes `acteur`, `details`, `resultat`) : chaque appel d'un outil d'écriture du MCP
+  (acteur `mcp` ou `agent`) et chaque requête d'écriture de `/api/admin/*` d'un administrateur connecté (acteur `admin`),
+  réussi, refusé ou en erreur. Les détails ne contiennent que le code de retour ou le message d'erreur, jamais le
+  contenu d'un formulaire. Les lignes de la marketplace gardent `acteur` vide. Consulter les 50 dernières :
+  `npx wrangler d1 execute DB --remote --command "SELECT at, acteur, actor_id, action, resource_id, resultat, details FROM audit_logs WHERE acteur IS NOT NULL ORDER BY id DESC LIMIT 50"`
+
+⚠️ Appliquer la migration **avant** de déployer le code (`npx wrangler d1 migrations apply DB --remote`, 0019).
+Faire d'abord une sauvegarde : `npx wrangler d1 export DB --remote --output sauvegarde.sql`.
+
 ## Marketplace vendeurs et diagnostic obligatoire (issue #5)
 
 `/vendre` propose huit étapes de dépôt, les brouillons, photos, dommages, diagnostics et documents

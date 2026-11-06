@@ -3,3 +3,6 @@
 THECARAPI_KEY=cle-factice-a-remplacer
 # Dinars pour 1 euro, utilisé pour afficher prixTnd. Valeur factice de test, pas un taux réel.
 EUR_TND_RATE=1
+# Jeton de l'agent local pour le serveur MCP (32 caractères au moins). En production : `npx wrangler secret put AGENT_TOKEN`.
+# Générer une vraie valeur avec `openssl rand -hex 32`. Valeur factice ci-dessous.
+AGENT_TOKEN=jeton-agent-factice-a-remplacer-0000000000
