@@ -3,6 +3,7 @@
 
 ## Branche principale et déploiement
 
+2026-11-06 — Page /vendre en étapes — Claude Code, branche `feat/vendre-connexion` : « Bonjour ! », puis « Me connecter » ou « Créer un compte » (?etape=login|register) ; tests : 233 Python et 62 Vitest OK.
 2026-11-06 — Bouton « Déposer une annonce » — Claude Code, branche `feat/deposer-annonce` : le bandeau vendeur de l'accueil devient un bouton ; non connecté, choix « Me connecter » ou « Créer un compte », puis /vendre ; tests : 233 Python et 62 Vitest OK.
 2026-11-06 — Chantier 4, achat sur mandat — Claude Code, branche `feat/mandat`, PR #21 : migration 0021 (`mandats`, `mandat_evenements`, textes provisoires), `worker/mandats.js`, `/mes-mandats`, `/admin-mandats`, outils MCP `lister_mandats` et `mettre_a_jour_mandat`, réglage `mandats_actifs` faux par défaut ; textes À FAIRE RELIRE PAR UN JURISTE ; tests : 232 Python et 62 Vitest OK ; non déployé.
 2026-11-06 — Chantier 3, accueil et fiches — Claude Code, branche `feat/accueil-mandat`, PR #19 : `worker/textes.js`, cartes rendues par le Worker, cookie `public`, rubrique « Site » de `/admin` (sans migration), prix masqués par défaut, badge résident masqué tant que `prix_resident_actif` est faux, bandeau d'atouts et pied de page passés à l'achat sur mandat ; tests : 224 Python et 53 Vitest OK (revue Claude Code) ; non déployé.

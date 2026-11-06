@@ -145,5 +145,18 @@ class ProfilsComptesTest(fixtures.SellerFixture):
                 page.goto(self.base + "/vendre")
                 expect(page.locator('#register-form [name="accountType"]')).to_have_value("seller")
                 self.assertEqual(page.locator('#register-form [name="accountType"] option').count(), 3)
+                # Connexion en étapes : « Bonjour ! », puis connexion ou inscription.
+                expect(page.locator("#auth-accueil")).to_contain_text("Connectez-vous ou créez un compte pour déposer votre annonce.")
+                expect(page.locator("#login-form")).to_be_hidden()
+                page.get_by_role("button", name="Me connecter").click()
+                expect(page.locator("#login-form")).to_be_visible()
+                expect(page.locator("#auth-accueil")).to_be_hidden()
+                page.locator("#auth-login").get_by_role("button", name="Créer un compte").click()
+                expect(page.locator("#register-form")).to_be_visible()
+                page.get_by_role("button", name="J'ai déjà un compte").click()
+                expect(page.locator("#login-form")).to_be_visible()
+                self.assertLessEqual(page.evaluate("document.documentElement.scrollWidth"), 390)
+                page.goto(self.base + "/vendre?etape=register")
+                expect(page.locator("#register-form")).to_be_visible()
             finally:
                 browser.close()

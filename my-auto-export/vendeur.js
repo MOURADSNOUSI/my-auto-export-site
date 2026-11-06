@@ -203,6 +203,10 @@ function renderAdmin(detail){
  $('publish-form')?.addEventListener('submit',safely(async()=>{const f=$('publish-form');await api(prefix+'submissions/'+current.id+'/publish',{method:'POST',body:{revision:current.revision}});await refresh();await openSubmission(current.id);message('Annonce publiée après validation.');}));
  $('archive-submission')?.addEventListener('click',safely(async()=>{await api(prefix+'submissions/'+current.id+'/archive',{method:'POST',body:{revision:current.revision}});await refresh();await openSubmission(current.id);}));
 }
+// Connexion en étapes : accueil « Bonjour ! », puis connexion ou inscription (?etape=login|register pour y aller directement).
+const etapeAuth=etape=>{for(const e of ['accueil','login','register'])$('auth-'+e).hidden=e!==etape;$('auth-'+etape).querySelector('input,select')?.focus();};
+document.querySelectorAll('[data-auth-etape]').forEach(b=>b.addEventListener('click',()=>etapeAuth(b.dataset.authEtape)));
+{const etape=new URLSearchParams(location.search).get('etape');if($('auth-accueil')&&(etape==='login'||etape==='register'))for(const e of ['accueil','login','register'])$('auth-'+e).hidden=e!==etape;}
 for(const kind of ['login','register'])$(kind+'-form')?.addEventListener('submit',safely(async()=>{await api('/api/'+kind,{method:'POST',body:Object.fromEntries(new FormData($(kind+'-form')))});$(kind+'-form').reset();message();await refresh();}));
 $('activate-seller-button')?.addEventListener('click',safely(async()=>{await api('/api/account/profiles',{method:'POST',body:{profile:'seller'}});await refresh();message('Profil Vendeur activé. Votre espace Acheteur reste séparé.');}));
 $('logout').onclick=safely(async()=>{await api('/api/logout',{method:'POST'});location.reload();});
