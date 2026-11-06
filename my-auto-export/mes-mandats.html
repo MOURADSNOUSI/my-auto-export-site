@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Mes demandes d'achat — M&Y AUTO EXPORT</title>
+  <style>
+    :root { color-scheme: light; --ink: #17201d; --soft: #4f5b55; --line: #d7ddd8; --green: #185740; --pale: #e4f0e9; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f3f5f3; color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    header { background: #101513; } header a { display: inline-block; padding: 16px; color: #fff; font-weight: 700; text-decoration: none; }
+    main { inline-size: min(760px, 100% - 32px); margin-inline: auto; padding-block: 24px 48px; }
+    h1 { font-size: 26px; margin-block: 0 16px; }
+    .mandat { margin-block-end: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+    .mandat h2 { margin: 0 0 4px; font-size: 18px; }
+    .mandat p { margin: 4px 0; color: var(--soft); }
+    .etapes { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+    .etapes li { padding-block: 3px; padding-inline: 10px; border-radius: 12px; background: #eef1ef; color: var(--soft); font-size: 13px; }
+    .etapes li.fait { background: var(--pale); color: var(--green); font-weight: 700; }
+    .etapes li.actuel { background: var(--green); color: #fff; font-weight: 700; }
+    button { min-block-size: 44px; margin-block-start: 12px; padding-inline: 16px; border: 1px solid var(--green); border-radius: 22px; background: #fff; color: var(--green); font: inherit; font-weight: 700; cursor: pointer; }
+    .erreur { color: #9a2424; }
+  </style>
+</head>
+<body>
+  <header><a href="/">M&amp;Y AUTO EXPORT</a></header>
+  <main>
+    <h1 id="titre"></h1>
+    <p class="erreur" id="erreur" role="alert"></p>
+    <div id="liste" aria-live="polite"></div>
+  </main>
+  <script type="module" src="/mes-mandats.js"></script>
+</body>
+</html>

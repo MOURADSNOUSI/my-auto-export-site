@@ -430,6 +430,27 @@ une sauvegarde (`npx wrangler d1 export DB --remote --output sauvegarde.sql`).
   première immatriculation (`premiereImmatriculation`, âge exact pour l'éligibilité).
 - Tests : `tests/test_accueil.py`.
 
+## Achat sur mandat (chantier 4)
+
+Le client choisit un véhicule de M&Y, fixe un prix maximum et accepte le mandat ; M&Y achète pour lui s'il obtient le
+véhicule à ce prix. Code : `worker/mandats.js`, migration `0021_mandats.sql` (tables `mandats` et `mandat_evenements`,
+textes provisoires et acomptes par défaut dans `reglages`). Les tables d'enchères et d'offres ne changent pas.
+
+- **Ouverture** : réglage `mandats_actifs` (faux par défaut), dans `/admin-mandats`. Fermé, les véhicules gardent
+  « Proposer une offre ». Ouvert, « Je veux ce véhicule » le remplace sur les véhicules de M&Y (pas sur les annonces
+  de vendeurs) ; avec les enchères actives, seulement sur les véhicules en stock.
+- **Demande** (`mandat-dialog.js`, connexion requise) : résidence, pays et usage du FCR pour un Tunisien de l'étranger,
+  prix maximum (TND pour un résident, EUR sinon), téléphone, acceptation des textes. Chaque demande garde une copie des
+  textes acceptés. Le motif d'éligibilité calculé (`calculerPrix`) est transmis à l'administration ; un véhicule non
+  éligible n'est refusé à un résident que si `prix_resident_actif` est vrai.
+- **Statuts** : demande → éligibilité vérifiée (acompte fixé, par défaut celui des réglages) → acompte reçu → achat en
+  cours → acheté → livré ; non obtenu et annulé sont définitifs. L'acompte n'est pas encaissé en ligne.
+- **Client** : `/mes-mandats` (suivi des étapes, annulation avant l'acompte).
+- **Administration** : `/admin-mandats` (statut, acompte, note interne, textes), écritures journalisées ; MCP
+  `lister_mandats` (lecture) et `mettre_a_jour_mandat` (`confirmer: true` exigé, soumis aux interrupteurs de l'agent).
+- **Textes** : modèles provisoires À FAIRE RELIRE PAR UN JURISTE avant d'ouvrir les demandes.
+- Tests : `tests/mandats.test.js` (Vitest) et `tests/test_mandats.py`.
+
 ## Marketplace vendeurs et diagnostic obligatoire (issue #5)
 
 `/vendre` propose huit étapes de dépôt, les brouillons, photos, dommages, diagnostics et documents

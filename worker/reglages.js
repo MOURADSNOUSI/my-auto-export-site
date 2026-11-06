@@ -4,7 +4,7 @@
 export const REGLAGES_INTERRUPTEURS = { automations_actives: true, agent_ecriture_autorisee: false };
 // Autres booléens, modifiables dans la rubrique « Site » de /admin (REGLAGES_SITE). prix_publics_actifs : aucun prix
 // calculé n'est montré au public tant qu'il est faux ; prix_resident_actif : aucun prix résident tant qu'il est faux.
-const AUTRES_BOOLEENS = { prix_publics_actifs: false, prix_resident_actif: false };
+const AUTRES_BOOLEENS = { prix_publics_actifs: false, prix_resident_actif: false, mandats_actifs: false };
 
 // Réglages de la rubrique « Site » (chantier 3) : type et valeur par défaut si la ligne manque (pas de migration).
 export const REGLAGES_SITE = {
@@ -12,8 +12,17 @@ export const REGLAGES_SITE = {
   public_par_defaut: { type: "choix", defaut: "tre", choix: ["tre", "resident"] },
   prix_publics_actifs: { type: "booleen", defaut: false },
   prix_resident_actif: { type: "booleen", defaut: false },
-  temoignages: { type: "json", defaut: [] }
+  temoignages: { type: "json", defaut: [] },
+  // Achat sur mandat (chantier 4) : interrupteur d'ouverture au public (après relecture des textes par un juriste),
+  // textes légaux provisoires (migration 0021) et acompte par défaut, en unités.
+  mandats_actifs: { type: "booleen", defaut: false },
+  texte_mandat: { type: "texte_long", defaut: "" },
+  cgv_mandat: { type: "texte_long", defaut: "" },
+  conditions_acompte: { type: "texte_long", defaut: "" },
+  acompte_defaut_tnd: { type: "entier", defaut: 0 },
+  acompte_defaut_eur: { type: "entier", defaut: 0 }
 };
+const MAX_TEXTE_LONG = 20000;
 export const FORMAT_WHATSAPP = /^\+?[0-9]{8,15}$/;
 const MAX_TEMOIGNAGES = 20;
 
@@ -28,7 +37,8 @@ export async function lireReglagesSite(env) {
     let valeur = REGLAGES_SITE[cle].defaut;
     if (ligne) {
       try {
-        const lue = REGLAGES_SITE[cle].type === "booleen" ? ligne.valeur === "true" : REGLAGES_SITE[cle].type === "json" ? JSON.parse(ligne.valeur) : ligne.valeur;
+        const type = REGLAGES_SITE[cle].type;
+        const lue = type === "booleen" ? ligne.valeur === "true" : type === "json" ? JSON.parse(ligne.valeur) : type === "entier" ? Number(ligne.valeur) : ligne.valeur;
         if (!validerReglageSite(cle, lue).erreur) valeur = lue;
       } catch { /* défaut */ }
     }
@@ -51,6 +61,12 @@ export function validerReglageSite(cle, valeur) {
   if (!reglage) return { erreur: "Réglage inconnu." };
   if (reglage.type === "booleen") return typeof valeur === "boolean" ? { texte: String(valeur) } : { erreur: "Valeur attendue : vrai ou faux." };
   if (reglage.type === "choix") return reglage.choix.includes(valeur) ? { texte: valeur } : { erreur: `Valeur attendue : ${reglage.choix.join(" ou ")}.` };
+  if (reglage.type === "texte_long") {
+    return typeof valeur === "string" && valeur.length <= MAX_TEXTE_LONG ? { texte: valeur.trim() } : { erreur: `Texte de ${MAX_TEXTE_LONG} caractères au plus.` };
+  }
+  if (reglage.type === "entier") {
+    return Number.isSafeInteger(valeur) && valeur >= 0 && valeur <= 10000000 ? { texte: String(valeur) } : { erreur: "Montant entier attendu (0 : aucun montant par défaut)." };
+  }
   if (cle === "whatsapp_numero") {
     if (typeof valeur !== "string") return { erreur: "Numéro attendu en texte." };
     const numero = valeur.replace(/[\s.-]/g, "");

@@ -343,8 +343,12 @@ class AccueilTest(unittest.TestCase):
     def test_api_reglages_site(self):
         statut, data, _ = self.api("/api/admin/site", cookie=self.cookie)
         self.assertEqual(statut, 200)
-        self.assertEqual({r["cle"]: r["valeur"] for r in data["reglages"]}, {
+        valeurs = {r["cle"]: r["valeur"] for r in data["reglages"]}
+        self.assertEqual({cle: valeurs[cle] for cle in ("whatsapp_numero", "public_par_defaut", "prix_publics_actifs", "prix_resident_actif", "temoignages")}, {
             "whatsapp_numero": "", "public_par_defaut": "tre", "prix_publics_actifs": False, "prix_resident_actif": False, "temoignages": []})
+        # Réglages du mandat (chantier 4, migration 0021) : textes provisoires et acompte par défaut.
+        self.assertIn("À FAIRE RELIRE PAR UN JURISTE", valeurs["texte_mandat"])
+        self.assertEqual((valeurs["acompte_defaut_tnd"], valeurs["acompte_defaut_eur"]), (1000, 300))
         self.assertEqual(self.api("/api/admin/site/automations_actives", {"valeur": True}, "PUT", self.cookie)[0], 404)
         self.assertEqual(self.api("/api/admin/site/public_par_defaut", {"valeur": "admin"}, "PUT", self.cookie)[0], 400)
         self.assertEqual(self.api("/api/admin/site/prix_publics_actifs", {"valeur": "true"}, "PUT", self.cookie)[0], 400)

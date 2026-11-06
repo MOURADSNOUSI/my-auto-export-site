@@ -186,7 +186,10 @@ class McpTest(unittest.TestCase):
         self.assertEqual(self.rpc("ping")[1]["result"], {})
         outils = {outil["name"]: outil for outil in self.rpc("tools/list")[1]["result"]["tools"]}
         self.assertEqual(set(outils), {"rechercher_vehicules", "detail_vehicule", "ventes_a_traiter", "lister_offres",
-                                       "enregistrer_vehicule", "retirer_vehicule", "accepter_offre", "refuser_offre"})
+                                       "enregistrer_vehicule", "retirer_vehicule", "accepter_offre", "refuser_offre",
+                                       "lister_mandats", "mettre_a_jour_mandat"})
+        self.assertTrue(outils["lister_mandats"]["annotations"]["readOnlyHint"])
+        self.assertFalse(outils["mettre_a_jour_mandat"]["annotations"]["readOnlyHint"])
         self.assertTrue(outils["rechercher_vehicules"]["annotations"]["readOnlyHint"])
         self.assertTrue(outils["accepter_offre"]["annotations"]["destructiveHint"])
         self.assertNotIn("executer", outils["accepter_offre"])

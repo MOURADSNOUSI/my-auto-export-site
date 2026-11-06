@@ -9,6 +9,7 @@ import { catalogueComplet, etatEnchere, resumesEncheres } from "./index.js";
 import { calculerPrix, lireParametresPrix } from "./prix.js";
 import { REGLAGES_SITE, lireReglagesSite } from "./reglages.js";
 import { NOMBRE_QUESTIONS, TEXTES_NAVIGATEUR, fr, t } from "./textes.js";
+import { vehiculeMandat } from "./mandats.js";
 
 export const SITE = "https://www.myautoexport.com";
 // Pages statiques indexables. Ajouter ici une page informative une fois son contenu validé (et sa balise noindex retirée).
@@ -581,7 +582,9 @@ async function pageVehicule(request, env, url) {
   const enVente = indexable(item);
   // Offres privées : toutes les annonces en mode « propositions seules », sinon les annonces vendeur et celles dont
   // le vendeur a été affecté (worker/proposals.js). Les enchères et l'achat immédiat restent sur l'accueil (/?lot=…).
-  const proposition = enVente && (!legacyAuctionsEnabled(env) || Boolean(lot.marketplace) || Boolean(item.offerOwnerAssigned));
+  // Achat sur mandat (chantier 4) : véhicules de M&Y en stock ; il remplace alors la proposition d'offre.
+  const mandat = enVente && vehiculeMandat(item, ctx.site.mandats_actifs) && (!legacyAuctionsEnabled(env) || lot.status === "stock");
+  const proposition = !mandat && enVente && (!legacyAuctionsEnabled(env) || Boolean(lot.marketplace) || Boolean(item.offerOwnerAssigned));
   const terms = reserveTerms(lot);
   const sujet = encodeURIComponent(`Véhicule réf. ${lot.reference} — ${titre}`);
   const galerie = photos.length
@@ -603,7 +606,7 @@ async function pageVehicule(request, env, url) {
           <div class="estimation">${choixPublic(ctx, cheminVehicule(lot))}${estimationVehicule(lot, ctx, { email: false })}</div>
           ${proposition?`<p class="proposal-reserve">Prix de réserve : <strong>${terms?escapeHtml(money(terms.reserveMinor,terms.currency)):"À renseigner par le vendeur"}</strong></p>`:""}
           <div class="actions">
-            ${proposition?`<button class="bouton" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`:enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
+            ${mandat ? `<button class="bouton" type="button" data-mandat-ref="${escapeHtml(lot.reference)}">${escapeHtml(t("mandat_bouton"))}</button>` : proposition?`<button class="bouton" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`:enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
             <a class="bouton secondaire" href="mailto:contact@myautoexport.com?subject=${sujet}">Poser une question</a>
           </div>
         </section>
@@ -617,7 +620,7 @@ async function pageVehicule(request, env, url) {
     </div>${diagnosticVendeur(lot)}<p id="status" role="status"></p><div id="offer-form"></div><button id="report-listing" disabled>Signaler cette annonce</button></article>`;
 
   return reponseHtml(gabarit({
-    scripts: proposition ? '<script type="module" src="/marketplace-ui.js"></script>' : '',
+    scripts: mandat ? '<script type="module" src="/mandat-dialog.js"></script>' : proposition ? '<script type="module" src="/marketplace-ui.js"></script>' : '',
     titre: titrePage(lot),
     description: descriptionPage(lot),
     canonique,

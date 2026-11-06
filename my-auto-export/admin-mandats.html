@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#ffffff">
+  <title>Mandats — M&Y AUTO EXPORT</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17201d; --ink-soft: #44514c; --paper: #f3f5f3; --surface: #ffffff; --line: #d7ddd8;
+      --gold-pale: #f4ead5; --green: #23755b; --green-dark: #185740; --green-pale: #e4f0e9;
+      --red: #a33a2c; --red-pale: #fbeaea; --muted: #5f6b65; --radius: 8px;
+      font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.5; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+    :focus-visible { outline: 3px solid #2a8b69; outline-offset: 2px; }
+    [hidden] { display: none !important; }
+    .shell { width: min(1100px, calc(100% - 32px)); margin-inline: auto; }
+    header { position: sticky; top: 0; z-index: 5; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .header-inner { display: flex; min-height: 62px; align-items: center; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .brand img { width: 40px; height: 40px; border: 1px solid #ad8b4e; border-radius: 50%; object-fit: cover; }
+    .brand strong { display: block; font-size: 14px; }
+    .brand small { display: block; color: var(--green); font-size: 12px; font-weight: 750; text-transform: uppercase; }
+    .header-actions { margin-left: auto; }
+    .button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; background: white; color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; }
+    .button:hover { border-color: var(--green); color: var(--green); }
+    .button.primary { border-color: var(--green); background: var(--green); color: white; }
+    .button.primary:hover { background: var(--green-dark); color: white; }
+    .button.small { min-height: 38px; padding: 0 12px; font-size: 13px; }
+    main { padding: 22px 0 80px; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    h2 { margin: 0 0 10px; font-size: 18px; }
+    .lead { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+    .card { margin-bottom: 16px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .message { margin: 0 0 16px; padding: 10px 12px; border-radius: 6px; font-size: 14px; }
+    .message.error { background: var(--red-pale); color: #8f2a2a; }
+    .message.info { background: var(--gold-pale); color: #5c4720; }
+    .message.ok { background: var(--green-pale); color: #1d5e49; }
+    .alerte { margin: 0 0 16px; padding: 12px 14px; border: 2px solid #c99d4d; border-radius: var(--radius); background: var(--gold-pale); color: #5c4720; font-weight: 700; }
+    .note { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .champs { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; align-items: end; }
+    .champs .large { grid-column: 1 / -1; }
+    label { display: grid; gap: 4px; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+    label.case { display: flex; gap: 8px; align-items: center; }
+    input, select, textarea { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; color: var(--ink); font-size: 16px; }
+    label.case input { width: auto; min-height: auto; }
+    textarea { min-height: 70px; resize: vertical; }
+    .liste { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+    .liste > li { padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+    .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: var(--gold-pale); color: #5c4720; font-size: 12px; font-weight: 700; }
+    .badge.ok { background: var(--green-pale); color: #1d5e49; }
+    details { margin-bottom: 10px; }
+    summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    td, th { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    td.montant { text-align: right; white-space: nowrap; }
+    .resultats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 12px 0; }
+    .resultats div { padding: 10px; border-radius: 6px; background: var(--paper); }
+    .resultats strong { display: block; font-size: 20px; }
+      .mandat { margin-bottom: 12px; }
+    .mandat h3 { margin: 0 0 4px; font-size: 16px; }
+    .actions-mandat { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .statut { display: inline-block; padding: 2px 10px; border-radius: 12px; background: var(--green-pale); color: var(--green-dark); font-size: 13px; font-weight: 700; }
+    .motif { color: var(--red); }
+    .texte-legal { min-height: 220px; font-weight: 400; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell header-inner">
+      <a class="brand" href="/admin"><img src="logo.png" alt=""><span><strong>M&Y AUTO EXPORT</strong><small>Mandats</small></span></a>
+      <div class="header-actions"><a class="button small" href="/admin">Administration</a></div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <h1>Achats sur mandat</h1>
+    <p class="lead">Demandes des clients et textes du mandat. L'acompte n'est pas encaissé en ligne : passez le statut à « Acompte reçu » une fois le paiement constaté.</p>
+    <p class="message info" id="chargement">Chargement…</p>
+    <p class="message error" id="erreur" role="alert" hidden></p>
+    <p class="message ok" id="succes" role="status" hidden></p>
+
+    <div id="contenu" hidden>
+      <section class="card" aria-labelledby="titre-ouverture">
+        <h2 id="titre-ouverture">Ouverture au public</h2>
+        <label class="case"><input type="checkbox" id="mandats-actifs"> Demandes de mandat ouvertes (bouton « Je veux ce véhicule » sur les véhicules de M&amp;Y)</label>
+        <p class="note">Fermées : les véhicules gardent « Proposer une offre ». À ouvrir seulement après la relecture des textes par un juriste.</p>
+      </section>
+
+      <section class="card" aria-labelledby="titre-demandes">
+        <h2 id="titre-demandes">Demandes</h2>
+        <label>Statut<select id="filtre"><option value="">Tous</option></select></label>
+        <div id="mandats" aria-live="polite"></div>
+      </section>
+
+      <section class="card" aria-labelledby="titre-textes">
+        <h2 id="titre-textes">Textes et acompte par défaut</h2>
+        <p class="alerte">Modèles provisoires : À FAIRE RELIRE PAR UN JURISTE avant d'ouvrir les demandes au public. Chaque demande garde une copie des textes acceptés.</p>
+        <form id="form-textes" class="champs">
+          <label class="large">Mandat d'achat<textarea class="texte-legal" name="texte_mandat" maxlength="20000"></textarea></label>
+          <label class="large">Conditions générales<textarea class="texte-legal" name="cgv_mandat" maxlength="20000"></textarea></label>
+          <label class="large">Conditions de l'acompte<textarea class="texte-legal" name="conditions_acompte" maxlength="20000"></textarea></label>
+          <label>Acompte par défaut, résident (TND)<input name="acompte_defaut_tnd" type="number" min="0" step="1"></label>
+          <label>Acompte par défaut, étranger (EUR)<input name="acompte_defaut_eur" type="number" min="0" step="1"></label>
+          <button class="button primary" type="submit">Enregistrer les textes</button>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script src="/admin-mandats.js"></script>
+</body>
+</html>
