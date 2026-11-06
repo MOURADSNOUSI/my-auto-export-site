@@ -6,6 +6,10 @@ import { appelerTheCarApi, date, nombre, normaliserVoiture, parametresRecherche,
 import { journaliser, reglageActif } from "./reglages.js";
 
 export const MAX_IMPORTS_SUIVIS = 100;
+// Annonces importables : vente en achat immédiat (formats « Achat immédiat », « Achat immédiat et enlèvement » et
+// « 24/7 Achat immédiat » d'OpenLane, que TheCarApi ne distingue pas : buy_now / is_buy_now), immatriculées en 2022 ou après.
+// TheCarApi ne dit pas si une enchère a un prix de réserve : ce format n'est pas importable.
+export const ANNEE_MIN_IMPORT = 2022;
 const MAX_PHOTOS = 20;
 const https = (valeur) => (typeof valeur === "string" && valeur.length <= 1000 && /^https:\/\/[^\s"'<>]+$/.test(valeur) ? valeur : null);
 // Copies servies par TheCarApi (adresse relative signée, valable jusqu'au 1er janvier 2027 sur la réponse du 7 novembre
@@ -39,6 +43,7 @@ export function annonceImport(brute) {
   const immatriculation = String(brute.date_first_registration ?? "").slice(0, 10);
   return {
     ...voiture,
+    achatImmediat: brute.is_buy_now === true,
     numero,
     reference: referenceImport(numero),
     marque: texte(brute.clean_make ?? brute.brand ?? brute.make, 80),
@@ -78,10 +83,19 @@ async function importsSuivis(env) {
   return ligne.n;
 }
 
+// Paramètres de l'import : préfiltre M&Y et filtres du visiteur (parametresRecherche), resserrés à l'achat immédiat et à
+// ANNEE_MIN_IMPORT.
+export function parametresImport(searchParams) {
+  const parametres = parametresRecherche(searchParams);
+  return { ...parametres, buy_now: "true", year_from: String(Math.max(Number(parametres.year_from), ANNEE_MIN_IMPORT)) };
+}
+
 export async function rechercherAnnonces(env, searchParams) {
-  const donnees = await appelerTheCarApi(env, parametresRecherche(searchParams));
+  const donnees = await appelerTheCarApi(env, parametresImport(searchParams));
   const liste = [donnees?.results, donnees?.cars, donnees?.data, donnees?.items, donnees].find(Array.isArray) || [];
-  const annonces = liste.filter((brute) => brute && typeof brute === "object").map(annonceImport);
+  // Contrôle sur chaque annonce, en plus du filtre envoyé à l'API.
+  const annonces = liste.filter((brute) => brute && typeof brute === "object").map(annonceImport)
+    .filter((a) => a.achatImmediat && a.annee !== null && a.annee >= ANNEE_MIN_IMPORT);
   const references = annonces.map((a) => a.reference).filter(Boolean);
   const deja = new Set();
   if (references.length) {
@@ -99,6 +113,8 @@ export async function rechercherAnnonces(env, searchParams) {
 export async function importerAnnonce(env, user, annonce, { ApiError, enregistrerBrouillon }) {
   const { reference, corps, source, erreur } = versVehicule(annonce);
   if (erreur) throw new ApiError(400, erreur);
+  if (annonce.achatImmediat !== true) throw new ApiError(400, "Seules les annonces en achat immédiat sont importables.");
+  if (!Number.isInteger(annonce.annee) || annonce.annee < ANNEE_MIN_IMPORT) throw new ApiError(400, `Seuls les véhicules de ${ANNEE_MIN_IMPORT} ou après sont importables.`);
   if ((await importsSuivis(env)) >= MAX_IMPORTS_SUIVIS) throw new ApiError(429, `${MAX_IMPORTS_SUIVIS} annonces OpenLane suivies au plus : retirez-en avant d'importer.`);
   if (!(await enregistrerBrouillon(env, user, reference, corps, source))) throw new ApiError(409, `Annonce déjà importée (réf. ${reference}).`);
   return { reference, brouillon: true, message: "Brouillon créé : à relire dans /admin (Retirés), puis « Remettre en ligne »." };

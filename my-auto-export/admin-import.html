@@ -83,7 +83,8 @@
 
   <main class="shell">
     <h1>Import d'annonces OpenLane</h1>
-    <p class="lead">Recherche via TheCarApi, dans le préfiltre M&amp;Y (2019 et plus, 150 000 km au plus, 30 000 € au plus).
+    <p class="lead">Recherche via TheCarApi : annonces OpenLane <strong>en achat immédiat</strong> (achat immédiat, achat immédiat
+      et enlèvement, 24/7 achat immédiat), de <strong>2022 ou après</strong>, 150 000 km et 30 000 € au plus.
       Une annonce importée arrive en <strong>brouillon</strong> : relisez-la dans /admin (« Retirés »), puis « Remettre en ligne ».
       Elle est retirée du site automatiquement à la fin de son enchère.</p>
     <p class="message error" id="erreur" role="alert" hidden></p>
@@ -95,7 +96,7 @@
         <label>Marque<input name="brand" maxlength="40" autocomplete="off"></label>
         <label>Modèle<input name="model" maxlength="40" autocomplete="off"></label>
         <label>Carburant<input name="fuel" maxlength="40" autocomplete="off"></label>
-        <label>Année minimum<input name="year_from" type="number" min="2019" max="2100"></label>
+        <label>Année minimum<input name="year_from" type="number" min="2022" max="2100" placeholder="2022"></label>
         <label>Prix maximum (€)<input name="price_to" type="number" min="1" max="30000"></label>
         <label>Page<input name="page" type="number" min="1" max="50" value="1"></label>
         <button class="button primary" type="submit">Rechercher</button>

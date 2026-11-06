@@ -33,7 +33,7 @@ JETON_AGENT = "jeton-agent-de-test-" + "o" * 32
 
 def annonce(numero, fin="2099-01-01T12:00:00Z", **champs):
     """Annonce à la forme réelle de TheCarApi (contrat 2026-10-05) ; engine_cc (absent chez TheCarApi) pour le repli."""
-    return {"auction_id_str": numero, "site_name": "openlane", "clean_make": "Peugeot", "clean_model": "3008", "registration_year": 2021,
+    return {"auction_id_str": numero, "site_name": "openlane", "clean_make": "Peugeot", "clean_model": "3008", "registration_year": 2023, "is_buy_now": True,
             "date_first_registration": "2021-03-15T00:00:00", "mileage": 64000, "fuel_group": "Diesel", "gearbox_group": "Manual", "hp": 130,
             "public_price_eur": 14500, "engine_cc": 1499, "original_url": f"https://www.openlane.eu/en/car/info?auctionId={numero}",
             "auction_end_at": fin, "thumbnail_url": f"/image-vault/{numero}.webp?k=1&exp=1&sig=s",
@@ -161,6 +161,15 @@ class ImportOpenlaneTest(unittest.TestCase):
         envoi = FauxTheCarApi.requetes[-1]
         self.assertEqual((envoi["cle"], envoi["params"]["site"], envoi["params"]["brand"], envoi["params"]["price_to"]), ("cle-de-test", "openlane", "Peugeot", "30000"),
                          "préfiltre M&Y appliqué, plafond de prix conservé")
+        self.assertEqual((envoi["params"]["buy_now"], envoi["params"]["year_from"]), ("true", "2022"), "achat immédiat, 2022 ou après")
+        self.rechercher(year_from=2024)
+        self.assertEqual(FauxTheCarApi.requetes[-1]["params"]["year_from"], "2024", "un filtre plus strict reste possible")
+        # Contrôle sur chaque annonce : sans achat immédiat ou avant 2022, elle n'est pas proposée ni importable.
+        FauxTheCarApi.resultats = [annonce("1002", is_buy_now=False), annonce("1003", registration_year=2021), annonce("1004")]
+        self.assertEqual([a["numero"] for a in self.rechercher()["annonces"]], ["1004"])
+        for numero, champs in (("1002", {"achatImmediat": False}), ("1003", {"annee": 2021})):
+            a = {**next(x for x in self.rechercher()["annonces"] if x["numero"] == "1004"), "numero": numero, **champs}
+            self.assertEqual(self.api("/api/admin/import", {"annonce": a}, "POST", self.cookie)[0], 400, numero)
         self.assertEqual(self.api("/api/admin/import/recherche?brand=%3Cscript%3E", cookie=self.cookie)[0], 400)
 
     def test_import_en_brouillon_puis_remise_en_ligne(self):
@@ -173,6 +182,7 @@ class ImportOpenlaneTest(unittest.TestCase):
         vehicule = next(v for v in self.api("/api/admin/vehicles", cookie=self.cookie)[1]["vehicles"] if v["lot"]["reference"] == "OL-2002")
         self.assertTrue(vehicule["removed"])
         lot = vehicule["lot"]
+        self.assertEqual(lot["year"], 2023)
         self.assertEqual((lot["make"], lot["model"], lot["prixEur"], lot["engineCc"], lot["powerHp"], lot["premiereImmatriculation"], lot["sourceUrl"]),
                          ("Peugeot", "3008", 14500, 1499, 130, "2021-03-15", "https://www.openlane.eu/en/car/info?auctionId=2002"))
         self.assertEqual(lot["photos"], [{"url": "https://images.openlane.eu/carimgs/2002/general/1.jpg", "authorized": True}])

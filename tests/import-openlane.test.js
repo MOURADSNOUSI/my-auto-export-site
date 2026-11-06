@@ -1,13 +1,13 @@
 // Tests de l'import OpenLane (worker/import-openlane.js) : lecture d'une annonce brute et passage au format du catalogue.
 // Lancement : npm run test:js
 import { describe, expect, it } from "vitest";
-import { annonceImport, referenceImport, versVehicule } from "../worker/import-openlane.js";
+import { annonceImport, parametresImport, referenceImport, versVehicule } from "../worker/import-openlane.js";
 
 // Forme réelle d'une annonce TheCarApi (contrat 2026-10-05), valeurs inventées pour le test. engine_cc n'existe pas chez
 // TheCarApi : présent ici pour vérifier le repli.
 const BRUTE = {
   auction_id_str: "9876543210", site_name: "openlane", clean_make: "Peugeot", clean_model: "3008", car_name_en: "Peugeot 3008 1.5 BlueHDi",
-  registration_year: 2021, date_first_registration: "2021-03-15T00:00:00", mileage: 64000, fuel_group: "Diesel", gearbox_group: "Automatic",
+  registration_year: 2021, date_first_registration: "2021-03-15T00:00:00", is_buy_now: true, mileage: 64000, fuel_group: "Diesel", gearbox_group: "Automatic",
   hp: 130, public_price_eur: 14500, engine_cc: 1499, color: "Grey", original_url: "https://www.openlane.eu/en/car/info?auctionId=9876543210",
   auction_end_at: "2026-11-20T15:00:00Z", thumbnail_url: "/image-vault/aa/bb/x.webp?k=1&exp=1&sig=s",
   original_thumbnail_url: "https://images.openlane.eu/carimgs/1/general/1.jpg",
@@ -26,11 +26,20 @@ describe("referenceImport", () => {
   });
 });
 
+describe("parametresImport", () => {
+  it("impose l'achat immédiat et 2022 au minimum, sans relâcher le préfiltre", () => {
+    expect(parametresImport(new URLSearchParams())).toMatchObject({ site: "openlane", buy_now: "true", year_from: "2022", price_to: "30000" });
+    expect(parametresImport(new URLSearchParams("year_from=2019")).year_from).toBe("2022");
+    expect(parametresImport(new URLSearchParams("year_from=2025&buy_now=false")).year_from).toBe("2025");
+    expect(parametresImport(new URLSearchParams("buy_now=false")).buy_now).toBe("true");
+  });
+});
+
 describe("annonceImport", () => {
   it("lit marque, modèle, lien, cylindrée et photos en https sans doublon", () => {
     const a = annonceImport(BRUTE);
     expect(a).toMatchObject({
-      numero: "9876543210", reference: "OL-9876543210", marque: "Peugeot", modele: "3008", annee: 2021, km: 64000,
+      achatImmediat: true, numero: "9876543210", reference: "OL-9876543210", marque: "Peugeot", modele: "3008", annee: 2021, km: 64000,
       carburant: "Diesel", boite: "Automatic", prixEur: 14500, cylindree: 1499, puissance: 130, couleur: "Grey",
       premiereImmatriculation: "2021-03-15", lien: "https://www.openlane.eu/en/car/info?auctionId=9876543210", finEnchere: "2026-11-20T15:00:00.000Z"
     });

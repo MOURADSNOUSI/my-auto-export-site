@@ -469,7 +469,10 @@ PKCE, sans script Google dans les pages ; seuls le nom, l'e-mail et l'identifian
 ## Import d'annonces OpenLane
 
 `/admin-import` (lien depuis `/admin`) cherche des annonces OpenLane via TheCarApi, dans le préfiltre M&Y
-(`worker/voitures-europe.js`), et les importe dans le catalogue (`worker/import-openlane.js`). Sans migration : la source
+(`worker/voitures-europe.js`) resserré à l'**achat immédiat** (formats « Achat immédiat », « Achat immédiat et enlèvement »
+et « 24/7 Achat immédiat », que TheCarApi ne distingue pas) et aux véhicules de **2022 ou après**, puis les importe dans
+le catalogue (`worker/import-openlane.js`). TheCarApi n'indique pas le prix de réserve d'une enchère : ce format et les
+autres étiquettes d'OpenLane (disponibilité rapide, presque neuf…) ne sont pas filtrables. Sans migration : la source
 est gardée dans les données du véhicule (`importSource`).
 
 - **Brouillon** : une annonce importée est un véhicule retiré (référence `OL-<numéro>`), invisible du public. Elle se

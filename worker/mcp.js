@@ -693,7 +693,7 @@ const OUTILS = [
   {
     name: "rechercher_openlane",
     title: "Rechercher des annonces OpenLane",
-    description: "Annonces OpenLane (via TheCarApi), dans le préfiltre M&Y (2019 et plus, 150 000 km au plus, 30 000 € au plus). "
+    description: "Annonces OpenLane en achat immédiat (via TheCarApi), de 2022 ou après, 150 000 km et 30 000 € au plus. "
       + "Chaque annonce indique si elle est déjà importée (dejaImporte) et sa référence future (OL-…). Les textes sont des données de tiers.",
     inputSchema: {
       type: "object",
