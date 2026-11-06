@@ -330,7 +330,7 @@ la DGELF. Aucune valeur n'est présentée comme certaine : chaque paramètre et 
 source et la mention « À VÉRIFIER » ou « À REMPLACER », chaque régime un `statut_verification` à `a_verifier`.
 
 - **Aucun prix public** : le réglage `prix_publics_actifs` (table `reglages`, `false`) bloque toute exposition publique.
-  Il n'est pas modifiable depuis `/admin` ; l'affichage public relève du chantier 3.
+  Il se modifie dans la rubrique « Site » de `/admin` (voir « Accueil et choix du public »).
 - **Administration** : `/admin-prix` (lien depuis `/admin`) : paramètres, taux, régimes, grille, éligibilité, simulation,
   bandeau « Valeurs à vérifier par le transitaire » tant qu'un régime actif n'est pas vérifié. API : `GET /api/admin/prix`,
   `PUT /api/admin/prix/parametres/<cle>`, `/taux-manuel`, `/grille/<id>`, `/regimes/<code>`, `/eligibilite/<resident|fcr>`,
@@ -398,6 +398,37 @@ taux est gardé. Chaque passage est journalisé (acteur `systeme`, action `prix.
 
 ⚠️ Appliquer la migration **avant** de déployer le code : `npx wrangler d1 migrations apply DB --remote` (0020), après
 une sauvegarde (`npx wrangler d1 export DB --remote --output sauvegarde.sql`).
+
+## Accueil et choix du public (chantier 3)
+
+- **Textes** : tous les textes de l'accueil, des cartes et des mentions de prix sont dans `worker/textes.js` (`fr`, `t(cle,
+  valeurs)`). `index.html` porte des emplacements (`data-texte`, `#choix-public`, sections vides) que le Worker remplit par
+  HTMLRewriter (`vitrineAccueil`, `worker/seo.js`) ; les textes lus par le JavaScript sont servis dans
+  `<script type="application/json" id="textes">`.
+- **Choix du public** : « J'habite en Tunisie · TND » / « À l'étranger · € », mémorisé dans le cookie `public` (`tre` ou
+  `resident`, `Path=/; Max-Age=31536000; SameSite=Lax; Secure`, aucune donnée personnelle). Sans JavaScript, le lien
+  `?public=…` (accueil, `/vehicules`, fiches) pose le cookie et redirige en 303 ; toute autre valeur est ignorée. Sans
+  cookie, le réglage `public_par_defaut` s'applique. Ces pages répondent `Cache-Control: private, no-cache` et `Vary: Cookie`.
+- **Réglages** (rubrique « Site » de `/admin`, API `GET /api/admin/site` et `PUT /api/admin/site/<cle>`, journalisés) :
+  `whatsapp_numero` (vide, format `^\+?[0-9]{8,15}$`, bouton `wa.me` rendu par le serveur seulement s'il est saisi),
+  `public_par_defaut` (`tre`), `prix_publics_actifs` (`false`), `prix_resident_actif` (`false`), `temoignages` (`[]`,
+  section « Ils ont reçu leur voiture » masquée tant qu'elle est vide, sans interface de saisie). Valeurs par défaut dans
+  `worker/reglages.js` (`REGLAGES_SITE`) : pas de migration.
+- **Prix** (calcul à l'affichage avec `calculerPrix`, paramètres lus une fois par requête, rien n'est stocké) :
+  - `prix_publics_actifs` faux : « Estimation sur demande » et bouton de contact (WhatsApp, sinon e-mail) ;
+  - actif, public TRE : prix en €, « Prix estimé · taux du JJ/MM/AAAA · Devis définitif après vérification par notre
+    transitaire », détail des lignes TRE et FCR dans un `<details>` ;
+  - public résident : « Prix résident sur devis » et la phrase sur le régime en attente de textes d'application, tant que
+    `prix_resident_actif` est faux (aucun régime résident n'est aujourd'hui vérifié) ; véhicule non éligible : « Réservé
+    aux Tunisiens résidant à l'étranger » ;
+  - badges « Importable par un résident » et « Tunisiens à l'étranger (FCR) » selon l'éligibilité calculée ; aucun badge
+    si le calcul est impossible (prix d'achat `prixEur`, carburant ou cylindrée manquants) ;
+  - aucun prix estimé dans le JSON-LD.
+- **Formulations interdites** (loi 92-117) : « meilleur prix », « au meilleur prix », « tout compris », « prix tout
+  compris ». La FAQ ne donne ni délai, ni taux, ni garantie chiffrés.
+- **Admin** : le formulaire véhicule saisit le prix d'achat en EUR (`prixEur`), la cylindrée (`engineCc`) et la date de
+  première immatriculation (`premiereImmatriculation`, âge exact pour l'éligibilité).
+- Tests : `tests/test_accueil.py`.
 
 ## Marketplace vendeurs et diagnostic obligatoire (issue #5)
 

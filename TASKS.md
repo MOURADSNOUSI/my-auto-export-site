@@ -3,6 +3,8 @@
 
 ## Branche principale et déploiement
 
+2026-11-06 — Chantier 3, accueil et fiches — Claude Code, branche locale `feat/accueil-mandat` : `worker/textes.js`, cartes rendues par le Worker, cookie `public`, rubrique « Site » de `/admin` (sans migration), prix masqués par défaut ; non poussé, non déployé.
+
 2026-11-06 — Chantier 2, prix estimés — Claude Code, branche locale `feat/prix-estimes` : migration 0020, `worker/prix.js`, `/admin-prix`, taux BCT quotidien ; valeurs À VÉRIFIER par le transitaire, aucun prix public ; non poussé, non déployé.
 
 2026-11-06 — Profils Acheteur et Vendeur séparés, suivi #5 — Copilot,

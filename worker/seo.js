@@ -6,6 +6,9 @@ import { sellerMedia } from "./seller.js";
 // Les pages sont calculées à chaque requête depuis le catalogue (lots.json + administration) : ajouter, modifier
 // ou retirer un véhicule met à jour sa page, l'accueil et le sitemap sans étape de génération.
 import { catalogueComplet, etatEnchere, resumesEncheres } from "./index.js";
+import { calculerPrix, lireParametresPrix } from "./prix.js";
+import { REGLAGES_SITE, lireReglagesSite } from "./reglages.js";
+import { NOMBRE_QUESTIONS, TEXTES_NAVIGATEUR, fr, t } from "./textes.js";
 
 export const SITE = "https://www.myautoexport.com";
 // Pages statiques indexables. Ajouter ici une page informative une fois son contenu validé (et sa balise noindex retirée).
@@ -161,6 +164,243 @@ function jsonLd(donnees) {
   return `<script type="application/ld+json">${JSON.stringify(donnees).replace(/</g, "\\u003c")}</script>`;
 }
 
+// --- Vitrine : choix du public, prix estimés, cartes (chantier 3) ---
+
+// Public choisi : cookie « public » (tre ou resident), sinon le réglage public_par_defaut. Aucune donnée personnelle.
+export const PUBLICS = ["tre", "resident"];
+
+export function publicDuCookie(request) {
+  const morceau = (request.headers.get("Cookie") || "").split(";").map((m) => m.trim()).find((m) => m.startsWith("public="));
+  const valeur = morceau?.slice("public=".length);
+  return PUBLICS.includes(valeur) ? valeur : null;
+}
+
+export function cookiePublic(valeur) {
+  return `public=${valeur}; Path=/; Max-Age=31536000; SameSite=Lax; Secure`;
+}
+
+// Choix sans JavaScript : ?public=resident pose le cookie puis redirige (303) vers la même adresse sans le paramètre.
+// Une valeur invalide est ignorée (redirection sans cookie).
+export function redirectionPublic(url) {
+  const valeur = url.searchParams.get("public");
+  const cible = new URL(url);
+  cible.searchParams.delete("public");
+  const headers = { Location: `${cible.pathname}${cible.search}`, "Cache-Control": "no-store" };
+  if (PUBLICS.includes(valeur)) headers["Set-Cookie"] = cookiePublic(valeur);
+  return new Response(null, { status: 303, headers });
+}
+
+// Les pages qui lisent le cookie ne doivent pas être servies d'un cache à un autre public.
+export const ENTETES_VITRINE = { "Cache-Control": "private, no-cache", Vary: "Cookie" };
+
+// Réglages et paramètres de prix, lus une seule fois par requête. En cas d'échec : prix masqués, sans WhatsApp.
+export async function contexteVitrine(request, env) {
+  try {
+    const [site, parametres] = await Promise.all([lireReglagesSite(env), lireParametresPrix(env)]);
+    return { site, parametres, public: publicDuCookie(request) || site.public_par_defaut };
+  } catch {
+    console.error("vitrine_reglages_failed");
+    const site = Object.fromEntries(Object.entries(REGLAGES_SITE).map(([cle, r]) => [cle, r.defaut]));
+    return { site, parametres: null, public: publicDuCookie(request) || site.public_par_defaut };
+  }
+}
+
+// Calcul à l'affichage, sans stockage. null si le calcul est impossible (prix d'achat, carburant… manquants) :
+// l'éligibilité est alors inconnue.
+function estimation(lot, ctx) {
+  if (!ctx.parametres) return null;
+  const r = calculerPrix({
+    prixEur: lot.prixEur, transportEur: lot.transportEur, year: lot.year, premiereImmatriculation: lot.premiereImmatriculation,
+    engineCc: lot.engineCc, fuel: lot.fuel
+  }, ctx.parametres);
+  return r.prixTreEur === null ? null : r;
+}
+
+const eur = (n) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+const montant = (n, devise) => (devise === "EUR" ? eur(n) : tnd(n));
+
+// Date du taux (JJ/MM/AAAA) : date du taux automatique, sinon dernière modification du taux manuel, sinon aujourd'hui.
+function dateTaux(r, ctx) {
+  const iso = r.taux.date || ctx.parametres.lignesParametres?.find((l) => l.cle === "taux_manuel")?.mis_a_jour || ctx.parametres.aujourdhui;
+  const [a, m, j] = String(iso).slice(0, 10).split("-");
+  return `${j}/${m}/${a}`;
+}
+
+function whatsappChiffres(ctx) {
+  return String(ctx.site.whatsapp_numero || "").replace(/^\+/, "");
+}
+
+function boutonContact(lot, ctx, { email = true } = {}) {
+  const message = t("contact_message", { reference: lot.reference });
+  if (whatsappChiffres(ctx)) {
+    return `<a class="bouton-contact" href="https://wa.me/${whatsappChiffres(ctx)}?text=${encodeURIComponent(message)}" target="_blank" rel="noopener">${escapeHtml(t("contact_whatsapp"))}</a>`;
+  }
+  return email ? `<a class="bouton-contact" href="mailto:contact@myautoexport.com?subject=${encodeURIComponent(message)}">${escapeHtml(t("contact_email"))}</a>` : "";
+}
+
+export function boutonWhatsapp(ctx) {
+  if (!whatsappChiffres(ctx)) return "";
+  return `<a class="bouton-whatsapp" href="https://wa.me/${whatsappChiffres(ctx)}" target="_blank" rel="noopener" aria-label="${escapeHtml(t("whatsapp_aria"))}">${escapeHtml(t("whatsapp"))}</a>`;
+}
+
+function badgesEligibilite(r) {
+  const badges = [];
+  if (r && r.motifNonEligibleResident === null) badges.push(`<li class="badge badge-resident">${escapeHtml(t("badge_resident"))}</li>`);
+  if (r && r.motifNonEligibleFcr === null) badges.push(`<li class="badge badge-fcr">${escapeHtml(t("badge_fcr"))}</li>`);
+  return badges.length ? `<ul class="badges">${badges.join("")}</ul>` : "";
+}
+
+// Montant estimé, mention et détail dépliable (sans JavaScript). prefixes : lignes du détail retenues.
+function prixEstime(total, devise, r, ctx, prefixes, extra = "") {
+  const lignes = r.detail.filter((l) => prefixes.some((p) => l.libelle.startsWith(p)));
+  return `<p class="prix-estime"><small>${escapeHtml(t("prix_estime"))}</small><strong>${escapeHtml(montant(total, devise))}</strong></p>
+    <p class="prix-mention">${escapeHtml(t("prix_mention", { date: dateTaux(r, ctx) }))}</p>
+    <details class="prix-detail"><summary>${escapeHtml(t("prix_detail"))}</summary><ul>${lignes.map((l) => `<li><span>${escapeHtml(l.libelle)}</span><span>${escapeHtml(montant(l.montant, l.devise))}</span></li>`).join("")}
+      <li class="prix-total"><span>${escapeHtml(t("prix_total"))}</span><span>${escapeHtml(montant(total, devise))}</span></li>${extra}</ul></details>`;
+}
+
+// Règles d'affichage : aucun prix calculé si prix_publics_actifs est faux ; aucun prix résident si prix_resident_actif
+// est faux (régime résident en attente de textes d'application).
+function blocPrix(lot, r, ctx, options) {
+  const { prix_publics_actifs: publics, prix_resident_actif: resident } = ctx.site;
+  if (ctx.public === "resident") {
+    if (r && r.motifNonEligibleResident !== null) return `<p class="prix-statut">${escapeHtml(t("prix_reserve_tre"))}</p>`;
+    if (r && publics && resident && r.prixResidentTnd !== null) return prixEstime(r.prixResidentTnd, "TND", r, ctx, ["Résident :"]);
+    return `<p class="prix-statut">${escapeHtml(t("prix_resident_devis"))}</p><p class="prix-mention">${escapeHtml(t("prix_resident_explication"))}</p>${boutonContact(lot, ctx, options)}`;
+  }
+  if (r && publics) {
+    const fcr = r.dedouanementFcrEstimeTnd === null ? "" : `<li class="prix-total"><span>${escapeHtml(t("prix_fcr"))}</span><span>${escapeHtml(tnd(r.dedouanementFcrEstimeTnd))}</span></li>`;
+    return prixEstime(r.prixTreEur, "EUR", r, ctx, ["TRE :", "FCR :"], fcr);
+  }
+  return `<p class="prix-statut">${escapeHtml(t("prix_sur_demande"))}</p>${boutonContact(lot, ctx, options)}`;
+}
+
+// Badges et prix d'un véhicule, pour une carte ou une fiche.
+export function estimationVehicule(lot, ctx, options = {}) {
+  const r = estimation(lot, ctx);
+  return `${badgesEligibilite(r)}<div class="bloc-prix">${blocPrix(lot, r, ctx, options)}</div>`;
+}
+
+function photoCarte(lot) {
+  const url = photosLot(lot)[0];
+  if (!url) return `<span class="carte-sans-photo"></span>`;
+  const src = url.startsWith("photos/") ? `/${url}` : url;
+  const webp = url.match(/^photos\/([^/]+)\.(?:jpe?g|png)$/i);
+  const img = `<img src="${escapeHtml(src)}" alt="" width="400" height="300" loading="lazy" decoding="async">`;
+  return webp ? `<picture><source srcset="/photos/web/${escapeHtml(webp[1])}.webp" type="image/webp">${img}</picture>` : img;
+}
+
+// Carte rendue par le serveur : visible sans JavaScript.
+export function carteVehicule(lot, ctx) {
+  const chemin = escapeHtml(cheminVehicule(lot));
+  const infos = [lot.year, Number.isFinite(lot.mileageKm) ? `${nombreFr(lot.mileageKm)} km` : null, lot.fuel].filter(Boolean);
+  return `<li class="carte-vehicule"><a class="carte-photo" href="${chemin}" tabindex="-1" aria-hidden="true">${photoCarte(lot)}</a>
+    <div class="carte-corps"><h3 class="carte-titre"><a href="${chemin}">${escapeHtml(titreLot(lot))}</a></h3>
+    ${infos.length ? `<p class="carte-infos">${escapeHtml(infos.join(" · "))}</p>` : ""}
+    ${estimationVehicule(lot, ctx)}
+    <a class="carte-fiche" href="${chemin}">${escapeHtml(t("voir_fiche"))}<span class="visually-hidden"> : ${escapeHtml(titreLot(lot))}</span></a></div></li>`;
+}
+
+// Boutons du choix du public : liens (sans JavaScript) marqués aria-pressed ; SCRIPT_CHOIX_PUBLIC pose le cookie et recharge.
+export function choixPublic(ctx, chemin) {
+  const bouton = (valeur, cle) => `<a class="choix-public-bouton" role="button" href="${escapeHtml(chemin)}?public=${valeur}" data-public="${valeur}" aria-pressed="${ctx.public === valeur}">${escapeHtml(t(cle))}</a>`;
+  return `<div class="choix-public" id="choix-public" role="group" aria-label="${escapeHtml(t("public_groupe"))}">${bouton("resident", "public_resident")}${bouton("tre", "public_tre")}</div>`;
+}
+
+export const SCRIPT_CHOIX_PUBLIC = `<script>(()=>{const choisir=(b)=>{const v=b.dataset.public;if(v!=="tre"&&v!=="resident")return;document.cookie="public="+v+"; Path=/; Max-Age=31536000; SameSite=Lax; Secure";location.reload();};
+document.addEventListener("click",(e)=>{const b=e.target.closest&&e.target.closest("[data-public]");if(!b)return;e.preventDefault();choisir(b);});
+document.addEventListener("keydown",(e)=>{if(e.key===" "&&e.target.matches&&e.target.matches("[data-public]")){e.preventDefault();choisir(e.target);}});})();</script>`;
+
+// Styles des cartes, badges, prix et choix du public, partagés par l'accueil et les pages /vehicules.
+// Propriétés logiques (inline/block) pour préparer l'arabe.
+export const CSS_VITRINE = `
+.visually-hidden{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.choix-public{display:flex;flex-wrap:wrap;gap:8px;margin-block:18px 0}
+.choix-public-bouton{display:inline-flex;align-items:center;min-block-size:44px;padding-inline:16px;border:2px solid #185740;border-radius:24px;background:#fff;color:#185740;font-weight:700;text-decoration:none}
+.choix-public-bouton[aria-pressed="true"]{background:#185740;color:#fff}
+.cartes-vehicules{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:14px;margin:0;padding:0;list-style:none}
+.carte-vehicule{display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;border:1px solid #d7ddd8;border-radius:8px;background:#fff;color:#17201d}
+.carte-photo{display:block;aspect-ratio:4/3;background:#dfe5e1}
+.carte-photo img,.carte-photo picture{display:block;inline-size:100%;block-size:100%;object-fit:cover}
+.carte-sans-photo{display:block;block-size:100%}
+.carte-corps{display:flex;flex:1;flex-direction:column;gap:8px;padding:12px 14px 14px}
+.carte-titre{margin:0;font-size:17px;line-height:1.3}.carte-titre a{color:inherit;text-decoration:none}.carte-titre a:hover{text-decoration:underline}
+.carte-infos{margin:0;color:#4f5b55;font-size:14px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.badge{padding-block:2px;padding-inline:8px;border-radius:12px;font-size:12px;font-weight:700}
+.badge-resident{background:#e4f0e9;color:#185740}.badge-fcr{background:#f4ead5;color:#5c4a24}
+.bloc-prix{display:grid;gap:6px}
+.prix-statut{margin:0;font-weight:700}
+.prix-estime{margin:0}.prix-estime small{display:block;color:#4f5b55;font-size:12px}.prix-estime strong{font-size:21px}
+.prix-mention{margin:0;color:#4f5b55;font-size:13px}
+.prix-detail summary{cursor:pointer;color:#185740;font-weight:700;font-size:14px}
+.prix-detail ul{margin:6px 0 0;padding:0;list-style:none;font-size:13px}
+.prix-detail li{display:flex;justify-content:space-between;gap:12px;padding-block:3px;border-block-end:1px solid #edf0ee}
+.prix-detail li span:last-child{white-space:nowrap}.prix-total{font-weight:700}
+.bouton-contact{display:inline-flex;align-items:center;justify-content:center;min-block-size:44px;padding-inline:16px;border-radius:6px;background:#185740;color:#fff;font-weight:700;text-decoration:none;justify-self:start}
+.carte-fiche{margin-block-start:auto;color:#185740;font-weight:700}
+.bouton-whatsapp{display:inline-flex;align-items:center;min-block-size:40px;padding-inline:12px;border-radius:20px;background:#166b3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap}
+.etapes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin:0;padding:0;list-style:none}
+.etapes li,.lignes-prix,.temoignages li,.faq{padding:14px 16px;border:1px solid #d7ddd8;border-radius:8px;background:#fff}
+.etapes h3{margin:0 0 6px;font-size:16px}.etapes p{margin:0}
+.lignes-prix{margin:0;padding-inline-start:34px}
+.temoignages{display:grid;gap:12px;margin:0;padding:0;list-style:none}.temoignages blockquote{margin:0}
+.faq{margin-block-end:8px}.faq summary{cursor:pointer;font-weight:700}.faq p{margin-block:8px 0}
+`;
+
+function sectionsAccueil(ctx) {
+  const titre = (id, cle) => `<div class="section-title"><h2 id="${id}">${escapeHtml(t(cle))}</h2></div>`;
+  const temoignages = Array.isArray(ctx.site.temoignages) ? ctx.site.temoignages : [];
+  return {
+    comment: `${titre("comment-titre", "comment_titre")}<ol class="etapes">${[1, 2, 3].map((i) => `<li><h3>${escapeHtml(t(`etape${i}_titre`))}</h3><p>${escapeHtml(t(`etape${i}_texte`))}</p></li>`).join("")}</ol>`,
+    prix: `${titre("prix-titre", "prix_titre")}<p>${escapeHtml(t("prix_intro"))}</p><ul class="lignes-prix">${["achat", "transport", "douane", "frais", "immatriculation", "commission"].map((c) => `<li>${escapeHtml(t(`prix_ligne_${c}`))}</li>`).join("")}</ul><p class="note">${escapeHtml(t("prix_note"))}</p>`,
+    temoignages: temoignages.length ? `${titre("temoignages-titre", "temoignages_titre")}<ul class="temoignages">${temoignages.map((x) => `<li><blockquote><p>${escapeHtml(x.texte)}</p></blockquote><p>— ${escapeHtml(x.nom)}${x.vehicule ? `, ${escapeHtml(x.vehicule)}` : ""}</p></li>`).join("")}</ul>` : "",
+    questions: `${titre("questions-titre", "questions_titre")}${Array.from({ length: NOMBRE_QUESTIONS }, (_, i) => `<details class="faq"><summary>${escapeHtml(t(`faq${i + 1}_question`))}</summary><p>${escapeHtml(t(`faq${i + 1}_reponse`))}</p></details>`).join("")}`
+  };
+}
+
+// Accueil : textes (data-texte), choix du public, WhatsApp, sections et cartes insérés dans index.html.
+// Le catalogue en échec laisse la section des véhicules masquée ; le reste de la page est servi.
+export async function vitrineAccueil(request, env, reponse) {
+  const ctx = await contexteVitrine(request, env);
+  let liste = null;
+  try {
+    liste = await listeIndexable(request, env, ctx);
+  } catch {
+    console.error("homepage_catalogue_failed");
+  }
+  const sections = sectionsAccueil(ctx);
+  const textesNavigateur = JSON.stringify(Object.fromEntries(TEXTES_NAVIGATEUR.map((cle) => [cle, t(cle)]))).replace(/</g, "\\u003c");
+  const remplir = (html) => ({ element: (element) => element.setInnerContent(html, { html: true }) });
+  let rewriter = new HTMLRewriter()
+    .on("[data-texte]", { element: (element) => {
+      const cle = element.getAttribute("data-texte");
+      if (Object.hasOwn(fr, cle)) element.setInnerContent(t(cle));
+    } })
+    .on("head", { element: (element) => element.append(`<style>${CSS_VITRINE}</style><script type="application/json" id="textes">${textesNavigateur}</script>`, { html: true }) })
+    .on("#choix-public", { element: (element) => element.replace(choixPublic(ctx, "/"), { html: true }) })
+    .on(".header-tools", { element: (element) => element.prepend(boutonWhatsapp(ctx), { html: true }) })
+    .on("#comment-ca-marche", remplir(sections.comment))
+    .on("#nos-prix", remplir(sections.prix))
+    .on("#questions", remplir(sections.questions))
+    .on("body", { element: (element) => element.append(SCRIPT_CHOIX_PUBLIC, { html: true }) });
+  if (sections.temoignages) {
+    rewriter = rewriter.on("#temoignages", { element: (element) => {
+      element.removeAttribute("hidden");
+      element.setInnerContent(sections.temoignages, { html: true });
+    } });
+  }
+  if (liste !== null) {
+    rewriter = rewriter
+      .on("#tous-vehicules", { element: (element) => element.removeAttribute("hidden") })
+      .on("#liste-vehicules", remplir(liste || `<li>${escapeHtml(t("liste_vide"))}</li>`));
+  }
+  const entetes = new Headers(reponse.headers);
+  entetes.delete("ETag");
+  for (const [cle, valeur] of Object.entries(ENTETES_VITRINE)) entetes.set(cle, valeur);
+  return rewriter.transform(new Response(reponse.body, { status: reponse.status, headers: entetes }));
+}
+
 // --- Gabarit commun ---
 
 const STYLE = `
@@ -169,8 +409,11 @@ const STYLE = `
 body{margin:0;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--paper)}
 a{color:var(--accent)}img{max-width:100%;display:block}
 .shell{width:min(1100px,100% - 32px);margin:0 auto}
-header{background:#101513;color:#fff}header .shell{display:flex;align-items:center;gap:12px;min-height:60px}
+header{background:#101513;color:#fff}header .shell{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:60px;padding-block:8px}
 header a{color:#fff;text-decoration:none;font-weight:700}header img{width:36px;height:36px}
+.marque{display:inline-flex;align-items:center;gap:10px}
+.menu{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:15px}.menu a{font-weight:600;padding-block:6px}
+.outils{display:flex;align-items:center;gap:8px;margin-inline-start:auto}.compte{padding-block:6px}
 nav.ariane{font-size:14px;color:var(--soft);margin:16px 0}nav.ariane a{color:var(--soft)}
 h1{font-size:clamp(24px,5vw,36px);line-height:1.2;margin:0 0 8px}
 .meta{color:var(--soft);margin:0 0 16px}
@@ -192,7 +435,16 @@ dl{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:6px 16px;margin
 footer{margin-top:48px;padding:24px 0;border-top:1px solid var(--line);font-size:14px;color:var(--soft)}
 `;
 
-function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [] }) {
+// En-tête commun : menu vers les ancres de l'accueil, « Mon compte » (espace acheteur de l'accueil), WhatsApp si un
+// numéro est saisi (ctx absent : page d'erreur, sans WhatsApp).
+function entete(ctx) {
+  const lien = (ancre, cle) => `<a href="/#${ancre}">${escapeHtml(t(cle))}</a>`;
+  return `<header><div class="shell"><a class="marque" href="/"><img src="/logo.png" alt="Logo M&amp;Y AUTO EXPORT" width="36" height="36">M&amp;Y AUTO EXPORT</a>
+    <nav class="menu" aria-label="Navigation principale">${lien("tous-vehicules", "menu_vehicules")}${lien("comment-ca-marche", "menu_comment")}${lien("nos-prix", "menu_prix")}${lien("questions", "menu_questions")}</nav>
+    <div class="outils">${ctx ? boutonWhatsapp(ctx) : ""}<a class="compte" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a></div></div></header>`;
+}
+
+function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [], ctx = null }) {
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -212,14 +464,14 @@ function gabarit({ titre, description, canonique, robots, image, contenu, script
   <meta property="og:image" content="${escapeHtml(image || `${SITE}/logo.png`)}">
   <meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}">
   ${donnees.map(jsonLd).join("\n  ")}
-  <style>${STYLE}</style>
+  <style>${STYLE}${CSS_VITRINE}</style>
   <link rel="stylesheet" href="/proposal-dialog.css">
 </head>
 <body>
-  <header><div class="shell"><a href="/"><img src="/logo.png" alt="Logo M&amp;Y AUTO EXPORT" width="36" height="36"></a><a href="/">M&amp;Y AUTO EXPORT</a></div></header>
+  ${entete(ctx)}
   <main class="shell">${contenu}</main>
   <footer><div class="shell"><strong>M&amp;Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie · <a href="/vehicules">Tous les véhicules</a> · <a href="/conditions">Conditions générales de vente</a> · <a href="mailto:contact@myautoexport.com">contact@myautoexport.com</a></div></footer>
-${scripts}
+${scripts}${ctx ? SCRIPT_CHOIX_PUBLIC : ""}
 </body>
 </html>`;
 }
@@ -278,6 +530,7 @@ export function estRouteSeo(path) {
 
 export async function routeSeo(request, env, url) {
   if (url.pathname === "/sitemap.xml") return sitemap(request, env);
+  if (url.searchParams.has("public")) return redirectionPublic(url);
   if (url.pathname === "/vehicules") return pageListe(request, env);
   if (url.pathname.endsWith("/")) {
     return Response.redirect(`${url.origin}${url.pathname.replace(/\/+$/, "")}`, 301);
@@ -307,6 +560,7 @@ async function pageVehicule(request, env, url) {
   }
   if(item.sellerUnavailable)return page404();
   const lot = item.lot;
+  const ctx = await contexteVitrine(request, env);
   if (item.removed) {
     // Véhicule vendu ou retiré : 410 indique aux moteurs de retirer la page de l'index.
     return reponseHtml(gabarit({
@@ -345,6 +599,7 @@ async function pageVehicule(request, env, url) {
           <small>${escapeHtml(prix.label)}</small><strong>${escapeHtml(prix.value)}</strong>
           ${lot.auction?.endsAt && lot.auction.status === "live" ? `<p>Fin de la vente : <time datetime="${escapeHtml(lot.auction.endsAt)}">${escapeHtml(new Date(lot.auction.endsAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis", dateStyle: "long", timeStyle: "short" }))}</time> (heure de Tunis)</p>` : ""}
           <p class="note">${NOTE_PRIX} Ces éléments sont communiqués sur demande avant tout engagement (<a href="/conditions#prix">conditions</a>).</p>
+          <div class="estimation">${choixPublic(ctx, cheminVehicule(lot))}${estimationVehicule(lot, ctx, { email: false })}</div>
           ${proposition?`<p class="proposal-reserve">Prix de réserve : <strong>${terms?escapeHtml(money(terms.reserveMinor,terms.currency)):"À renseigner par le vendeur"}</strong></p>`:""}
           <div class="actions">
             ${proposition?`<button class="bouton" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`:enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
@@ -369,24 +624,20 @@ async function pageVehicule(request, env, url) {
     robots: enVente ? "" : "noindex",
     image: photos.length ? absolue(photos[0]) : null,
     donnees: donneesStructurees(lot, canonique),
-    contenu
-  }));
+    contenu,
+    ctx
+  }), 200, ENTETES_VITRINE);
 }
 
-function ligneListe(lot) {
-  const prix = prixAffiche(lot);
-  const details = [lot.year, Number.isFinite(lot.mileageKm) ? `${nombreFr(lot.mileageKm)} km` : null, lot.fuel, statutLot(lot), `${prix.label} : ${prix.value}`].filter(Boolean);
-  return `<li><a href="${escapeHtml(cheminVehicule(lot))}"><strong>${escapeHtml(titreLot(lot))}</strong><br><small>${escapeHtml(details.join(" · "))}</small></a></li>`;
-}
-
-// Liste HTML des véhicules indexables, insérée dans l'accueil par le Worker : lisible sans JavaScript.
-export async function listeIndexable(request, env) {
+// Cartes des véhicules indexables, insérées dans l'accueil par le Worker : lisibles sans JavaScript.
+export async function listeIndexable(request, env, ctx) {
   const lots = (await lotsAvecEtat(request, env)).filter(indexable).map((item) => item.lot);
-  return lots.map(ligneListe).join("");
+  return lots.map((lot) => carteVehicule(lot, ctx)).join("");
 }
 
 async function pageListe(request, env) {
-  const lots = (await lotsAvecEtat(request, env)).filter(indexable).map((item) => item.lot);
+  const [items, ctx] = await Promise.all([lotsAvecEtat(request, env), contexteVitrine(request, env)]);
+  const lots = items.filter(indexable).map((item) => item.lot);
   const canonique = `${SITE}/vehicules`;
   const donnees = [{
     "@context": "https://schema.org",
@@ -403,9 +654,11 @@ async function pageListe(request, env) {
     contenu: `<nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › Véhicules</nav>
       <h1>Véhicules à vendre</h1>
       <p class="meta">${lots.length} véhicule${lots.length > 1 ? "s" : ""} en ligne. Prix en TND ou EUR selon l’annonce.</p>
-      ${lots.length ? `<ul class="liste">${lots.map(ligneListe).join("")}</ul>` : "<p>Aucun véhicule en ligne pour le moment.</p>"}
-      <p class="note">${NOTE_PRIX}</p>`
-  }));
+      ${choixPublic(ctx, "/vehicules")}
+      ${lots.length ? `<ul class="cartes-vehicules" style="margin-block-start:16px">${lots.map((lot) => carteVehicule(lot, ctx)).join("")}</ul>` : "<p>Aucun véhicule en ligne pour le moment.</p>"}
+      <p class="note">${NOTE_PRIX}</p>`,
+    ctx
+  }), 200, ENTETES_VITRINE);
 }
 
 function dateIso(valeur) {
