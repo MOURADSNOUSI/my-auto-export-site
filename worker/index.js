@@ -13,6 +13,7 @@ import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
 import { REGLAGES_INTERRUPTEURS, REGLAGES_SITE, reglageActif, ecrireInterrupteur, ecrireReglageSite, journaliser, listerReglages, listerReglagesSite, validerReglageSite } from "./reglages.js";
 import { mettreAJourTaux, routeAdminPrix } from "./prix.js";
 import { estRouteMandats, routeAdminMandats, routeMandats, vehiculeMandat } from "./mandats.js";
+import { estRouteGoogle, routeGoogle } from "./google.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -187,6 +188,7 @@ async function routeApi(request, env, url, ctx) {
     if (publication && method === "POST" && response.ok) await controlerApresPublication(env, ctx, `SV-${publication[1]}`);
     return response;
   }
+  if (estRouteGoogle(path)) return routeGoogle(request, env, url, { json, ApiError, ouvrirSession, reserverInscription, motDePasseInutilisable, adresseIp });
   if (estRouteMandats(path)) return routeMandats(request, env, url, { json, ApiError, exigerUtilisateur, lireJson, catalogueComplet });
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/account/profiles" && method === "POST") return activerProfil(request, env);
@@ -590,6 +592,25 @@ async function telechargerFacture(request, env, invoiceId) {
   });
 }
 
+// Place d'inscription réservée en une requête (pas de course entre comptage et enregistrement) et gardée même si
+// l'adresse e-mail est déjà prise : les essais d'adresses pour savoir qui est client comptent aussi. Faux : limite atteinte.
+async function reserverInscription(env, ip) {
+  const maintenant = new Date();
+  const [, place] = await env.DB.batch([
+    env.DB.prepare("DELETE FROM registrations WHERE at < ?").bind(new Date(maintenant.getTime() - 86400_000).toISOString()),
+    env.DB.prepare(
+      "INSERT INTO registrations (ip, at) SELECT ?, ? WHERE (SELECT COUNT(*) FROM registrations WHERE ip = ? AND at > ?) < ? RETURNING rowid"
+    ).bind(ip, maintenant.toISOString(), ip, new Date(maintenant.getTime() - 3600_000).toISOString(), MAX_INSCRIPTIONS_PAR_IP)
+  ]);
+  return place.results.length > 0;
+}
+
+// Compte créé avec Google : mot de passe aléatoire jamais communiqué, donc inutilisable (connexion par Google seulement).
+async function motDePasseInutilisable() {
+  const salt = hex(octetsAleatoires(16));
+  return { salt, hash: await hacherMotDePasse(hex(octetsAleatoires(32)), salt) };
+}
+
 async function register(request, env) {
   const body = await lireJson(request);
   const name = texte(body.name, 80);
@@ -602,17 +623,7 @@ async function register(request, env) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "Adresse e-mail invalide.");
   if (phone && !/^[+0-9 ().-]{6,30}$/.test(phone)) throw new ApiError(400, "Numéro de téléphone invalide.");
   if (password.length < 10 || password.length > 200) throw new ApiError(400, "Le mot de passe doit contenir au moins 10 caractères.");
-  // Place réservée en une requête (pas de course entre comptage et enregistrement) et gardée même si l'adresse e-mail
-  // est déjà prise : les essais d'adresses pour savoir qui est client comptent aussi.
-  const ip = adresseIp(request);
-  const maintenant = new Date();
-  const [, place] = await env.DB.batch([
-    env.DB.prepare("DELETE FROM registrations WHERE at < ?").bind(new Date(maintenant.getTime() - 86400_000).toISOString()),
-    env.DB.prepare(
-      "INSERT INTO registrations (ip, at) SELECT ?, ? WHERE (SELECT COUNT(*) FROM registrations WHERE ip = ? AND at > ?) < ? RETURNING rowid"
-    ).bind(ip, maintenant.toISOString(), ip, new Date(maintenant.getTime() - 3600_000).toISOString(), MAX_INSCRIPTIONS_PAR_IP)
-  ]);
-  if (!place.results.length) throw new ApiError(429, "Trop d'inscriptions depuis cette connexion. Réessaie dans une heure.");
+  if (!(await reserverInscription(env, adresseIp(request)))) throw new ApiError(429, "Trop d'inscriptions depuis cette connexion. Réessaie dans une heure.");
 
   const salt = hex(octetsAleatoires(16));
   const hash = await hacherMotDePasse(password, salt);

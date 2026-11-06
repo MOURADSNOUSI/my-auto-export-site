@@ -3,6 +3,7 @@
 
 ## Branche principale et déploiement
 
+2026-11-06 — Connexion avec Google — Claude Code, branche `feat/connexion-google` (sur `feat/vendre-connexion`) : migration 0022, `worker/google.js`, bouton sur /vendre, l'accueil et le formulaire de mandat ; inactif tant que GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET ne sont pas déclarés ; tests : 240 Python et 62 Vitest OK ; non poussé, non déployé.
 2026-11-06 — Page /vendre en étapes — Claude Code, branche `feat/vendre-connexion` : « Bonjour ! », puis « Me connecter » ou « Créer un compte » (?etape=login|register) ; tests : 233 Python et 62 Vitest OK.
 2026-11-06 — Accueil sans liste « Tous nos véhicules » — Claude Code, branche `feat/accueil-sans-liste` : section retirée de l'accueil, menu « Véhicules » vers /vehicules (cartes sans JavaScript) ; tests : 233 Python (1 test corrigé puis relancé) et 62 Vitest OK.
 2026-11-06 — Bouton « Déposer une annonce » — Claude Code, branche `feat/deposer-annonce` : le bandeau vendeur de l'accueil devient un bouton ; non connecté, choix « Me connecter » ou « Créer un compte », puis /vendre ; tests : 233 Python et 62 Vitest OK.
