@@ -261,7 +261,10 @@ class PagesVehiculesTest(unittest.TestCase):
     def test_accueil_liste_les_vehicules_sans_javascript(self):
         statut, html, _ = self.page("/")
         self.assertEqual(statut, 200)
-        self.assertIn('<section class="block" id="tous-vehicules" aria-labelledby="tous-vehicules-title">', html)
+        # Cartes sans JavaScript sur /vehicules, lié depuis le menu de l'accueil.
+        self.assertNotIn('id="tous-vehicules"', html)
+        self.assertIn('href="/vehicules"', html)
+        statut, html, _ = self.page("/vehicules")
         self.assertIn('href="/vehicules/peugeot-3008-2023-seo-stock"', html)
         self.assertNotIn("seo-fin", html)
         self.assertNotIn("seo-retire", html)
