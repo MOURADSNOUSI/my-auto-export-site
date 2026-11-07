@@ -44,6 +44,39 @@ function carte(a, index) {
   </li>`;
 }
 
+// Préfiltre de l'administration (réglage import_openlane_filtres).
+async function chargerPrefiltre() {
+  const { filtres, carburants, boites } = await api("/api/admin/import/filtres");
+  const form = $("form-prefiltre");
+  const options = (liste) => Object.entries(liste).map(([valeur, libelle]) => `<option value="${echapper(valeur)}">${echapper(libelle)}</option>`).join("");
+  if (form.elements.carburant.options.length === 1) {
+    form.elements.carburant.insertAdjacentHTML("beforeend", options(carburants));
+    form.elements.boite.insertAdjacentHTML("beforeend", options(boites));
+    $("form-recherche").elements.fuel.insertAdjacentHTML("beforeend", options(carburants));
+  }
+  for (const cle of ["anneeMin", "kmMax", "prixMaxEur", "carburant", "boite"]) form.elements[cle].value = filtres[cle];
+  form.elements.anneeMax.value = filtres.anneeMax ?? "";
+  form.elements.achatImmediat.checked = filtres.achatImmediat;
+}
+
+$("form-prefiltre").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const f = event.currentTarget.elements;
+  const filtres = {
+    anneeMin: Number(f.anneeMin.value), anneeMax: f.anneeMax.value === "" ? null : Number(f.anneeMax.value), kmMax: Number(f.kmMax.value),
+    prixMaxEur: Number(f.prixMaxEur.value), achatImmediat: f.achatImmediat.checked, carburant: f.carburant.value, boite: f.boite.value
+  };
+  try {
+    await api("/api/admin/import/filtres", { method: "PUT", body: { filtres } });
+    message("Préfiltre enregistré : il s'applique dès la prochaine recherche.");
+    await chargerPrefiltre();
+  } catch (error) {
+    message(error.message, false);
+  }
+});
+
+chargerPrefiltre().catch((error) => message(error.message, false));
+
 $("form-recherche").addEventListener("submit", async (event) => {
   event.preventDefault();
   const recherche = new URLSearchParams([...new FormData(event.currentTarget)].filter(([, v]) => String(v).trim() !== ""));

@@ -2,14 +2,41 @@
 // brouillon (véhicule retiré, invisible du public) que l'administration relit et remet en ligne depuis /admin.
 // Rien n'est jamais publié automatiquement. Les photos restent à leur adresse d'origine (aucune copie dans R2).
 // Suivi quotidien (cron 30 2 * * *) : une annonce dont l'enchère est terminée est retirée du site, sans appel à l'API.
-import { appelerTheCarApi, date, nombre, normaliserVoiture, parametresRecherche, texte } from "./voitures-europe.js";
-import { journaliser, reglageActif } from "./reglages.js";
+import { ErreurCatalogue, VALEUR_VALIDE, appelerTheCarApi, date, nombre, normaliserVoiture, texte } from "./voitures-europe.js";
+import { ecrireReglageJson, journaliser, reglageActif, reglageJson } from "./reglages.js";
 
 export const MAX_IMPORTS_SUIVIS = 100;
-// Annonces importables : vente en achat immédiat (formats « Achat immédiat », « Achat immédiat et enlèvement » et
-// « 24/7 Achat immédiat » d'OpenLane, que TheCarApi ne distingue pas : buy_now / is_buy_now), immatriculées en 2022 ou après.
-// TheCarApi ne dit pas si une enchère a un prix de réserve : ce format n'est pas importable.
-export const ANNEE_MIN_IMPORT = 2022;
+
+// Préfiltre des annonces à récupérer, réglé dans /admin-import (réglage import_openlane_filtres). achatImmediat : formats
+// « Achat immédiat », « Achat immédiat et enlèvement » et « 24/7 Achat immédiat » d'OpenLane, que TheCarApi ne distingue
+// pas (buy_now / is_buy_now). TheCarApi ne dit pas si une enchère a un prix de réserve : ce format n'est pas filtrable.
+const CLE_FILTRES = "import_openlane_filtres";
+export const FILTRES_DEFAUT = { anneeMin: 2022, anneeMax: null, kmMax: 150000, prixMaxEur: 30000, achatImmediat: true, carburant: "", boite: "" };
+export const CARBURANTS_IMPORT = { Petrol: "Essence", Diesel: "Diesel", Hybrid: "Hybride", Electric: "Électrique" };
+export const BOITES_IMPORT = { Automatic: "Automatique", Manual: "Manuelle" };
+const ANNEE_MIN_POSSIBLE = 1990;
+
+const entierEntre = (v, min, max) => Number.isSafeInteger(v) && v >= min && v <= max;
+
+// Préfiltre contrôlé et complété par les valeurs par défaut. Renvoie { filtres } ou { erreur }.
+export function validerFiltres(valeur, anneeCourante = new Date().getUTCFullYear()) {
+  if (!valeur || typeof valeur !== "object" || Array.isArray(valeur)) return { erreur: "Préfiltre attendu." };
+  const f = { ...FILTRES_DEFAUT, ...valeur };
+  if (!entierEntre(f.anneeMin, ANNEE_MIN_POSSIBLE, anneeCourante + 1)) return { erreur: `Année minimum entre ${ANNEE_MIN_POSSIBLE} et ${anneeCourante + 1}.` };
+  if (f.anneeMax !== null && (!entierEntre(f.anneeMax, f.anneeMin, anneeCourante + 1))) return { erreur: "Année maximum invalide (au moins l'année minimum)." };
+  if (!entierEntre(f.kmMax, 1, 1000000)) return { erreur: "Kilométrage maximum entre 1 et 1 000 000 km." };
+  if (!entierEntre(f.prixMaxEur, 1, 1000000)) return { erreur: "Prix maximum entre 1 et 1 000 000 €." };
+  if (typeof f.achatImmediat !== "boolean") return { erreur: "Achat immédiat : vrai ou faux." };
+  if (f.carburant !== "" && !Object.hasOwn(CARBURANTS_IMPORT, f.carburant)) return { erreur: "Carburant inconnu." };
+  if (f.boite !== "" && !Object.hasOwn(BOITES_IMPORT, f.boite)) return { erreur: "Boîte de vitesses inconnue." };
+  const { anneeMin, anneeMax, kmMax, prixMaxEur, achatImmediat, carburant, boite } = f;
+  return { filtres: { anneeMin, anneeMax, kmMax, prixMaxEur, achatImmediat, carburant, boite } };
+}
+
+export async function lireFiltres(env) {
+  const enregistres = await reglageJson(env, CLE_FILTRES);
+  return (enregistres && validerFiltres(enregistres).filtres) || { ...FILTRES_DEFAUT };
+}
 const MAX_PHOTOS = 20;
 const https = (valeur) => (typeof valeur === "string" && valeur.length <= 1000 && /^https:\/\/[^\s"'<>]+$/.test(valeur) ? valeur : null);
 // Copies servies par TheCarApi (adresse relative signée, valable jusqu'au 1er janvier 2027 sur la réponse du 7 novembre
@@ -83,19 +110,54 @@ async function importsSuivis(env) {
   return ligne.n;
 }
 
-// Paramètres de l'import : préfiltre M&Y et filtres du visiteur (parametresRecherche), resserrés à l'achat immédiat et à
-// ANNEE_MIN_IMPORT.
-export function parametresImport(searchParams) {
-  const parametres = parametresRecherche(searchParams);
-  return { ...parametres, buy_now: "true", year_from: String(Math.max(Number(parametres.year_from), ANNEE_MIN_IMPORT)) };
+// Paramètres envoyés à TheCarApi : préfiltre de l'administration, puis recherche du moment (marque, modèle, carburant,
+// année, prix, page), qui ne peut que le resserrer. Lève ErreurCatalogue(400) si une valeur est invalide.
+export function parametresImport(searchParams, filtres) {
+  const p = { site: "openlane", limit: "24", year_from: String(filtres.anneeMin), kilometers_to: String(filtres.kmMax), price_to: String(filtres.prixMaxEur) };
+  if (filtres.anneeMax !== null) p.year_to = String(filtres.anneeMax);
+  if (filtres.achatImmediat) p.buy_now = "true";
+  if (filtres.carburant) p.fuel = filtres.carburant;
+  if (filtres.boite) p.gearbox = filtres.boite;
+  const lire = (nom) => {
+    const valeur = (searchParams.get(nom) || "").trim();
+    if (valeur && !VALEUR_VALIDE.test(valeur)) throw new ErreurCatalogue(400, `Filtre « ${nom} » invalide.`);
+    return valeur;
+  };
+  const entier = (nom) => {
+    const valeur = lire(nom);
+    if (!valeur) return null;
+    if (!/^\d{1,9}$/.test(valeur)) throw new ErreurCatalogue(400, `Filtre « ${nom} » invalide (nombre entier attendu).`);
+    return Number(valeur);
+  };
+  for (const nom of ["brand", "model"]) if (lire(nom)) p[nom] = lire(nom);
+  if (!filtres.carburant && Object.hasOwn(CARBURANTS_IMPORT, lire("fuel"))) p.fuel = lire("fuel");
+  const annee = entier("year_from");
+  if (annee !== null) p.year_from = String(Math.max(annee, filtres.anneeMin));
+  const prix = entier("price_to");
+  if (prix !== null) p.price_to = String(Math.min(prix, filtres.prixMaxEur));
+  const page = entier("page");
+  if (page !== null) {
+    if (page < 1 || page > 50) throw new ErreurCatalogue(400, "Filtre « page » invalide (1 à 50).");
+    p.page = String(page);
+  }
+  return p;
+}
+
+// Contrôle d'une annonce contre le préfiltre (en plus du filtre envoyé à l'API, et à l'import). Motif, ou null.
+export function horsFiltres(annonce, filtres) {
+  if (filtres.achatImmediat && annonce.achatImmediat !== true) return "annonce hors achat immédiat";
+  if (!Number.isInteger(annonce.annee) || annonce.annee < filtres.anneeMin) return `véhicule antérieur à ${filtres.anneeMin}`;
+  if (filtres.anneeMax !== null && annonce.annee > filtres.anneeMax) return `véhicule postérieur à ${filtres.anneeMax}`;
+  if (Number.isFinite(annonce.km) && annonce.km > filtres.kmMax) return `plus de ${filtres.kmMax} km`;
+  if (Number.isFinite(annonce.prixEur) && annonce.prixEur > filtres.prixMaxEur) return `plus de ${filtres.prixMaxEur} €`;
+  return null;
 }
 
 export async function rechercherAnnonces(env, searchParams) {
-  const donnees = await appelerTheCarApi(env, parametresImport(searchParams));
+  const filtres = await lireFiltres(env);
+  const donnees = await appelerTheCarApi(env, parametresImport(searchParams, filtres));
   const liste = [donnees?.results, donnees?.cars, donnees?.data, donnees?.items, donnees].find(Array.isArray) || [];
-  // Contrôle sur chaque annonce, en plus du filtre envoyé à l'API.
-  const annonces = liste.filter((brute) => brute && typeof brute === "object").map(annonceImport)
-    .filter((a) => a.achatImmediat && a.annee !== null && a.annee >= ANNEE_MIN_IMPORT);
+  const annonces = liste.filter((brute) => brute && typeof brute === "object").map(annonceImport).filter((a) => !horsFiltres(a, filtres));
   const references = annonces.map((a) => a.reference).filter(Boolean);
   const deja = new Set();
   if (references.length) {
@@ -105,7 +167,7 @@ export async function rechercherAnnonces(env, searchParams) {
   return {
     total: nombre(donnees?.total) ?? annonces.length,
     annonces: annonces.map((a) => ({ ...a, dejaImporte: deja.has(a.reference) })),
-    suivis: await importsSuivis(env), max: MAX_IMPORTS_SUIVIS
+    suivis: await importsSuivis(env), max: MAX_IMPORTS_SUIVIS, filtres
   };
 }
 
@@ -113,14 +175,23 @@ export async function rechercherAnnonces(env, searchParams) {
 export async function importerAnnonce(env, user, annonce, { ApiError, enregistrerBrouillon }) {
   const { reference, corps, source, erreur } = versVehicule(annonce);
   if (erreur) throw new ApiError(400, erreur);
-  if (annonce.achatImmediat !== true) throw new ApiError(400, "Seules les annonces en achat immédiat sont importables.");
-  if (!Number.isInteger(annonce.annee) || annonce.annee < ANNEE_MIN_IMPORT) throw new ApiError(400, `Seuls les véhicules de ${ANNEE_MIN_IMPORT} ou après sont importables.`);
+  const motif = horsFiltres(annonce, await lireFiltres(env));
+  if (motif) throw new ApiError(400, `Hors du préfiltre d'import : ${motif}.`);
   if ((await importsSuivis(env)) >= MAX_IMPORTS_SUIVIS) throw new ApiError(429, `${MAX_IMPORTS_SUIVIS} annonces OpenLane suivies au plus : retirez-en avant d'importer.`);
   if (!(await enregistrerBrouillon(env, user, reference, corps, source))) throw new ApiError(409, `Annonce déjà importée (réf. ${reference}).`);
   return { reference, brouillon: true, message: "Brouillon créé : à relire dans /admin (Retirés), puis « Remettre en ligne »." };
 }
 
 export async function routeAdminImport(request, env, url, user, deps) {
+  if (url.pathname === "/api/admin/import/filtres" && request.method === "GET") {
+    return deps.json({ filtres: await lireFiltres(env), defaut: FILTRES_DEFAUT, carburants: CARBURANTS_IMPORT, boites: BOITES_IMPORT });
+  }
+  if (url.pathname === "/api/admin/import/filtres" && request.method === "PUT") {
+    const { filtres, erreur } = validerFiltres((await deps.lireJson(request)).filtres);
+    if (erreur) throw new deps.ApiError(400, erreur);
+    await ecrireReglageJson(env, CLE_FILTRES, filtres, user.id);
+    return deps.json({ filtres });
+  }
   if (url.pathname === "/api/admin/import/recherche" && request.method === "GET") return deps.json(await rechercherAnnonces(env, url.searchParams));
   if (url.pathname === "/api/admin/import" && request.method === "POST") {
     const { annonce } = await deps.lireJson(request);

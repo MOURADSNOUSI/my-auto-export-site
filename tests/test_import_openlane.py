@@ -144,10 +144,16 @@ class ImportOpenlaneTest(unittest.TestCase):
         a = next(x for x in self.rechercher()["annonces"] if x["numero"] == numero)
         return self.api("/api/admin/import", {"annonce": a}, "POST", self.cookie)
 
+    def regler_filtres(self, **filtres):
+        statut, data, _ = self.api("/api/admin/import/filtres", {"filtres": filtres}, "PUT", self.cookie)
+        self.assertEqual(statut, 200, data)
+        return data["filtres"]
+
     def catalogue_public(self):
         return {lot["reference"] for lot in self.api("/api/catalogue")[1]}
 
     def setUp(self):
+        self.regler_filtres()
         self.api("/api/admin/reglages/automations_actives", {"valeur": True}, "PUT", self.cookie)
         self.api("/api/admin/reglages/agent_ecriture_autorisee", {"valeur": False}, "PUT", self.cookie)
 
@@ -192,6 +198,31 @@ class ImportOpenlaneTest(unittest.TestCase):
         source = json.loads(self.sql("SELECT json_extract(data, '$.importSource') AS s FROM vehicles WHERE reference = 'OL-2002'")[0]["s"])
         self.assertEqual((source["site"], source["id"], source["termine"]), ("openlane", "2002", False))
         self.assertTrue(self.sql("SELECT id FROM audit_logs WHERE action = 'POST /api/admin/import' AND acteur = 'admin' AND resultat = 'ok'"))
+
+    def test_prefiltre_regle_par_l_administration(self):
+        statut, data, _ = self.api("/api/admin/import/filtres", cookie=self.cookie)
+        self.assertEqual((statut, data["filtres"]["anneeMin"], data["filtres"]["achatImmediat"]), (200, 2022, True))
+        self.assertEqual(self.api("/api/admin/import/filtres", cookie=self.client)[0], 403)
+        self.assertEqual(self.api("/api/admin/import/filtres", {"filtres": {}}, "PUT", self.client)[0], 403)
+        for mauvais in ({"anneeMin": 1980}, {"prixMaxEur": "50000"}, {"carburant": "Gasoil"}, {"anneeMin": 2024, "anneeMax": 2023}):
+            self.assertEqual(self.api("/api/admin/import/filtres", {"filtres": mauvais}, "PUT", self.cookie)[0], 400, mauvais)
+        # Préfiltre élargi : prix et kilométrage relevés, toutes ventes, diesel automatique de 2023 à 2025.
+        self.regler_filtres(anneeMin=2023, anneeMax=2025, kmMax=80000, prixMaxEur=50000, achatImmediat=False, carburant="Diesel", boite="Automatic")
+        FauxTheCarApi.resultats = [annonce("7001", is_buy_now=False, registration_year=2024, public_price_eur=42000), annonce("7002", registration_year=2026)]
+        data = self.rechercher(price_to=60000)
+        envoi = FauxTheCarApi.requetes[-1]["params"]
+        self.assertEqual({k: envoi.get(k) for k in ("year_from", "year_to", "kilometers_to", "price_to", "fuel", "gearbox", "buy_now")},
+                         {"year_from": "2023", "year_to": "2025", "kilometers_to": "80000", "price_to": "50000", "fuel": "Diesel", "gearbox": "Automatic", "buy_now": None})
+        self.assertEqual([a["numero"] for a in data["annonces"]], ["7001"], "2026 écarté par l'année maximum")
+        self.assertEqual(self.importer("7001")[0], 201, "enchère sans achat immédiat importable quand le préfiltre l'autorise")
+        self.assertTrue(self.sql("SELECT id FROM audit_logs WHERE action = 'PUT /api/admin/import/filtres' AND acteur = 'admin' AND resultat = 'ok'"))
+        # Retour au préfiltre par défaut : une annonce sans achat immédiat est refusée à l'import.
+        self.regler_filtres()
+        FauxTheCarApi.resultats = [annonce("7004")]
+        a = {**self.rechercher()["annonces"][0], "numero": "7003", "achatImmediat": False}
+        statut, data, _ = self.api("/api/admin/import", {"annonce": a}, "POST", self.cookie)
+        self.assertEqual(statut, 400)
+        self.assertIn("achat immédiat", data["error"])
 
     def test_annonce_incomplete_refusee(self):
         FauxTheCarApi.resultats = [annonce("3003", clean_make=None, brand=None, make=None)]

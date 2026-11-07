@@ -1,7 +1,7 @@
 // Tests de l'import OpenLane (worker/import-openlane.js) : lecture d'une annonce brute et passage au format du catalogue.
 // Lancement : npm run test:js
 import { describe, expect, it } from "vitest";
-import { annonceImport, parametresImport, referenceImport, versVehicule } from "../worker/import-openlane.js";
+import { FILTRES_DEFAUT, annonceImport, horsFiltres, parametresImport, referenceImport, validerFiltres, versVehicule } from "../worker/import-openlane.js";
 
 // Forme réelle d'une annonce TheCarApi (contrat 2026-10-05), valeurs inventées pour le test. engine_cc n'existe pas chez
 // TheCarApi : présent ici pour vérifier le repli.
@@ -26,12 +26,49 @@ describe("referenceImport", () => {
   });
 });
 
-describe("parametresImport", () => {
-  it("impose l'achat immédiat et 2022 au minimum, sans relâcher le préfiltre", () => {
-    expect(parametresImport(new URLSearchParams())).toMatchObject({ site: "openlane", buy_now: "true", year_from: "2022", price_to: "30000" });
-    expect(parametresImport(new URLSearchParams("year_from=2019")).year_from).toBe("2022");
-    expect(parametresImport(new URLSearchParams("year_from=2025&buy_now=false")).year_from).toBe("2025");
-    expect(parametresImport(new URLSearchParams("buy_now=false")).buy_now).toBe("true");
+describe("préfiltre de l'administration", () => {
+  it("par défaut : achat immédiat, 2022 ou après, 150 000 km et 30 000 € au plus", () => {
+    expect(FILTRES_DEFAUT).toEqual({ anneeMin: 2022, anneeMax: null, kmMax: 150000, prixMaxEur: 30000, achatImmediat: true, carburant: "", boite: "" });
+    expect(parametresImport(new URLSearchParams(), FILTRES_DEFAUT)).toEqual({
+      site: "openlane", limit: "24", year_from: "2022", kilometers_to: "150000", price_to: "30000", buy_now: "true"
+    });
+  });
+
+  it("traduit le préfiltre réglé en paramètres TheCarApi", () => {
+    const filtres = { anneeMin: 2023, anneeMax: 2025, kmMax: 80000, prixMaxEur: 45000, achatImmediat: false, carburant: "Diesel", boite: "Automatic" };
+    expect(parametresImport(new URLSearchParams(), filtres)).toEqual({
+      site: "openlane", limit: "24", year_from: "2023", year_to: "2025", kilometers_to: "80000", price_to: "45000", fuel: "Diesel", gearbox: "Automatic"
+    });
+  });
+
+  it("la recherche du moment ne peut que resserrer", () => {
+    const p = parametresImport(new URLSearchParams("year_from=2019&price_to=90000&buy_now=false&site=bca&fuel=Petrol&brand=Peugeot&page=3"), FILTRES_DEFAUT);
+    expect(p).toMatchObject({ site: "openlane", year_from: "2022", price_to: "30000", buy_now: "true", fuel: "Petrol", brand: "Peugeot", page: "3" });
+    expect(parametresImport(new URLSearchParams("year_from=2025&price_to=20000"), FILTRES_DEFAUT)).toMatchObject({ year_from: "2025", price_to: "20000" });
+    expect(parametresImport(new URLSearchParams("fuel=Petrol"), { ...FILTRES_DEFAUT, carburant: "Diesel" }).fuel).toBe("Diesel");
+    expect(() => parametresImport(new URLSearchParams("brand=%3Cb%3E"), FILTRES_DEFAUT)).toThrow(/brand/);
+    expect(() => parametresImport(new URLSearchParams("page=51"), FILTRES_DEFAUT)).toThrow(/page/);
+  });
+
+  it("valide les valeurs saisies", () => {
+    expect(validerFiltres({ prixMaxEur: 50000 }, 2026).filtres).toEqual({ ...FILTRES_DEFAUT, prixMaxEur: 50000 });
+    for (const mauvais of [{ anneeMin: 1980 }, { anneeMin: 2030 }, { anneeMax: 2020 }, { kmMax: 0 }, { prixMaxEur: "30000" }, { achatImmediat: "oui" }, { carburant: "Gasoil" }, { boite: "CVT" }]) {
+      expect(validerFiltres(mauvais, 2026).erreur, JSON.stringify(mauvais)).toBeTruthy();
+    }
+    expect(validerFiltres(null).erreur).toBeTruthy();
+    // Clés inconnues ignorées.
+    expect(validerFiltres({ site: "bca" }, 2026).filtres).toEqual(FILTRES_DEFAUT);
+  });
+
+  it("contrôle chaque annonce contre le préfiltre", () => {
+    const a = { achatImmediat: true, annee: 2024, km: 20000, prixEur: 25000 };
+    expect(horsFiltres(a, FILTRES_DEFAUT)).toBeNull();
+    expect(horsFiltres({ ...a, achatImmediat: false }, FILTRES_DEFAUT)).toMatch(/achat immédiat/);
+    expect(horsFiltres({ ...a, achatImmediat: false }, { ...FILTRES_DEFAUT, achatImmediat: false })).toBeNull();
+    expect(horsFiltres({ ...a, annee: 2021 }, FILTRES_DEFAUT)).toMatch(/2022/);
+    expect(horsFiltres({ ...a, annee: 2026 }, { ...FILTRES_DEFAUT, anneeMax: 2025 })).toMatch(/2025/);
+    expect(horsFiltres({ ...a, km: 160000 }, FILTRES_DEFAUT)).toMatch(/km/);
+    expect(horsFiltres({ ...a, prixEur: 31000 }, FILTRES_DEFAUT)).toMatch(/€/);
   });
 });
 

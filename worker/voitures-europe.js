@@ -12,7 +12,7 @@ export const PREFILTRE = { site: "openlane", year_from: "2019", kilometers_to: "
 
 // Seuls paramètres acceptés du visiteur ; tout autre paramètre est ignoré.
 export const PARAMETRES_VISITEUR = ["brand", "model", "fuel", "year_from", "price_to", "page"];
-const VALEUR_VALIDE = /^[\p{L}\p{N} ,.-]{1,40}$/u;
+export const VALEUR_VALIDE = /^[\p{L}\p{N} ,.-]{1,40}$/u;
 const PAGE_MAX = 50;
 const DELAI_API_MS = 8000;
 

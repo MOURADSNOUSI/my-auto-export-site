@@ -83,21 +83,38 @@
 
   <main class="shell">
     <h1>Import d'annonces OpenLane</h1>
-    <p class="lead">Recherche via TheCarApi : annonces OpenLane <strong>en achat immédiat</strong> (achat immédiat, achat immédiat
-      et enlèvement, 24/7 achat immédiat), de <strong>2022 ou après</strong>, 150 000 km et 30 000 € au plus.
+    <p class="lead">Recherche d'annonces OpenLane via TheCarApi, dans le préfiltre ci-dessous.
       Une annonce importée arrive en <strong>brouillon</strong> : relisez-la dans /admin (« Retirés »), puis « Remettre en ligne ».
       Elle est retirée du site automatiquement à la fin de son enchère.</p>
     <p class="message error" id="erreur" role="alert" hidden></p>
     <p class="message ok" id="succes" role="status" hidden></p>
+
+    <section class="card" aria-labelledby="titre-prefiltre">
+      <h2 id="titre-prefiltre">Préfiltre des annonces à récupérer</h2>
+      <p class="note">S'applique à toutes les recherches et à chaque import (aussi depuis Claude). La recherche du moment peut
+        seulement le resserrer.</p>
+      <form id="form-prefiltre" class="champs">
+        <label>Année minimum<input name="anneeMin" type="number" min="1990" max="2100" required></label>
+        <label>Année maximum<input name="anneeMax" type="number" min="1990" max="2100" placeholder="aucune"></label>
+        <label>Kilométrage maximum<input name="kmMax" type="number" min="1" max="1000000" step="1000" required></label>
+        <label>Prix maximum (€)<input name="prixMaxEur" type="number" min="1" max="1000000" step="500" required></label>
+        <label>Carburant<select name="carburant"><option value="">Tous</option></select></label>
+        <label>Boîte<select name="boite"><option value="">Toutes</option></select></label>
+        <label class="case large"><input name="achatImmediat" type="checkbox"> Achat immédiat seulement (achat immédiat, achat immédiat et enlèvement, 24/7 achat immédiat)</label>
+        <button class="button primary" type="submit">Enregistrer le préfiltre</button>
+      </form>
+      <p class="note">Le prix de réserve et les autres étiquettes d'OpenLane (disponibilité rapide, presque neuf…) ne sont pas
+        fournis par TheCarApi : ils ne sont pas filtrables.</p>
+    </section>
 
     <section class="card" aria-labelledby="titre-recherche">
       <h2 id="titre-recherche">Recherche</h2>
       <form id="form-recherche" class="champs">
         <label>Marque<input name="brand" maxlength="40" autocomplete="off"></label>
         <label>Modèle<input name="model" maxlength="40" autocomplete="off"></label>
-        <label>Carburant<input name="fuel" maxlength="40" autocomplete="off"></label>
-        <label>Année minimum<input name="year_from" type="number" min="2022" max="2100" placeholder="2022"></label>
-        <label>Prix maximum (€)<input name="price_to" type="number" min="1" max="30000"></label>
+        <label>Carburant<select name="fuel"><option value="">Tous</option></select></label>
+        <label>Année minimum<input name="year_from" type="number" min="1990" max="2100"></label>
+        <label>Prix maximum (€)<input name="price_to" type="number" min="1" max="1000000"></label>
         <label>Page<input name="page" type="number" min="1" max="50" value="1"></label>
         <button class="button primary" type="submit">Rechercher</button>
       </form>
