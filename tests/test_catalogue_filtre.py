@@ -1,6 +1,6 @@
 """Tests du catalogue filtrable (/vehicules, worker/catalogue.js) : filtres et compteurs des options, total, tri et
 pagination par curseur, annonces masquées exclues, pages filtrées non indexées, compteurs recalculés après une écriture
-(au plus toutes les 10 minutes) et chaque nuit, panneau de filtres mobile et nombre « Voir les N véhicules ».
+(au plus une fois par heure) et chaque nuit, panneau de filtres mobile et nombre « Voir les N véhicules ».
 
 Lancement : WRANGLER=/chemin/vers/wrangler python3 -m unittest tests.test_catalogue_filtre
 Ignorés si la variable WRANGLER n'est pas définie. Captures dans CATALOGUE_CAPTURES si la variable est définie.
@@ -198,14 +198,14 @@ class CatalogueFiltreTest(unittest.TestCase):
         avant = {r["filtre"]: r for r in self.sql("SELECT filtre, perime, calcule_le FROM catalogue_compteurs")}
         self.assertEqual(len(avant), 6)
         self.assertTrue(all(r["perime"] == 0 for r in avant.values()))
-        # Nouvelle annonce : compteurs marqués périmés, pas recalculés avant 10 minutes.
+        # Nouvelle annonce : compteurs marqués périmés, pas recalculés avant une heure.
         self.assertEqual(self.api("/api/admin/vehicles/CAT-NOUVEAU", vehicule("Dacia", "Duster", 2024, 10, "Diesel", "Manuelle", "Roumanie", 15000), "PUT", self.cookie)[0], 200)
         self.addCleanup(self.api, "/api/admin/vehicles/CAT-NOUVEAU", None, "DELETE", self.cookie)
         time.sleep(1)
         self.assertTrue(all(r["perime"] == 1 for r in self.sql("SELECT perime FROM catalogue_compteurs")))
         _, html, _ = self.page("/vehicules")
         self.assertNotIn(">Dacia (1)</option>", html, "compteurs pas encore recalculés")
-        # Passé 10 minutes, la lecture suivante relance le calcul.
+        # Passé une heure, la lecture suivante relance le calcul.
         self.sql("UPDATE catalogue_compteurs SET calcule_le = '2020-01-01T00:00:00Z'")
         self.page("/vehicules")
         time.sleep(1)

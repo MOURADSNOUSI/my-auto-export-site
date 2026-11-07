@@ -1,6 +1,7 @@
 // Catalogue filtrable (refonte, étape 3) : filtres, tri et pagination par curseur faits par D1 sur les colonnes calculées
 // de vehicles (migration 0023), pour tenir 20 000 annonces dans le plan gratuit (10 ms de calcul, 5 millions de lignes
-// lues par jour). Compteurs des options de filtre gardés dans catalogue_compteurs ; total d'une recherche mis en cache
+// lues par jour). Compteurs des options de filtre gardés dans catalogue_compteurs (recalculés au plus une fois par heure) ;
+// total d'une recherche mis en cache
 // 10 minutes (Cache API, gratuit, sans binding KV).
 import { lot1Public, legacyAuctionsEnabled } from "./proposal-domain.js";
 
@@ -14,7 +15,9 @@ export const TRIS = {
 };
 const VALEUR = /^[\p{L}\p{N} ,.'()/+-]{1,60}$/u;
 const DUREE_CACHE = 600;
-const ATTENTE_RECALCUL_MS = 10 * 60 * 1000;
+// Une heure : recalculer les 6 compteurs lit environ 6 × N lignes ; à 20 000 annonces, 24 recalculs par jour au plus
+// (environ 3 millions de lignes) restent sous les 5 millions de lignes lues par jour du plan gratuit.
+const ATTENTE_RECALCUL_MS = 60 * 60 * 1000;
 
 export class ErreurFiltre extends Error {}
 
@@ -160,7 +163,7 @@ export async function recalculerCompteurs(env, maintenant = new Date()) {
   return compteurs;
 }
 
-// Après une écriture du catalogue : compteurs marqués périmés. Recalculés au plus une fois toutes les 10 minutes (pas de
+// Après une écriture du catalogue : compteurs marqués périmés. Recalculés au plus une fois par heure (pas de
 // lectures multipliées pendant un import), et chaque nuit par le cron.
 export async function marquerCompteursPerimes(env) {
   await env.DB.prepare("UPDATE catalogue_compteurs SET perime = 1").run();

@@ -22,8 +22,8 @@ CREATE INDEX vehicles_catalogue_energie ON vehicles(removed, c_energie);
 CREATE INDEX vehicles_catalogue_pays ON vehicles(removed, c_pays);
 
 -- Compteurs des options de filtre (marque, modèle, carrosserie, énergie, boîte, pays) sur tout le catalogue en ligne :
--- une ligne par filtre. Une modification du catalogue les marque périmés ; ils sont recalculés au plus une fois toutes
--- les 10 minutes, et chaque nuit (worker/catalogue.js).
+-- une ligne par filtre. Une modification du catalogue les marque périmés ; ils sont recalculés au plus une fois par
+-- heure, et chaque nuit (worker/catalogue.js).
 CREATE TABLE catalogue_compteurs (
   filtre TEXT PRIMARY KEY,
   valeurs TEXT NOT NULL,
