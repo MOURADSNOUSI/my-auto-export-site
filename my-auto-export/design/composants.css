@@ -1,0 +1,96 @@
+/* Design system M&Y AUTO EXPORT — composants de base : bouton, badge, en-tête, pied de page.
+   Dépend de design/tokens.css. Préfixe my- : aucun conflit avec les styles existants des pages. */
+
+.my-base {
+  margin: 0;
+  background: var(--my-fond);
+  color: var(--my-encre);
+  font-family: var(--my-police);
+  font-size: var(--my-taille-m);
+  line-height: var(--my-interligne);
+  -webkit-text-size-adjust: 100%;
+}
+.my-base *, .my-base *::before, .my-base *::after { box-sizing: border-box; }
+.my-base :focus-visible { outline: none; box-shadow: var(--my-focus); }
+.my-conteneur { inline-size: min(var(--my-largeur), 100% - 2 * var(--my-gouttiere)); margin-inline: auto; }
+.my-titre-1 { margin: 0 0 var(--my-esp-3); font-size: var(--my-taille-3xl); font-weight: var(--my-graisse-titre); line-height: var(--my-interligne-titre); color: var(--my-nuit); }
+.my-titre-2 { margin: 0 0 var(--my-esp-3); font-size: var(--my-taille-2xl); font-weight: var(--my-graisse-titre); line-height: var(--my-interligne-titre); color: var(--my-nuit); }
+.my-titre-3 { margin: 0 0 var(--my-esp-2); font-size: var(--my-taille-xl); font-weight: var(--my-graisse-forte); line-height: 1.3; color: var(--my-nuit); }
+.my-texte-doux { color: var(--my-encre-doux); }
+.my-mention { font-size: var(--my-taille-xs); color: var(--my-encre-doux); }
+.visually-hidden, .my-masque-visuel { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* --- Bouton --- */
+.my-bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--my-esp-2);
+  min-block-size: var(--my-cible); padding-block: var(--my-esp-2); padding-inline: var(--my-esp-5);
+  border: 2px solid transparent; border-radius: var(--my-rayon-pilule);
+  font: inherit; font-size: var(--my-taille-m); font-weight: var(--my-graisse-forte); line-height: 1.2;
+  text-decoration: none; text-align: center; cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.my-bouton svg { inline-size: 1.25em; block-size: 1.25em; flex: none; }
+/* Action principale : un seul par écran (ex. « Je confie le mandat »). */
+.my-bouton--action { background: var(--my-or); color: var(--my-nuit); }
+.my-bouton--action:hover { background: var(--my-or-700); }
+.my-bouton--principal { background: var(--my-nuit); color: var(--my-blanc); }
+.my-bouton--principal:hover { background: var(--my-nuit-700); }
+.my-bouton--contour { border-color: var(--my-nuit); background: var(--my-surface); color: var(--my-nuit); }
+.my-bouton--contour:hover { background: var(--my-nuit-100); }
+.my-bouton--lien { min-block-size: var(--my-cible); padding-inline: var(--my-esp-2); background: none; color: var(--my-nuit); text-decoration: underline; text-underline-offset: 3px; }
+.my-bouton--petit { min-block-size: 36px; padding-inline: var(--my-esp-3); font-size: var(--my-taille-s); }
+.my-bouton--large { inline-size: 100%; }
+.my-bouton:disabled, .my-bouton[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+/* Bouton sur fond bleu nuit (en-tête). */
+.my-sur-nuit .my-bouton--contour { border-color: var(--my-blanc); background: transparent; color: var(--my-blanc); }
+.my-sur-nuit .my-bouton--contour:hover { background: rgb(255 255 255 / 0.12); }
+.my-sur-nuit .my-bouton--lien { color: var(--my-blanc); }
+
+/* --- Badge --- */
+.my-badge {
+  display: inline-flex; align-items: center; gap: var(--my-esp-1);
+  padding-block: 2px; padding-inline: var(--my-esp-2);
+  border-radius: var(--my-rayon-pilule); font-size: var(--my-taille-xs); font-weight: var(--my-graisse-forte); line-height: 1.5; white-space: nowrap;
+}
+.my-badge--positif { background: var(--my-vert-100); color: var(--my-vert-900); }
+.my-badge--positif-fort { background: var(--my-vert); color: var(--my-blanc); }
+.my-badge--info { background: var(--my-nuit-100); color: var(--my-nuit); }
+.my-badge--accent { background: var(--my-or-100); color: var(--my-nuit); }
+.my-badge--neutre { background: #eceef1; color: var(--my-encre-doux); }
+.my-badge--alerte { background: var(--my-rouge-100); color: var(--my-rouge); }
+
+/* --- En-tête --- */
+.my-entete { position: sticky; inset-block-start: 0; z-index: 20; background: var(--my-nuit); color: var(--my-blanc); box-shadow: var(--my-ombre-1); }
+.my-entete-interieur { display: flex; align-items: center; gap: var(--my-esp-4); min-block-size: 64px; }
+.my-marque { display: inline-flex; align-items: center; gap: var(--my-esp-2); color: var(--my-blanc); font-weight: var(--my-graisse-titre); text-decoration: none; white-space: nowrap; }
+.my-marque img { inline-size: 40px; block-size: 40px; border-radius: 50%; }
+.my-marque small { display: block; color: var(--my-or); font-size: var(--my-taille-xs); font-weight: var(--my-graisse-forte); }
+.my-nav { display: flex; align-items: center; gap: var(--my-esp-1); margin-inline-start: var(--my-esp-4); }
+.my-nav a { display: inline-flex; align-items: center; min-block-size: var(--my-cible); padding-inline: var(--my-esp-3); border-radius: var(--my-rayon-s); color: var(--my-blanc); font-weight: var(--my-graisse-forte); text-decoration: none; }
+.my-nav a:hover, .my-nav a[aria-current="page"] { background: rgb(255 255 255 / 0.12); }
+.my-entete-actions { display: flex; align-items: center; gap: var(--my-esp-2); margin-inline-start: auto; }
+.my-burger { display: none; }
+@media (max-width: 860px) {
+  .my-nav { display: none; }
+  .my-burger { display: inline-flex; }
+}
+/* Petits téléphones (360 px) : en-tête resserré, sous-titre de la marque masqué. */
+@media (max-width: 420px) {
+  .my-entete-interieur { gap: var(--my-esp-2); }
+  .my-marque { gap: var(--my-esp-1); font-size: var(--my-taille-s); }
+  .my-marque img { inline-size: 34px; block-size: 34px; }
+  .my-marque small { display: none; }
+  .my-entete-actions { gap: var(--my-esp-1); }
+}
+
+/* --- Pied de page --- */
+.my-pied { margin-block-start: var(--my-esp-12); padding-block: var(--my-esp-10) var(--my-esp-8); background: var(--my-nuit); color: rgb(255 255 255 / 0.86); font-size: var(--my-taille-s); }
+.my-pied a { color: var(--my-blanc); }
+.my-pied-colonnes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: var(--my-esp-8); }
+.my-pied h2 { margin: 0 0 var(--my-esp-3); color: var(--my-or); font-size: var(--my-taille-s); font-weight: var(--my-graisse-titre); letter-spacing: 0.04em; text-transform: uppercase; }
+.my-pied ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--my-esp-2); }
+.my-pied-bas { margin-block-start: var(--my-esp-8); padding-block-start: var(--my-esp-4); border-block-start: 1px solid rgb(255 255 255 / 0.16); }
+
+@media (prefers-reduced-motion: reduce) {
+  .my-bouton { transition: none; }
+}

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Design system — M&amp;Y AUTO EXPORT</title>
+  <link rel="preload" href="/polices/noto-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/design/tokens.css">
+  <link rel="stylesheet" href="/design/composants.css">
+  <style>
+    .demo-section { margin-block: var(--my-esp-8); padding: var(--my-esp-6); border: 1px solid var(--my-trait); border-radius: var(--my-rayon-m); background: var(--my-surface); box-shadow: var(--my-ombre-1); }
+    .demo-nuancier { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: var(--my-esp-3); margin: 0; padding: 0; list-style: none; }
+    .demo-nuancier li { overflow: hidden; border: 1px solid var(--my-trait); border-radius: var(--my-rayon-m); }
+    .demo-nuancier span { display: grid; place-items: center; block-size: 64px; font-weight: var(--my-graisse-forte); }
+    .demo-nuancier p { margin: 0; padding: var(--my-esp-2) var(--my-esp-3); font-size: var(--my-taille-xs); }
+    .demo-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: var(--my-esp-3); }
+    .demo-espaces { display: flex; flex-wrap: wrap; align-items: end; gap: var(--my-esp-3); }
+    .demo-espaces div { background: var(--my-or-100); border: 1px solid var(--my-or); }
+  </style>
+</head>
+<body class="my-base">
+  <header class="my-entete my-sur-nuit">
+    <div class="my-conteneur my-entete-interieur">
+      <a class="my-marque" href="/"><img src="/logo.png" alt="" width="40" height="40"><span>M&amp;Y AUTO EXPORT<small>Véhicules sans frontières</small></span></a>
+      <nav class="my-nav" aria-label="Navigation principale (exemple)">
+        <a href="/vehicules" aria-current="page">Véhicules</a>
+        <a href="#">Achat sur mandat</a>
+        <a href="/vendre">Vendre mon véhicule</a>
+        <a href="#">Contact</a>
+      </nav>
+      <div class="my-entete-actions">
+        <a class="my-bouton my-bouton--action my-bouton--petit" href="#">Créer un compte</a>
+        <button class="my-bouton my-bouton--contour my-bouton--petit my-burger" type="button" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="my-conteneur">
+    <h1 class="my-titre-1" style="margin-block-start: var(--my-esp-8)">Design system M&amp;Y AUTO EXPORT</h1>
+    <p class="my-texte-doux">Palette B « bleu nuit et or ». Page de travail, non indexée : variables dans <code>/design/tokens.css</code>,
+      composants dans <code>/design/composants.css</code>. L'en-tête ci-dessus est un exemple de composant : la navigation complète
+      (burger, FR/AR, TND/EUR) vient à l'étape 2.</p>
+
+    <section class="demo-section" aria-labelledby="t-couleurs">
+      <h2 class="my-titre-2" id="t-couleurs">Couleurs</h2>
+      <ul class="demo-nuancier">
+        <li><span style="background: var(--my-nuit); color: var(--my-blanc)">Aa</span><p><strong>Bleu nuit</strong> #14213D<br>Principale · 16,0:1 avec blanc</p></li>
+        <li><span style="background: var(--my-or); color: var(--my-nuit)">Aa</span><p><strong>Or</strong> #E9A23B<br>Action · 7,4:1 avec bleu nuit</p></li>
+        <li><span style="background: var(--my-or-700); color: var(--my-nuit)">Aa</span><p><strong>Or survol</strong> #C98A2A<br>5,4:1 avec bleu nuit</p></li>
+        <li><span style="background: var(--my-vert); color: var(--my-blanc)">Aa</span><p><strong>Vert</strong> #2F7D4F<br>Badge positif · 5,0:1</p></li>
+        <li><span style="background: var(--my-vert-100); color: var(--my-vert-900)">Aa</span><p><strong>Vert clair</strong> #E3F1E8<br>texte #1F5E3A · 6,6:1</p></li>
+        <li><span style="background: var(--my-encre); color: var(--my-fond)">Aa</span><p><strong>Encre</strong> #111827<br>Texte · 16,5:1 sur le fond</p></li>
+        <li><span style="background: var(--my-encre-doux); color: var(--my-blanc)">Aa</span><p><strong>Encre douce</strong> #4B5563<br>Texte secondaire · 7,6:1</p></li>
+        <li><span style="background: var(--my-rouge); color: var(--my-blanc)">Aa</span><p><strong>Rouge</strong> #B42318<br>Erreurs</p></li>
+        <li><span style="background: var(--my-fond); color: var(--my-encre)">Aa</span><p><strong>Fond</strong> #F7F7F5</p></li>
+      </ul>
+    </section>
+
+    <section class="demo-section" aria-labelledby="t-typo">
+      <h2 class="my-titre-2" id="t-typo">Typographie</h2>
+      <p class="my-titre-1">Titre 1 · Votre voiture d'Europe</p>
+      <p class="my-titre-2">Titre 2 · Véhicules disponibles</p>
+      <p class="my-titre-3">Titre 3 · Peugeot 3008 2025</p>
+      <p>Texte courant, 16 px, Noto Sans. Prix estimé, détail complet : achat, transport, dédouanement et commission.</p>
+      <p class="my-texte-doux">Texte secondaire : 2025 · 6 400 km · Diesel · Automatique</p>
+      <p class="my-mention">Mention : prix estimé, devis définitif après vérification par notre transitaire.</p>
+      <div dir="rtl" lang="ar" style="margin-block-start: var(--my-esp-6)">
+        <p class="my-titre-3">مثال على النص العربي</p>
+        <p>نص تجريبي لعرض الخط العربي واتجاه الكتابة من اليمين إلى اليسار. يجب مراجعة الترجمات قبل النشر.</p>
+        <div class="demo-ligne"><a class="my-bouton my-bouton--action" href="#">زر رئيسي</a><span class="my-badge my-badge--positif">شارة</span></div>
+      </div>
+    </section>
+
+    <section class="demo-section" aria-labelledby="t-boutons">
+      <h2 class="my-titre-2" id="t-boutons">Boutons</h2>
+      <div class="demo-ligne">
+        <a class="my-bouton my-bouton--action" href="#">Je confie le mandat</a>
+        <a class="my-bouton my-bouton--principal" href="#">Voir les 24 véhicules</a>
+        <a class="my-bouton my-bouton--contour" href="#">Prévenez-moi</a>
+        <a class="my-bouton my-bouton--lien" href="#">Détail du calcul</a>
+        <button class="my-bouton my-bouton--action" type="button" disabled>Désactivé</button>
+      </div>
+      <div class="demo-ligne" style="margin-block-start: var(--my-esp-4)">
+        <a class="my-bouton my-bouton--action my-bouton--petit" href="#">Petit</a>
+        <a class="my-bouton my-bouton--contour my-bouton--petit" href="#">Petit contour</a>
+      </div>
+      <p class="my-mention">Un seul bouton « action » (or) par écran. Cible tactile de 44 px minimum.</p>
+    </section>
+
+    <section class="demo-section" aria-labelledby="t-badges">
+      <h2 class="my-titre-2" id="t-badges">Badges</h2>
+      <div class="demo-ligne">
+        <span class="my-badge my-badge--positif">Achat immédiat</span>
+        <span class="my-badge my-badge--positif-fort">Documents vérifiés</span>
+        <span class="my-badge my-badge--info">Allemagne</span>
+        <span class="my-badge my-badge--accent">Livraison estimée : à confirmer</span>
+        <span class="my-badge my-badge--neutre">Diesel</span>
+        <span class="my-badge my-badge--alerte">Vendu</span>
+      </div>
+    </section>
+
+    <section class="demo-section" aria-labelledby="t-espaces">
+      <h2 class="my-titre-2" id="t-espaces">Espacements, rayons, ombres</h2>
+      <div class="demo-espaces">
+        <div style="inline-size: var(--my-esp-1); block-size: var(--my-esp-1)"></div>
+        <div style="inline-size: var(--my-esp-2); block-size: var(--my-esp-2)"></div>
+        <div style="inline-size: var(--my-esp-4); block-size: var(--my-esp-4)"></div>
+        <div style="inline-size: var(--my-esp-6); block-size: var(--my-esp-6)"></div>
+        <div style="inline-size: var(--my-esp-8); block-size: var(--my-esp-8)"></div>
+        <div style="inline-size: var(--my-esp-12); block-size: var(--my-esp-12)"></div>
+      </div>
+      <p class="my-mention">Échelle de 4 px · rayons 4 px, 8 px (cartes) et pilule (boutons, badges) · deux niveaux d'ombre.</p>
+      <div class="demo-ligne">
+        <div style="padding: var(--my-esp-4); border-radius: var(--my-rayon-m); background: var(--my-surface); box-shadow: var(--my-ombre-1)">Ombre 1 · cartes</div>
+        <div style="padding: var(--my-esp-4); border-radius: var(--my-rayon-m); background: var(--my-surface); box-shadow: var(--my-ombre-2)">Ombre 2 · panneaux, menus</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="my-pied">
+    <div class="my-conteneur">
+      <div class="my-pied-colonnes">
+        <section><h2>M&amp;Y AUTO EXPORT</h2><p>Véhicules européens achetés sur mandat et livrés en Tunisie.</p></section>
+        <section><h2>Acheter</h2><ul><li><a href="/vehicules">Véhicules</a></li><li><a href="#">Achat sur mandat</a></li></ul></section>
+        <section><h2>Vendre</h2><ul><li><a href="/vendre">Vendre mon véhicule</a></li></ul></section>
+        <section><h2>Informations</h2><ul><li><a href="/conditions">Conditions générales</a></li><li><a href="/confidentialite">Données personnelles</a></li><li><a href="mailto:contact@myautoexport.com">contact@myautoexport.com</a></li></ul></section>
+      </div>
+      <p class="my-pied-bas">© M&amp;Y AUTO EXPORT · Prix estimés, devis définitif après vérification par notre transitaire.</p>
+    </div>
+  </footer>
+</body>
+</html>

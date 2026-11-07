@@ -1,0 +1,88 @@
+/* Design system M&Y AUTO EXPORT — variables (palette B « bleu nuit et or », validée le 7 novembre 2026).
+   Contrastes WCAG AA vérifiés par tests/design-system.test.js. Propriétés logiques partout : l'arabe (RTL) s'ajoute avec
+   dir="rtl" sans réécriture. */
+
+/* Polices hébergées sur le site (licence SIL OFL 1.1, polices/OFL.txt). unicode-range : la police arabe n'est
+   téléchargée que si la page contient de l'arabe. */
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/polices/noto-sans-latin.woff2") format("woff2-variations"), url("/polices/noto-sans-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Noto Sans Arabic";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/polices/noto-sans-arabic.woff2") format("woff2-variations"), url("/polices/noto-sans-arabic.woff2") format("woff2");
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+
+:root {
+  /* Couleurs */
+  --my-nuit: #14213d;          /* principale : en-tête, titres, liens */
+  --my-nuit-700: #1f3157;      /* survol des éléments bleu nuit */
+  --my-nuit-100: #e8ecf4;      /* fonds légers bleutés */
+  --my-or: #e9a23b;            /* accent : boutons d'action, texte bleu nuit dessus */
+  --my-or-700: #c98a2a;        /* accent au survol */
+  --my-or-100: #fbefd9;        /* fond d'accent léger */
+  --my-vert: #2f7d4f;          /* badges positifs, texte blanc dessus */
+  --my-vert-100: #e3f1e8;      /* badge positif clair */
+  --my-vert-900: #1f5e3a;      /* texte du badge positif clair */
+  --my-rouge: #b42318;         /* erreurs */
+  --my-rouge-100: #fdecea;
+  --my-encre: #111827;         /* texte principal */
+  --my-encre-doux: #4b5563;    /* texte secondaire */
+  --my-trait: #d9dce3;         /* bordures */
+  --my-fond: #f7f7f5;          /* fond de page */
+  --my-surface: #ffffff;       /* cartes, panneaux */
+  --my-blanc: #ffffff;
+
+  /* Typographie : échelle fluide, 16 px minimum pour le texte (pas de zoom forcé sur iPhone). */
+  --my-police: "Noto Sans", "Noto Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --my-taille-xs: 0.8125rem;   /* 13 px : mentions */
+  --my-taille-s: 0.875rem;     /* 14 px */
+  --my-taille-m: 1rem;         /* 16 px : texte */
+  --my-taille-l: 1.125rem;     /* 18 px */
+  --my-taille-xl: clamp(1.25rem, 1.1rem + 0.8vw, 1.5rem);
+  --my-taille-2xl: clamp(1.5rem, 1.2rem + 1.6vw, 2.25rem);
+  --my-taille-3xl: clamp(1.875rem, 1.4rem + 2.6vw, 3rem);
+  --my-graisse-normale: 400;
+  --my-graisse-forte: 650;
+  --my-graisse-titre: 750;
+  --my-interligne: 1.55;
+  --my-interligne-titre: 1.15;
+
+  /* Espacements : échelle de 4 px. */
+  --my-esp-1: 0.25rem;
+  --my-esp-2: 0.5rem;
+  --my-esp-3: 0.75rem;
+  --my-esp-4: 1rem;
+  --my-esp-5: 1.25rem;
+  --my-esp-6: 1.5rem;
+  --my-esp-8: 2rem;
+  --my-esp-10: 2.5rem;
+  --my-esp-12: 3rem;
+  --my-largeur: 75rem;          /* 1200 px */
+  --my-gouttiere: 1rem;         /* marge latérale sur téléphone */
+
+  /* Rayons et ombres */
+  --my-rayon-s: 4px;
+  --my-rayon-m: 8px;            /* cartes */
+  --my-rayon-pilule: 999px;     /* boutons, badges */
+  --my-ombre-1: 0 1px 2px rgb(17 24 39 / 0.08), 0 1px 3px rgb(17 24 39 / 0.06);
+  --my-ombre-2: 0 8px 24px rgb(17 24 39 / 0.12);
+
+  /* Cible tactile minimum (WCAG 2.5.8) */
+  --my-cible: 44px;
+  --my-focus: 0 0 0 3px var(--my-surface), 0 0 0 6px var(--my-nuit);
+}
+
+/* Arabe : même échelle, interligne un peu plus grand pour les signes diacritiques. */
+:root:lang(ar), [lang="ar"] {
+  --my-police: "Noto Sans Arabic", "Noto Sans", system-ui, sans-serif;
+  --my-interligne: 1.7;
+}
