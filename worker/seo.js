@@ -363,6 +363,18 @@ export async function vitrineAccueil(request, env, reponse) {
       const cle = element.getAttribute("data-texte");
       if (Object.hasOwn(fr, cle)) element.setInnerContent(t(cle));
     } })
+    // Libellés d'accessibilité et infobulles (data-texte-aria, data-texte-title), devise active de l'en-tête.
+    .on("[data-texte-aria]", { element: (element) => {
+      const cle = element.getAttribute("data-texte-aria");
+      if (Object.hasOwn(fr, cle)) element.setAttribute("aria-label", t(cle));
+    } })
+    .on("[data-texte-title]", { element: (element) => {
+      const cle = element.getAttribute("data-texte-title");
+      if (Object.hasOwn(fr, cle)) element.setAttribute("title", t(cle));
+    } })
+    .on("[data-devise]", { element: (element) => {
+      if (element.getAttribute("data-devise") === ctx.public) element.setAttribute("aria-current", "true");
+    } })
     .on("head", { element: (element) => element.append(`<style>${CSS_VITRINE}</style><script type="application/json" id="textes">${textesNavigateur}</script>`, { html: true }) })
     .on(".header-tools", { element: (element) => element.prepend(boutonWhatsapp(ctx), { html: true }) })
     .on("#comment-ca-marche", remplir(sections.comment))
@@ -385,17 +397,12 @@ export async function vitrineAccueil(request, env, reponse) {
 const STYLE = `
 :root{--ink:#17201d;--soft:#44514c;--paper:#f3f5f3;--surface:#fff;--line:#d7ddd8;--accent:#0f6b4f}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
-body{margin:0;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--paper)}
+body{margin:0;font:16px/1.55 var(--my-police);color:var(--ink);background:var(--paper)}
 a{color:var(--accent)}img{max-width:100%;display:block}
 .shell{width:min(1100px,100% - 32px);margin:0 auto}
-header{background:#101513;color:#fff}header .shell{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-height:60px;padding-block:8px}
-header a{color:#fff;text-decoration:none;font-weight:700}header img{width:36px;height:36px}
-.marque{display:inline-flex;align-items:center;gap:10px}
-.menu{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:15px}.menu a{font-weight:600;padding-block:6px}
-.outils{display:flex;align-items:center;gap:8px;margin-inline-start:auto}.compte{padding-block:6px}
-.bouton-deposer{display:inline-flex;align-items:center;gap:8px;min-block-size:40px;padding-inline:14px;border-radius:20px;background:var(--accent);color:#fff;font-size:14px;white-space:nowrap}
-.bouton-deposer svg{inline-size:18px;block-size:18px;fill:none;stroke:currentColor;stroke-width:2}
-@media(max-width:680px){.bouton-deposer{padding-inline:9px}.bouton-deposer span{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
+.my-entete .my-nav .my-reglages-entete{margin-inline-start:auto}.my-entete .my-nav{flex:1}
+@media(max-width:1100px){.my-entete .my-nav{display:none}.my-entete .my-burger{display:inline-flex}}
+@media(max-width:420px){.compte-entete{padding-inline:var(--my-esp-3)}}
 nav.ariane{font-size:14px;color:var(--soft);margin:16px 0}nav.ariane a{color:var(--soft)}
 h1{font-size:clamp(24px,5vw,36px);line-height:1.2;margin:0 0 8px}
 .meta{color:var(--soft);margin:0 0 16px}
@@ -419,14 +426,30 @@ footer{margin-top:48px;padding:24px 0;border-top:1px solid var(--line);font-size
 
 // En-tête commun : menu vers les ancres de l'accueil, « Mon compte » (espace acheteur de l'accueil), WhatsApp si un
 // numéro est saisi (ctx absent : page d'erreur, sans WhatsApp).
-function entete(ctx) {
-  const lien = (ancre, cle) => `<a href="${ancre === "vehicules" ? "/vehicules" : `/#${ancre}`}">${escapeHtml(t(cle))}</a>`;
-  return `<header><div class="shell"><a class="marque" href="/"><img src="/logo.png" alt="Logo M&amp;Y AUTO EXPORT" width="36" height="36">M&amp;Y AUTO EXPORT</a>
-    <nav class="menu" aria-label="Navigation principale">${lien("vehicules", "menu_vehicules")}${lien("comment-ca-marche", "menu_comment")}${lien("nos-prix", "menu_prix")}${lien("questions", "menu_questions")}</nav>
-    <div class="outils"><a class="bouton-deposer" href="/vendre"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg><span>${escapeHtml(t("deposer_bouton"))}</span></a>${ctx ? boutonWhatsapp(ctx) : ""}<a class="compte" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a></div></div></header>`;
+// Devise (TND pour un résident, EUR pour un Tunisien de l'étranger) : liens ?public= (cookie, sans JavaScript) vers la
+// page courante ; langue : FR seule tant que les textes arabes n'existent pas.
+export function reglagesEntete(ctx, chemin) {
+  const devise = (valeur, libelle) => `<a href="${escapeHtml(chemin)}?public=${valeur}"${ctx?.public === valeur ? ' aria-current="true"' : ""}>${libelle}</a>`;
+  return `<div class="my-reglages-entete"><div class="my-bascule" role="group" aria-label="${escapeHtml(t("devise_groupe"))}">${devise("resident", "TND")}${devise("tre", "EUR")}</div>`
+    + `<div class="my-bascule" role="group" aria-label="${escapeHtml(t("langue_groupe"))}"><span aria-current="true" lang="fr">FR</span><span aria-disabled="true" lang="ar" title="${escapeHtml(t("langue_bientot"))}">AR</span></div></div>`;
+}
+
+// En-tête commun des pages rendues par le Worker (design system, design/composants.css) : menu par façon d'acheter,
+// devise et langue, compte, WhatsApp si un numéro est saisi (ctx absent : page d'erreur). Menu mobile en <details> :
+// il s'ouvre sans JavaScript.
+function entete(ctx, chemin) {
+  const liens = [["/vehicules", "menu_vehicules"], ["/#comment-ca-marche", "menu_mandat"], ["/vendre", "menu_vendre"], ["/#contact", "menu_contact"]]
+    .map(([href, cle]) => `<a href="${href}"${href === chemin ? ' aria-current="page"' : ""}>${escapeHtml(t(cle))}</a>`).join("");
+  return `<header class="my-entete my-sur-nuit"><div class="my-conteneur my-entete-interieur">
+    <a class="my-marque" href="/"><img src="/logo.png" alt="" width="40" height="40"><span>M&amp;Y AUTO EXPORT<small>Véhicules sans frontières</small></span></a>
+    <nav class="my-nav" aria-label="Navigation principale">${liens}${reglagesEntete(ctx, chemin)}</nav>
+    <div class="my-entete-actions">${ctx ? boutonWhatsapp(ctx) : ""}<a class="my-bouton my-bouton--action my-bouton--petit compte-entete" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a>
+      <details class="my-burger menu-mobile"><summary class="my-bouton my-bouton--contour my-bouton--petit" aria-label="${escapeHtml(t("menu_ouvrir"))}">☰</summary>
+        <nav class="menu-mobile-panneau" aria-label="Navigation principale (mobile)">${liens}${reglagesEntete(ctx, chemin)}</nav></details></div></div></header>`;
 }
 
 function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [], ctx = null }) {
+  const chemin = canonique ? new URL(canonique).pathname : "/";
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -447,10 +470,13 @@ function gabarit({ titre, description, canonique, robots, image, contenu, script
   <meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}">
   ${donnees.map(jsonLd).join("\n  ")}
   <style>${STYLE}${CSS_VITRINE}</style>
+  <link rel="preload" href="/polices/noto-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/design/tokens.css">
+  <link rel="stylesheet" href="/design/composants.css">
   <link rel="stylesheet" href="/proposal-dialog.css">
 </head>
 <body>
-  ${entete(ctx)}
+  ${entete(ctx, chemin)}
   <main class="shell">${contenu}</main>
   <footer><div class="shell"><strong>M&amp;Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie · <a href="/vehicules">Tous les véhicules</a> · <a href="/conditions">Conditions générales de vente</a> · <a href="mailto:contact@myautoexport.com">contact@myautoexport.com</a></div></footer>
 ${scripts}

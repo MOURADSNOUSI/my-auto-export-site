@@ -83,6 +83,27 @@
   .my-entete-actions { gap: var(--my-esp-1); }
 }
 
+/* Devise et langue : interrupteur à deux positions (liens ou boutons), position active en or. */
+.my-reglages-entete { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--my-esp-2); }
+.my-bascule { display: inline-flex; overflow: hidden; border: 1px solid var(--my-nuit); border-radius: var(--my-rayon-pilule); }
+.my-bascule > * { display: inline-flex; align-items: center; justify-content: center; min-inline-size: var(--my-cible); min-block-size: 36px; padding-inline: var(--my-esp-3); color: var(--my-nuit); font-size: var(--my-taille-xs); font-weight: var(--my-graisse-titre); text-decoration: none; }
+.my-bascule > [aria-current="true"] { background: var(--my-or); color: var(--my-nuit); }
+.my-bascule > [aria-disabled="true"] { color: var(--my-encre-doux); cursor: not-allowed; }
+.my-sur-nuit .my-bascule { border-color: rgb(255 255 255 / 0.5); }
+/* Sélecteurs renforcés : l'interrupteur reste lisible dans un menu dont les liens ont leurs propres styles. */
+.my-sur-nuit .my-bascule > *, .my-sur-nuit .my-bascule > a:hover { color: var(--my-blanc); background: none; }
+.my-sur-nuit .my-bascule > [aria-current="true"], .my-sur-nuit .my-bascule > a[aria-current="true"]:hover { background: var(--my-or); color: var(--my-nuit); }
+.my-sur-nuit .my-bascule > a { display: inline-flex; min-block-size: 36px; padding-block: 0; padding-inline: var(--my-esp-3); border: 0; border-radius: 0; box-shadow: none; font-size: var(--my-taille-xs); font-weight: var(--my-graisse-titre); }
+.my-sur-nuit .my-bascule > [aria-disabled="true"] { color: rgb(255 255 255 / 0.62); }
+
+/* Menu mobile sans JavaScript (<details>) : panneau sous l'en-tête. */
+.my-burger > summary { list-style: none; cursor: pointer; }
+.my-burger > summary::-webkit-details-marker { display: none; }
+.my-burger[open] > .menu-mobile-panneau { position: absolute; inset-inline: 0; inset-block-start: 100%; display: grid; gap: 0; padding: var(--my-esp-2) var(--my-gouttiere) var(--my-esp-4); background: var(--my-nuit); box-shadow: var(--my-ombre-2); }
+.menu-mobile-panneau > a { display: flex; align-items: center; min-block-size: 48px; border-block-end: 1px solid rgb(255 255 255 / 0.14); color: var(--my-blanc); font-weight: var(--my-graisse-forte); text-decoration: none; }
+.menu-mobile-panneau > .my-reglages-entete { margin-block-start: var(--my-esp-3); }
+.my-entete { position: sticky; }
+
 /* --- Pied de page --- */
 .my-pied { margin-block-start: var(--my-esp-12); padding-block: var(--my-esp-10) var(--my-esp-8); background: var(--my-nuit); color: rgb(255 255 255 / 0.86); font-size: var(--my-taille-s); }
 .my-pied a { color: var(--my-blanc); }

@@ -193,8 +193,10 @@ class AccueilTest(unittest.TestCase):
         self.assertNotIn("Comment acheter", html)
         self.assertNotIn("Questions sur le dépôt de garantie", html)
         self.assertNotIn("retirable à chaque enchère", html)
-        for ancre in ("comment-ca-marche", "nos-prix", "questions"):
-            self.assertIn(f'href="#{ancre}"', html)
+        # Menu par façon d'acheter : Véhicules, Achat sur mandat, Vendre mon véhicule, Contact.
+        for href, libelle in (("/vehicules", "Véhicules"), ("#comment-ca-marche", "Achat sur mandat"), ("/vendre", "Vendre mon véhicule"), ("#contact", "Contact")):
+            self.assertRegex(html, rf'<a [^>]*href="{re.escape(href)}"[^>]*>{libelle}</a>', libelle)
+        for ancre in ("comment-ca-marche", "nos-prix", "questions", "contact"):
             self.assertIn(f'id="{ancre}"', html)
         self.assertEqual(html.count('<details class="faq">'), 5)
         self.assertIn('<section class="block" id="temoignages" aria-labelledby="temoignages-titre" hidden></section>', html)
@@ -457,13 +459,15 @@ class AccueilTest(unittest.TestCase):
         page.on("pageerror", lambda e: erreurs.append(str(e)))
         page.goto(self.base + "/")
         page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
-        # Dans l'en-tête, visible aussi sur téléphone (icône seule, libellé pour les lecteurs d'écran).
+        # « Vendre mon véhicule » du menu de l'en-tête (replié sur téléphone) ouvre le dépôt d'annonce.
         self.assertEqual(page.locator("#site-header #deposer-annonce").count(), 1)
+        self.assertFalse(page.is_visible("#deposer-annonce"), "menu replié sur téléphone")
+        page.click("#menu-button")
         self.assertTrue(page.is_visible("#deposer-annonce"))
         self.assertEqual(page.get_attribute("#deposer-annonce", "href"), "/vendre")
-        self.assertIn("Déposer une annonce", page.text_content("#deposer-annonce"))
+        self.assertEqual(page.text_content("#deposer-annonce"), "Vendre mon véhicule")
         for chemin in ("/vehicules", self.fiches["ACC-JEUNE"]):
-            self.assertIn('<a class="bouton-deposer" href="/vendre">', self.page(chemin)[1], chemin)
+            self.assertIn('<a href="/vendre">Vendre mon véhicule</a>', self.page(chemin)[1], chemin)
         # Non connecté : choix connexion ou inscription, sans quitter l'accueil.
         page.click("#deposer-annonce")
         page.wait_for_selector("#deposer-dialog[open]")
@@ -472,11 +476,13 @@ class AccueilTest(unittest.TestCase):
             page.screenshot(path=str(Path(CAPTURES) / "deposer-390.png"))
         page.click("#deposer-dialog [data-close]")
         self.assertFalse(page.is_visible("#deposer-dialog"))
+        page.click("#menu-button")
         page.click("#deposer-annonce")
         page.click("[data-deposer='register']")
         page.wait_for_selector("#auth-dialog[open]")
         self.assertTrue(page.is_visible("#register-form"))
         page.keyboard.press("Escape")
+        page.click("#menu-button")
         page.click("#deposer-annonce")
         page.click("[data-deposer='login']")
         page.wait_for_selector("#auth-dialog[open]")
@@ -487,6 +493,50 @@ class AccueilTest(unittest.TestCase):
         with page.expect_navigation():
             page.click("#login-form [type=submit]")
         self.assertTrue(page.url.startswith(self.base + "/vendre"), page.url)
+        self.assertEqual(erreurs, [])
+
+    def test_entete_devise_langue_et_compte(self):
+        # Devise : lien ?public= (sans JavaScript), position active selon le cookie ou le réglage par défaut.
+        for chemin, attendu in (("/", "/?public="), ("/vehicules", "/vehicules?public="), (self.fiches["ACC-JEUNE"], f"{self.fiches['ACC-JEUNE']}?public=")):
+            _, html, _ = self.page(chemin, "resident")
+            self.assertRegex(html, rf'<a href="{re.escape(attendu)}resident"[^>]*aria-current="true"[^>]*>TND</a>', chemin)
+            self.assertRegex(html, rf'<a href="{re.escape(attendu)}tre"(?![^>]*aria-current)[^>]*>EUR</a>', chemin)
+            self.assertRegex(self.page(chemin, "tre")[1], rf'<a href="{re.escape(attendu)}tre"[^>]*aria-current="true"[^>]*>EUR</a>', chemin)
+            # Arabe annoncé mais désactivé tant que les textes n'existent pas.
+            self.assertRegex(html, r'<span aria-disabled="true" lang="ar"[^>]*title="Arabe : bientôt disponible"[^>]*>AR</span>', chemin)
+            self.assertIn('aria-label="Devise des prix"', html, chemin)
+        context = self.browser.new_context(viewport={"width": 1440, "height": 900})
+        self.addCleanup(context.close)
+        page = context.new_page()
+        erreurs = []
+        page.on("pageerror", lambda e: erreurs.append(str(e)))
+        page.goto(self.base + "/")
+        page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
+        # Bureau : menu, devise et langue visibles ; « Créer un compte » ouvre l'inscription.
+        self.assertTrue(page.is_visible("#main-nav"))
+        self.assertTrue(page.is_visible("#compte-creer"))
+        self.assertEqual(page.text_content("#compte-creer"), "Créer un compte")
+        page.click("#compte-creer")
+        page.wait_for_selector("#auth-dialog[open]")
+        self.assertTrue(page.is_visible("#register-form"))
+        page.fill("#register-form [name=name]", "Client Entete")
+        page.fill("#register-form [name=email]", "entete@ex.com")
+        page.fill("#register-form [name=password]", MOT_DE_PASSE)
+        page.click("#register-form [type=submit]")
+        page.wait_for_selector("#auth-dialog[open]", state="detached")
+        self.assertFalse(page.is_visible("#compte-creer"), "masqué une fois connecté")
+        largeurs = page.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
+        self.assertLessEqual(largeurs[0], largeurs[1])
+        # Pages du Worker sur téléphone : menu en <details>, ouvert sans JavaScript.
+        sans_js = self.browser.new_context(java_script_enabled=False, viewport={"width": 390, "height": 844})
+        self.addCleanup(sans_js.close)
+        mobile = sans_js.new_page()
+        mobile.goto(self.base + "/vehicules")
+        self.assertFalse(mobile.is_visible(".menu-mobile-panneau"))
+        mobile.click("details.menu-mobile > summary")
+        self.assertTrue(mobile.is_visible(".menu-mobile-panneau a[href='/#comment-ca-marche']"))
+        largeurs = mobile.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
+        self.assertLessEqual(largeurs[0], largeurs[1])
         self.assertEqual(erreurs, [])
 
     def test_capture_bureau(self):

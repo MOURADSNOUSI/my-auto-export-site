@@ -9,6 +9,9 @@
   <title>M&Y AUTO EXPORT — Achat et import de véhicules européens en Tunisie</title>
   <link rel="canonical" href="https://www.myautoexport.com/">
   <link rel="icon" href="/logo.png" type="image/png">
+  <link rel="preload" href="/polices/noto-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/design/tokens.css">
+  <link rel="stylesheet" href="/design/composants.css">
   <link rel="preload" as="image" href="/photos/web/MY-0001-1.webp" type="image/webp" fetchpriority="high">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="M&Y AUTO EXPORT">
@@ -411,7 +414,6 @@
       .account-chip { margin-left: 0; padding-left: 4px; }
       .account-chip small { display: none; }
       .account-chip strong { font-size: 13px; }
-      #nav-search { display: none; }
       .main-nav { padding-inline: 14px; }
       .hero-inner { padding: 34px 0 30px; }
       .hero h1 { font-size: 31px; }
@@ -455,17 +457,43 @@
     .catalogue-tabs a[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -3px var(--green); }
     .catalogue-tabs .nav-count { inset-block-start: -6px; inset-inline-end: -8px; right: auto; }
     .header-tools .bouton-whatsapp { margin-inline-end: 6px; }
-    /* Téléphone : « Déposer une annonce » réduit à son icône (le libellé reste lu par les lecteurs d'écran). */
-    @media (max-width: 680px) {
-      .header-tools .bouton-deposer { min-block-size: 38px; margin-inline-end: 4px; padding-inline: 9px; }
-      .header-tools .bouton-deposer span { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    }
     @media (max-width: 680px) {
       .header-tools .bouton-whatsapp { min-block-size: 36px; padding-inline: 10px; font-size: 13px; }
-      #nav-favorites, #nav-offers { display: none; }
+      #nav-favorites { display: none; }
     }
 .bouton-google{display:flex;align-items:center;justify-content:center;gap:10px;inline-size:100%;min-block-size:48px;padding-inline:16px;border:1px solid #747775;border-radius:24px;background:#fff;color:#1f1f1f;font-weight:600;text-decoration:none}.bouton-google:hover{background:#f6f8f7}[data-google][hidden]{display:none}.google-ou{display:flex;align-items:center;gap:12px;margin-block:16px;color:var(--muted)}.google-ou::before,.google-ou::after{content:"";flex:1;border-block-start:1px solid var(--line)}
-    .bouton-deposer{display:inline-flex;align-items:center;gap:8px;min-block-size:42px;margin-inline-end:8px;padding-inline:16px;border-radius:22px;background:var(--green);color:#fff;font-size:14px;font-weight:750;text-decoration:none;white-space:nowrap}.bouton-deposer svg{inline-size:20px;block-size:20px;fill:none;stroke:currentColor;stroke-width:2}.bouton-deposer:hover{background:var(--green-dark,#185740)}
+    
+    /* --- En-tête du design system (refonte, étape 2) : bleu nuit, menu par façon d'acheter, devise et langue --- */
+    .site-header { border-bottom: 0; background: var(--my-nuit); color: var(--my-blanc); box-shadow: var(--my-ombre-1); font-family: var(--my-police); }
+    .site-header .brand-name { color: var(--my-blanc); }
+    .site-header .brand-name small { color: var(--my-or); }
+    .site-header .brand img { border-color: var(--my-or); }
+    .main-nav { gap: 4px; padding-top: 0; }
+    .main-nav > a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; color: var(--my-blanc); font-size: 15px; font-weight: 650; }
+    .main-nav > a:hover, .main-nav > a[aria-current="true"] { background: rgb(255 255 255 / 0.12); color: var(--my-blanc); box-shadow: none; }
+    .reglages-entete { margin-inline-start: auto; }
+    .site-header .icon-button, .site-header .account-chip { color: var(--my-blanc); }
+    .site-header .icon-button:hover { background: rgb(255 255 255 / 0.12); }
+    .site-header .account-chip { border-inline-start-color: rgb(255 255 255 / 0.25); }
+    .site-header .account-chip svg { color: var(--my-blanc); }
+    .site-header .account-chip small { color: var(--my-or); }
+    .site-header .tool-count { background: var(--my-or); color: var(--my-nuit); }
+    .compte-creer { margin-inline-start: 6px; white-space: nowrap; }
+    /* Les anciens styles des liens du menu (.main-nav a) ne s'appliquent pas aux interrupteurs. */
+    .site-header .main-nav .my-bascule > a { justify-content: center; border-bottom: 0; }
+    .compte-creer[hidden] { display: none; }
+    /* Menu replié dès 1180 px : liens, devise et langue ne tiennent plus sur une ligne. */
+    @media (max-width: 1180px) {
+      .site-header .account-chip span { display: none; }
+      .menu-button { display: grid; }
+      .main-nav { position: absolute; top: 100%; inset-inline: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 8px 24px 16px; background: var(--my-nuit); border-bottom: 0; box-shadow: var(--my-ombre-2); }
+      .site-header.menu-open .main-nav { display: flex; }
+      .main-nav > a { min-height: 48px; padding: 0 4px; border-bottom: 1px solid rgb(255 255 255 / 0.14); border-radius: 0; font-size: 16px; }
+      .reglages-entete { justify-content: flex-start; margin: 14px 0 4px; }
+    }
+    @media (max-width: 680px) {
+      .compte-creer { display: none; }
+    }
     #deposer-dialog .dialog-head{align-items:center}#deposer-dialog .bonjour{margin-block:18px 4px;font-size:22px;font-weight:750}#deposer-dialog .actions-deposer{display:grid;gap:10px;margin-block-start:18px}#deposer-dialog .actions-deposer button{inline-size:100%;min-block-size:48px;justify-content:center;font-size:15px}
 </style>
 <link rel="stylesheet" href="/proposal-dialog.css">
@@ -494,7 +522,7 @@
     <symbol id="i-plus" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></symbol>
   </svg>
 
-  <header class="site-header" id="site-header">
+  <header class="site-header my-sur-nuit" id="site-header">
     <div class="shell header-inner">
       <a class="brand" href="#accueil" aria-label="M&Y AUTO EXPORT, accueil">
         <img src="logo.png" alt="Logo M&Y AUTO EXPORT">
@@ -503,19 +531,20 @@
       <!-- Libellés (data-texte) insérés par le Worker depuis worker/textes.js. -->
       <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
         <a href="/vehicules" data-texte="menu_vehicules"></a>
-        <a href="#comment-ca-marche" data-texte="menu_comment"></a>
-        <a href="#nos-prix" data-texte="menu_prix"></a>
-        <a href="#questions" data-texte="menu_questions"></a>
+        <a href="#comment-ca-marche" data-texte="menu_mandat"></a>
+        <a id="deposer-annonce" href="/vendre" data-texte="menu_vendre"></a>
+        <a href="#contact" data-texte="menu_contact"></a>
+        <!-- Devise (cookie « public », lien sans JavaScript) et langue, marquées par le Worker (worker/seo.js). -->
+        <div class="my-reglages-entete reglages-entete">
+          <div class="my-bascule" role="group" data-texte-aria="devise_groupe"><a href="/?public=resident" data-devise="resident">TND</a><a href="/?public=tre" data-devise="tre">EUR</a></div>
+          <div class="my-bascule" role="group" data-texte-aria="langue_groupe"><span aria-current="true" lang="fr">FR</span><span aria-disabled="true" lang="ar" data-texte-title="langue_bientot">AR</span></div>
+        </div>
       </nav>
       <div class="header-tools">
-        <button class="icon-button" type="button" id="nav-search" aria-label="Rechercher un véhicule"><svg><use href="#i-search"/></svg></button>
         <button class="icon-button" type="button" id="nav-favorites" aria-label="Mes favoris">
           <svg><use class="filled" href="#i-heart"/></svg><span class="tool-count empty" id="nav-favorites-count">0</span>
         </button>
-        <button class="icon-button" type="button" id="nav-offers" aria-label="Mes offres">
-          <svg><use href="#i-gavel"/></svg><span class="tool-count empty" id="nav-offers-count">0</span>
-        </button>
-        <a class="bouton-deposer" id="deposer-annonce" href="/vendre"><svg aria-hidden="true"><use href="#i-plus"/></svg><span data-texte="deposer_bouton">Déposer une annonce</span></a>
+        <button class="my-bouton my-bouton--action my-bouton--petit compte-creer" type="button" id="compte-creer" data-texte="compte_creer"></button>
         <button class="account-chip" type="button" id="account-button" data-open-account>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="filled" cx="12" cy="8" r="4"/><path class="filled" d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7Z"/></svg>
           <span id="account-label"><strong><span class="account-dot" id="account-dot" aria-hidden="true"></span><span data-texte="compte_titre"></span></strong><small data-texte="compte_action"></small></span>
@@ -814,7 +843,7 @@
     }
 
     function majCompteurs() {
-      [["nav-favorites-count", watchlist.size], ["nav-offers-count", compte.offers.length]].forEach(([id, nombre]) => {
+      [["nav-favorites-count", watchlist.size]].forEach(([id, nombre]) => {
         const badge = document.getElementById(id);
         badge.textContent = nombre;
         badge.classList.toggle("empty", nombre === 0);
@@ -1220,6 +1249,7 @@
         ? `<strong><span class="account-dot on" aria-hidden="true"></span>${escapeHtml(user.name.split(" ")[0])} ${numeroMembre(user)}</strong><small>${user.profiles.buyer && user.profiles.seller ? "Acheteur · Vendeur" : user.profiles.seller ? "Vendeur" : "Acheteur"}</small>`
         : `<strong><span class="account-dot" aria-hidden="true"></span>${escapeHtml(TEXTES.compte_titre || "")}</strong><small>${escapeHtml(TEXTES.compte_action || "Se connecter")}</small>`;
       document.getElementById("account-button").setAttribute("aria-label", user ? `Mon espace acheteur, ${user.name}` : "Se connecter ou créer un compte");
+      document.getElementById("compte-creer").hidden = Boolean(user);
       majCompteurs();
     }
 
@@ -1529,15 +1559,11 @@
       choisirOnglet(link.dataset.nav);
       fermerMenu();
     }));
-    document.getElementById("nav-search").addEventListener("click", () => {
-      allerAuCatalogue();
-      document.getElementById("search").focus();
-    });
     document.getElementById("nav-favorites").addEventListener("click", () => {
       choisirOnglet("watchlist");
       allerAuCatalogue();
     });
-    document.getElementById("nav-offers").addEventListener("click", () => ouvrirEspace());
+    document.getElementById("compte-creer").addEventListener("click", () => ouvrirConnexion("register"));
     document.querySelectorAll("[data-open-account]").forEach((button) => button.addEventListener("click", () => ouvrirEspace()));
 
     const siteHeader = document.getElementById("site-header");

@@ -4,9 +4,14 @@
 export const fr = {
   // En-tête
   menu_vehicules: "Véhicules",
-  menu_comment: "Comment ça marche",
-  menu_prix: "Nos prix",
-  menu_questions: "Questions",
+  menu_mandat: "Achat sur mandat",
+  menu_vendre: "Vendre mon véhicule",
+  menu_contact: "Contact",
+  menu_ouvrir: "Menu",
+  compte_creer: "Créer un compte",
+  devise_groupe: "Devise des prix",
+  langue_groupe: "Langue",
+  langue_bientot: "Arabe : bientôt disponible",
   compte_titre: "Mon compte",
   compte_action: "Se connecter",
   whatsapp: "WhatsApp",
