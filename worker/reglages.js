@@ -20,8 +20,11 @@ export const REGLAGES_SITE = {
   cgv_mandat: { type: "texte_long", defaut: "" },
   conditions_acompte: { type: "texte_long", defaut: "" },
   acompte_defaut_tnd: { type: "entier", defaut: 0 },
-  acompte_defaut_eur: { type: "entier", defaut: 0 }
+  acompte_defaut_eur: { type: "entier", defaut: 0 },
+  // Délai de livraison estimé par pays d'origine (« Allemagne » → « 4 à 6 semaines »), saisi dans /admin-import.
+  delais_livraison: { type: "json", defaut: {} }
 };
+const MAX_DELAIS = 80;
 const MAX_TEXTE_LONG = 20000;
 export const FORMAT_WHATSAPP = /^\+?[0-9]{8,15}$/;
 const MAX_TEMOIGNAGES = 20;
@@ -71,6 +74,14 @@ export function validerReglageSite(cle, valeur) {
     if (typeof valeur !== "string") return { erreur: "Numéro attendu en texte." };
     const numero = valeur.replace(/[\s.-]/g, "");
     return numero === "" || FORMAT_WHATSAPP.test(numero) ? { texte: numero } : { erreur: "Numéro au format international attendu, par exemple +21612345678." };
+  }
+  if (cle === "delais_livraison") {
+    const entrees = valeur && typeof valeur === "object" && !Array.isArray(valeur) ? Object.entries(valeur) : null;
+    const texteCourt = (v) => typeof v === "string" && v.trim().length > 0 && v.length <= 60;
+    if (!entrees || entrees.length > MAX_DELAIS || entrees.some(([pays, delai]) => !texteCourt(pays) || !texteCourt(delai))) {
+      return { erreur: `Délais attendus : ${MAX_DELAIS} pays au plus, pays et délai en texte (60 caractères au plus).` };
+    }
+    return { texte: JSON.stringify(Object.fromEntries(entrees.map(([pays, delai]) => [pays.trim(), delai.trim()]))) };
   }
   // temoignages : liste de { nom, texte, vehicule? }, sans interface de saisie pour l'instant.
   const texteValide = (v, max, obligatoire) => (v === undefined && !obligatoire) || (typeof v === "string" && v.trim().length > 0 && v.length <= max);

@@ -10,6 +10,7 @@ import { calculerPrix, lireParametresPrix } from "./prix.js";
 import { REGLAGES_SITE, lireReglagesSite } from "./reglages.js";
 import { NOMBRE_QUESTIONS, TEXTES_NAVIGATEUR, fr, t } from "./textes.js";
 import { vehiculeMandat } from "./mandats.js";
+import { ErreurFiltre, TRIS, compter, lireCompteurs, lireFiltres as lireFiltresCatalogue, marquerCompteursPerimes, rechercher } from "./catalogue.js";
 
 export const SITE = "https://www.myautoexport.com";
 // Pages statiques indexables. Ajouter ici une page informative une fois son contenu validé (et sa balise noindex retirée).
@@ -296,12 +297,23 @@ function photoCarte(lot) {
 }
 
 // Carte rendue par le serveur : visible sans JavaScript.
+// Délai de livraison estimé d'un pays d'origine (réglage delais_livraison, saisi dans /admin-import), ou null.
+function delaiLivraison(lot, ctx) {
+  const delais = ctx?.site?.delais_livraison;
+  return lot.country && delais && Object.hasOwn(delais, lot.country) ? delais[lot.country] : null;
+}
+
 export function carteVehicule(lot, ctx) {
   const chemin = escapeHtml(cheminVehicule(lot));
-  const infos = [lot.year, Number.isFinite(lot.mileageKm) ? `${nombreFr(lot.mileageKm)} km` : null, lot.fuel].filter(Boolean);
+  const titre = [titreLot(lot), lot.year].filter(Boolean).join(" ");
+  const infos = [Number.isFinite(lot.mileageKm) ? `${nombreFr(lot.mileageKm)} km` : null, lot.fuel, lot.transmission].filter(Boolean);
+  const delai = delaiLivraison(lot, ctx);
+  const badges = [lot.country ? `<span class="my-badge my-badge--info">${escapeHtml(lot.country)}</span>` : "",
+    delai ? `<span class="my-badge my-badge--accent">${escapeHtml(t("carte_delai", { delai }))}</span>` : ""].filter(Boolean);
   return `<li class="carte-vehicule"><a class="carte-photo" href="${chemin}" tabindex="-1" aria-hidden="true">${photoCarte(lot)}</a>
-    <div class="carte-corps"><h3 class="carte-titre"><a href="${chemin}">${escapeHtml(titreLot(lot))}</a></h3>
+    <div class="carte-corps"><h3 class="carte-titre"><a href="${chemin}">${escapeHtml(titre)}</a></h3>
     ${infos.length ? `<p class="carte-infos">${escapeHtml(infos.join(" · "))}</p>` : ""}
+    ${badges.length ? `<p class="carte-badges">${badges.join("")}</p>` : ""}
     ${estimationVehicule(lot, ctx)}
     <a class="carte-fiche" href="${chemin}">${escapeHtml(t("voir_fiche"))}<span class="visually-hidden"> : ${escapeHtml(titreLot(lot))}</span></a></div></li>`;
 }
@@ -329,7 +341,7 @@ export const CSS_VITRINE = `
 .prix-detail ul{margin:6px 0 0;padding:0;list-style:none;font-size:13px}
 .prix-detail li{display:flex;justify-content:space-between;gap:12px;padding-block:3px;border-block-end:1px solid #edf0ee}
 .prix-detail li span:last-child{white-space:nowrap}.prix-total{font-weight:700}
-.bouton-contact{display:inline-flex;align-items:center;justify-content:center;min-block-size:44px;padding-inline:16px;border-radius:6px;background:#185740;color:#fff;font-weight:700;text-decoration:none;justify-self:start}
+.bouton-contact{display:inline-flex;align-items:center;justify-content:center;min-block-size:44px;padding-inline:16px;border-radius:var(--my-rayon-pilule, 6px);background:var(--my-nuit, #185740);color:#fff;font-weight:700;text-decoration:none;justify-self:start}
 .carte-fiche{margin-block-start:auto;color:#185740;font-weight:700}
 .bouton-whatsapp{display:inline-flex;align-items:center;min-block-size:40px;padding-inline:12px;border-radius:20px;background:#166b3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap}
 .etapes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin:0;padding:0;list-style:none}
@@ -539,7 +551,7 @@ export function estRouteSeo(path) {
 export async function routeSeo(request, env, url) {
   if (url.pathname === "/sitemap.xml") return sitemap(request, env);
   if (url.searchParams.has("public")) return redirectionPublic(url);
-  if (url.pathname === "/vehicules") return pageListe(request, env);
+  if (url.pathname === "/vehicules") return pageListe(request, env, url);
   if (url.pathname.endsWith("/")) {
     return Response.redirect(`${url.origin}${url.pathname.replace(/\/+$/, "")}`, 301);
   }
@@ -639,27 +651,126 @@ async function pageVehicule(request, env, url) {
   }), 200, ENTETES_VITRINE);
 }
 
-async function pageListe(request, env) {
-  const [items, ctx] = await Promise.all([lotsAvecEtat(request, env), contexteVitrine(request, env)]);
-  const lots = items.filter(indexable).map((item) => item.lot);
+// Libellés des filtres du catalogue, dans l'ordre de la page.
+const FILTRES_LIBELLES = [["marque", "filtre_marque"], ["modele", "filtre_modele"], ["carrosserie", "filtre_carrosserie"], ["energie", "filtre_energie"], ["boite", "filtre_boite"]];
+
+function parametresFiltres(filtres, sauf = []) {
+  return new URLSearchParams(Object.entries(filtres).filter(([cle, valeur]) => !sauf.includes(cle) && !(cle === "tri" && valeur === "recent")).map(([cle, valeur]) => [cle, String(valeur)]));
+}
+
+// Formulaire des filtres (GET, sans JavaScript) : options avec leur nombre d'annonces. Sur téléphone, panneau plein
+// écran ouvert par le lien #filtres (:target) ; le nombre du bouton « Voir les N véhicules » suit les choix (script).
+function formulaireFiltres(filtres, compteurs, total) {
+  const choix = (cle, options) => {
+    const libelle = t(FILTRES_LIBELLES.find(([c]) => c === cle)?.[1] || `filtre_${cle}`);
+    const desactive = cle === "modele" && !filtres.marque;
+    return `<label class="filtre"><span>${escapeHtml(libelle)}</span><select name="${cle}"${desactive ? " disabled" : ""}>
+      <option value=""${cle === "modele" ? ` data-tous="${escapeHtml(t("filtre_tous"))}" data-marque="${escapeHtml(t("filtre_modele_marque"))}"` : ""}>${escapeHtml(desactive ? t("filtre_modele_marque") : t("filtre_tous"))}</option>
+      ${options.map((o) => `<option value="${escapeHtml(o.valeur)}"${filtres[cle] === o.valeur ? " selected" : ""}>${escapeHtml(o.valeur)} (${o.n})</option>`).join("")}</select></label>`;
+  };
+  const nombreChamp = (cle, libelle, attributs) => `<label class="filtre"><span>${escapeHtml(t(libelle))}</span><input name="${cle}" type="number" inputmode="numeric" ${attributs} value="${filtres[cle] ?? ""}"></label>`;
+  const modeles = (compteurs.modele || []).filter((o) => o.marque === filtres.marque);
+  return `<script type="application/json" id="modeles-catalogue">${JSON.stringify(compteurs.modele || []).replace(/</g, "\\u003c")}</script>
+  <form class="filtres" id="filtres" action="/vehicules" method="get" aria-labelledby="filtres-titre">
+    <div class="filtres-entete"><h2 id="filtres-titre">${escapeHtml(t("filtres_titre"))}</h2><a class="filtres-fermer my-bouton my-bouton--lien" href="#">${escapeHtml(t("filtres_fermer"))}</a></div>
+    ${choix("marque", compteurs.marque || [])}
+    ${choix("modele", modeles)}
+    ${choix("carrosserie", compteurs.carrosserie || [])}
+    ${choix("energie", compteurs.energie || [])}
+    ${choix("boite", compteurs.boite || [])}
+    ${nombreChamp("prix_max", "filtre_prix_max", 'min="0" step="500" placeholder="—"')}
+    <div class="filtres-paire">${nombreChamp("annee_min", "filtre_annee_min", 'min="1990" max="2100" placeholder="—"')}${nombreChamp("annee_max", "filtre_annee_max", 'min="1990" max="2100" placeholder="—"')}</div>
+    ${nombreChamp("km_max", "filtre_km_max", 'min="0" step="5000" placeholder="—"')}
+    ${choix("pays", compteurs.pays || [])}
+    <label class="filtre"><span>${escapeHtml(t("filtre_tri"))}</span><select name="tri">${Object.keys(TRIS).map((tri) => `<option value="${tri}"${filtres.tri === tri ? " selected" : ""}>${escapeHtml(t(`tri_${tri}`))}</option>`).join("")}</select></label>
+    <div class="filtres-actions"><button class="my-bouton my-bouton--principal my-bouton--large" type="submit" data-voir>${escapeHtml(t("filtres_voir", { n: total }))}</button>
+      <a class="my-bouton my-bouton--lien" href="/vehicules">${escapeHtml(t("filtres_effacer"))}</a></div>
+  </form>`;
+}
+
+// Nombre du bouton « Voir les N véhicules » mis à jour à chaque choix (sans JavaScript : le formulaire marche tel quel).
+// Modèles de la marque choisie remplis depuis les compteurs servis dans la page (#modeles-catalogue), sans rechargement.
+const SCRIPT_FILTRES = `<script>(()=>{const f=document.getElementById("filtres");if(!f)return;const b=f.querySelector("[data-voir]");const gabarit=b.dataset.gabarit;let n=0;
+const modeles=JSON.parse(document.getElementById("modeles-catalogue")?.textContent||"[]");
+const remplir=(marque)=>{const m=f.elements.modele;const premier=m.options[0];premier.textContent=marque?premier.dataset.tous:premier.dataset.marque;m.replaceChildren(premier);
+for(const o of modeles.filter((x)=>x.marque===marque)){const e=document.createElement("option");e.value=o.valeur;e.textContent=o.valeur+" ("+o.n+")";m.append(e);}m.disabled=!marque;};
+f.addEventListener("change",async(e)=>{if(e.target.name==="marque")remplir(e.target.value);const p=new URLSearchParams(new FormData(f));for(const[k,v]of[...p])if(!v||k==="tri")p.delete(k);const id=++n;
+try{const r=await fetch("/api/catalogue/compte?"+p);const d=await r.json();if(id===n&&r.ok)b.textContent=gabarit.replace("{n}",d.total);}catch{}});})();</script>`;
+
+const CSS_CATALOGUE = `
+.catalogue{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--my-esp-6);margin-block-start:var(--my-esp-4)}
+@media(min-width:960px){.catalogue{grid-template-columns:280px minmax(0,1fr);align-items:start}.filtres{position:sticky;inset-block-start:80px}}
+.filtres{display:grid;gap:var(--my-esp-3);padding:var(--my-esp-4);border:1px solid var(--my-trait);border-radius:var(--my-rayon-m);background:var(--my-surface)}
+.filtres-entete{display:flex;align-items:center;justify-content:space-between}.filtres-entete h2{margin:0;font-size:var(--my-taille-l);color:var(--my-nuit)}
+.filtre{display:grid;gap:4px;font-size:var(--my-taille-s);font-weight:var(--my-graisse-forte);color:var(--my-encre-doux)}
+.filtre select,.filtre input{inline-size:100%;min-block-size:var(--my-cible);padding-inline:var(--my-esp-3);border:1px solid var(--my-trait);border-radius:var(--my-rayon-s);background:var(--my-surface);color:var(--my-encre);font:inherit;font-size:var(--my-taille-m);font-weight:400}
+.filtres-paire{display:grid;grid-template-columns:1fr 1fr;gap:var(--my-esp-2)}
+.filtres-actions{display:grid;gap:var(--my-esp-1);margin-block-start:var(--my-esp-2)}
+.filtres-fermer,.ouvrir-filtres{display:none}
+@media(max-width:959px){
+  .ouvrir-filtres{display:inline-flex}
+  .filtres{position:fixed;inset:0;z-index:40;display:none;overflow-y:auto;align-content:start;border:0;border-radius:0;padding:var(--my-esp-4) var(--my-gouttiere) var(--my-esp-12)}
+  .filtres:target{display:grid}.filtres-fermer{display:inline-flex}
+  .filtres-actions{position:sticky;inset-block-end:0;padding-block:var(--my-esp-3);background:var(--my-surface)}
+}
+.catalogue-resume{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--my-esp-3);margin-block-end:var(--my-esp-4)}
+.catalogue-resume p{margin:0;font-weight:var(--my-graisse-forte)}
+.carte-badges{display:flex;flex-wrap:wrap;gap:var(--my-esp-1)}
+.catalogue-suite{display:flex;justify-content:center;margin-block:var(--my-esp-8)}
+.catalogue-vide{padding:var(--my-esp-6);border:1px dashed var(--my-trait);border-radius:var(--my-rayon-m);background:var(--my-surface)}
+`;
+
+// Catalogue : filtres, total, une page de cartes et lien vers la suivante (curseur). Pages filtrées ou suivantes non
+// indexées (la page sans filtre reste la page canonique).
+async function pageListe(request, env, url) {
+  let filtres;
+  try {
+    filtres = lireFiltresCatalogue(url.searchParams);
+  } catch (error) {
+    if (!(error instanceof ErreurFiltre)) throw error;
+    return Response.redirect(`${url.origin}/vehicules`, 302);
+  }
+  const curseur = url.searchParams.get("apres");
+  let page;
+  try {
+    page = await rechercher(env, filtres, curseur);
+  } catch (error) {
+    if (!(error instanceof ErreurFiltre)) throw error;
+    return Response.redirect(`${url.origin}/vehicules?${parametresFiltres(filtres)}`, 302);
+  }
+  const [ctx, compteurs, total] = await Promise.all([contexteVitrine(request, env), lireCompteurs(env), compter(env, filtres)]);
+  const { lots, suivant } = page;
+  const filtre = [...parametresFiltres(filtres)].length > 0;
   const canonique = `${SITE}/vehicules`;
   const donnees = [{
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Véhicules proposés par M&Y AUTO EXPORT",
-    numberOfItems: lots.length,
+    numberOfItems: total,
     itemListElement: lots.map((lot, index) => ({ "@type": "ListItem", position: index + 1, url: `${SITE}${cheminVehicule(lot)}`, name: titreLot(lot) }))
   }];
+  const lienSuivant = suivant ? `/vehicules?${new URLSearchParams([...parametresFiltres(filtres), ["apres", suivant]])}` : null;
   return reponseHtml(gabarit({
     titre: "Véhicules européens à vendre, livrés en Tunisie | M&Y AUTO EXPORT",
-    description: `${lots.length} véhicule${lots.length > 1 ? "s" : ""} d'occasion sélectionné${lots.length > 1 ? "s" : ""} en Europe : annonces et propositions d'achat privées, prix dans la devise de chaque annonce.`,
+    description: `${total} véhicule${total > 1 ? "s" : ""} d'occasion sélectionné${total > 1 ? "s" : ""} en Europe, achetés sur mandat et livrés en Tunisie.`,
     canonique,
+    robots: filtre || curseur ? "noindex, follow" : "",
     donnees,
-    contenu: `<nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › Véhicules</nav>
-      <h1>Véhicules à vendre</h1>
-      <p class="meta">${lots.length} véhicule${lots.length > 1 ? "s" : ""} en ligne. Prix en TND ou EUR selon l’annonce.</p>
-      ${lots.length ? `<ul class="cartes-vehicules" style="margin-block-start:16px">${lots.map((lot) => carteVehicule(lot, ctx)).join("")}</ul>` : "<p>Aucun véhicule en ligne pour le moment.</p>"}
-      <p class="note">${NOTE_PRIX}</p>`,
+    contenu: `<style>${CSS_CATALOGUE}</style><nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › Véhicules</nav>
+      <h1>${escapeHtml(t("catalogue_titre"))}</h1>
+      <div class="catalogue">
+        ${formulaireFiltres(filtres, compteurs, total).replace("data-voir>", `data-voir data-gabarit="${escapeHtml(fr.filtres_voir)}">`)}
+        <section aria-labelledby="resultats-titre">
+          <div class="catalogue-resume"><p id="resultats-titre" role="status">${escapeHtml(t(total > 1 ? "catalogue_total" : "catalogue_total_un", { n: total }))}</p>
+            <a class="ouvrir-filtres my-bouton my-bouton--contour my-bouton--petit" href="#filtres">${escapeHtml(t("filtres_ouvrir"))}</a></div>
+          ${lots.length ? `<ul class="cartes-vehicules">${lots.map((lot) => carteVehicule(lot, ctx)).join("")}</ul>`
+            : `<div class="catalogue-vide"><p><strong>${escapeHtml(t("catalogue_vide"))}</strong></p><p>${escapeHtml(t("catalogue_vide_aide"))}</p>
+                <a class="my-bouton my-bouton--contour" href="/vehicules">${escapeHtml(t("filtres_effacer"))}</a></div>`}
+          ${lienSuivant ? `<p class="catalogue-suite"><a class="my-bouton my-bouton--contour" href="${escapeHtml(lienSuivant)}" rel="next">${escapeHtml(t("catalogue_suivant"))}</a></p>` : ""}
+          <p class="note">${NOTE_PRIX}</p>
+        </section>
+      </div>`,
+    scripts: SCRIPT_FILTRES,
     ctx
   }), 200, ENTETES_VITRINE);
 }
@@ -767,9 +878,12 @@ export async function controlerSeo(env, { declencheur, references = null }) {
 
 // Après une publication ou un retrait : le contrôle ne doit jamais faire échouer la modification elle-même.
 export function controlerApresPublication(env, ctx, reference) {
+  // Toute écriture visible du catalogue passe ici : compteurs des filtres à recalculer.
+  const compteurs = marquerCompteursPerimes(env).catch(() => console.error("compteurs_perimes_failed"));
+  if (ctx?.waitUntil) ctx.waitUntil(compteurs);
   const controle = controlerSeo(env, { declencheur: "publication", references: [reference] }).catch((error) => console.error(error));
   if (ctx?.waitUntil) ctx.waitUntil(controle);
-  else return controle;
+  else return Promise.all([compteurs, controle]);
 }
 
 export async function controleQuotidien(controller, env) {

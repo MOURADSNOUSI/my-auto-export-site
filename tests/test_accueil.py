@@ -175,7 +175,8 @@ class AccueilTest(unittest.TestCase):
         self.assertIn("Cookie", entetes.get("Vary", ""))
         carte = self.carte(html, "ACC-JEUNE")
         self.assertIn("Peugeot 208", carte)
-        self.assertIn(f"{ANNEE - 1} · 20 000 km · Essence", carte.replace("\xa0", " "))
+        self.assertIn(f">Peugeot 208 {ANNEE - 1}</a>", carte)
+        self.assertIn("20 000 km · Essence", carte.replace("\xa0", " "))
         self.assertIn('loading="lazy"' if "<img" in carte else "carte-sans-photo", carte)
         self.assertNotIn("acc-retire", html)
         # L'accueil n'a plus la liste « Tous nos véhicules » : le menu « Véhicules » mène à /vehicules.

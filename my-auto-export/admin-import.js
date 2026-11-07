@@ -77,6 +77,28 @@ $("form-prefiltre").addEventListener("submit", async (event) => {
 
 chargerPrefiltre().catch((error) => message(error.message, false));
 
+// Délais de livraison par pays d'origine (réglage delais_livraison) : un champ par pays, vide = non affiché.
+async function chargerDelais() {
+  const [{ pays }, { reglages }] = await Promise.all([api("/api/admin/import/filtres"), api("/api/admin/site")]);
+  const delais = reglages.find((r) => r.cle === "delais_livraison")?.valeur || {};
+  const liste = [...new Set([...pays, ...Object.keys(delais)])];
+  $("form-delais").innerHTML = liste.map((p, i) => `<label>${echapper(p)}<input name="d${i}" data-pays="${echapper(p)}" maxlength="60" placeholder="ex. 4 à 6 semaines" value="${echapper(delais[p] || "")}"></label>`).join("");
+}
+
+$("form-delais").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const valeur = Object.fromEntries([...event.currentTarget.querySelectorAll("[data-pays]")].filter((e) => e.value.trim()).map((e) => [e.dataset.pays, e.value.trim()]));
+  try {
+    await api("/api/admin/site/delais_livraison", { method: "PUT", body: { valeur } });
+    message("Délais de livraison enregistrés.");
+    await chargerDelais();
+  } catch (error) {
+    message(error.message, false);
+  }
+});
+
+chargerDelais().catch((error) => message(error.message, false));
+
 $("form-recherche").addEventListener("submit", async (event) => {
   event.preventDefault();
   const recherche = new URLSearchParams([...new FormData(event.currentTarget)].filter(([, v]) => String(v).trim() !== ""));

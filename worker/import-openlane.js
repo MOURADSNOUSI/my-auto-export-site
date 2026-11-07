@@ -4,6 +4,7 @@
 // Suivi quotidien (cron 30 2 * * *) : une annonce dont l'enchère est terminée est retirée du site, sans appel à l'API.
 import { ErreurCatalogue, VALEUR_VALIDE, appelerTheCarApi, date, nombre, normaliserVoiture, texte } from "./voitures-europe.js";
 import { ecrireReglageJson, journaliser, reglageActif, reglageJson } from "./reglages.js";
+import { marquerCompteursPerimes } from "./catalogue.js";
 
 export const MAX_IMPORTS_SUIVIS = 100;
 
@@ -44,6 +45,21 @@ const https = (valeur) => (typeof valeur === "string" && valeur.length <= 1000 &
 const ORIGINE_PHOTOS_THECARAPI = "https://api.thecarapi.com";
 const copieTheCarApi = (valeur) => (typeof valeur === "string" && /^\/(?:auction-photo|image-vault)\/[A-Za-z0-9/_.\-?=&%]{1,500}$/.test(valeur) ? `${ORIGINE_PHOTOS_THECARAPI}${valeur}` : null);
 
+// Valeurs de TheCarApi traduites pour les filtres du catalogue (une même valeur en français, pas « Hybrid » et
+// « Hybride » côte à côte). Valeur inconnue : gardée telle quelle.
+const TRADUCTIONS = {
+  carburant: { Petrol: "Essence", Gasoline: "Essence", Diesel: "Diesel", Hybrid: "Hybride", "Plug-in hybrid": "Hybride rechargeable", Electric: "Électrique", LPG: "GPL", CNG: "GNV" },
+  boite: { Automatic: "Automatique", Manual: "Manuelle" },
+  carrosserie: { SUV: "SUV", Sedan: "Berline", Hatchback: "Citadine", Estate: "Break", Wagon: "Break", Coupe: "Coupé", Convertible: "Cabriolet", Van: "Monospace", MPV: "Monospace", Pickup: "Pick-up" }
+};
+export const PAYS = {
+  DE: "Allemagne", AT: "Autriche", BE: "Belgique", BG: "Bulgarie", CH: "Suisse", CZ: "Tchéquie", DK: "Danemark", ES: "Espagne",
+  FI: "Finlande", FR: "France", GB: "Royaume-Uni", GR: "Grèce", HR: "Croatie", HU: "Hongrie", IE: "Irlande", IT: "Italie",
+  LT: "Lituanie", LU: "Luxembourg", LV: "Lettonie", NL: "Pays-Bas", NO: "Norvège", PL: "Pologne", PT: "Portugal", RO: "Roumanie",
+  SE: "Suède", SI: "Slovénie", SK: "Slovaquie"
+};
+export const traduire = (table, valeur) => (valeur ? TRADUCTIONS[table][valeur] ?? valeur : null);
+
 // Référence du catalogue d'une annonce OpenLane : OL- suivi du numéro d'enchère (caractères sûrs, 40 au plus).
 export function referenceImport(numero) {
   const propre = String(numero || "").replace(/[^A-Za-z0-9._-]/g, "").slice(0, 37);
@@ -80,6 +96,8 @@ export function annonceImport(brute) {
     puissance: puissance !== null && puissance >= 1 && puissance <= 2000 ? Math.round(puissance) : null,
     premiereImmatriculation: /^\d{4}-\d{2}-\d{2}$/.test(immatriculation) ? immatriculation : null,
     couleur: texte(brute.color ?? brute.colour, 60),
+    carrosserie: traduire("carrosserie", texte(brute.body_type ?? brute.size, 60)),
+    pays: PAYS[String(brute.car_country_extended ?? brute.country_code ?? "").toUpperCase()] ?? null,
     photos
   };
 }
@@ -91,8 +109,9 @@ export function versVehicule(annonce) {
   if (!reference) return { erreur: "Numéro d'annonce manquant." };
   if (!texte(annonce.marque, 80) || !texte(annonce.modele, 120)) return { erreur: "Marque et modèle obligatoires pour importer." };
   const corps = {
-    make: annonce.marque, model: annonce.modele, status: "stock", fuel: annonce.carburant ?? undefined,
-    transmission: annonce.boite ?? undefined, color: annonce.couleur ?? undefined, year: annonce.annee ?? undefined,
+    make: annonce.marque, model: annonce.modele, status: "stock", fuel: traduire("carburant", annonce.carburant) ?? undefined,
+    transmission: traduire("boite", annonce.boite) ?? undefined, color: annonce.couleur ?? undefined, year: annonce.annee ?? undefined,
+    bodyType: annonce.carrosserie ?? undefined, country: annonce.pays ?? undefined,
     mileageKm: annonce.km ?? undefined, prixEur: annonce.prixEur ?? undefined, engineCc: annonce.cylindree ?? undefined,
     powerHp: annonce.puissance ?? undefined, premiereImmatriculation: annonce.premiereImmatriculation ?? undefined,
     sourceUrl: https(annonce.lien) ?? undefined, seller: "Vendeur professionnel (OpenLane)",
@@ -184,7 +203,7 @@ export async function importerAnnonce(env, user, annonce, { ApiError, enregistre
 
 export async function routeAdminImport(request, env, url, user, deps) {
   if (url.pathname === "/api/admin/import/filtres" && request.method === "GET") {
-    return deps.json({ filtres: await lireFiltres(env), defaut: FILTRES_DEFAUT, carburants: CARBURANTS_IMPORT, boites: BOITES_IMPORT });
+    return deps.json({ filtres: await lireFiltres(env), defaut: FILTRES_DEFAUT, carburants: CARBURANTS_IMPORT, boites: BOITES_IMPORT, pays: Object.values(PAYS).sort((a, b) => a.localeCompare(b, "fr")) });
   }
   if (url.pathname === "/api/admin/import/filtres" && request.method === "PUT") {
     const { filtres, erreur } = validerFiltres((await deps.lireJson(request)).filtres);
@@ -214,5 +233,6 @@ export async function suivreImports(env, maintenant = new Date()) {
       .bind(JSON.stringify(lot), maintenant.toISOString(), row.reference).run();
     await journaliser(env, { acteur: "systeme", action: "import.openlane.termine", reference: row.reference, details: { finEnchere: lot.importSource.finEnchere } });
   }
+  if (results.length) await marquerCompteursPerimes(env);
   return results.length;
 }

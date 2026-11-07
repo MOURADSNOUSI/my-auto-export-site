@@ -15,6 +15,7 @@ import { mettreAJourTaux, routeAdminPrix } from "./prix.js";
 import { estRouteMandats, routeAdminMandats, routeMandats, vehiculeMandat } from "./mandats.js";
 import { estRouteGoogle, routeGoogle } from "./google.js";
 import { routeAdminImport, suivreImports } from "./import-openlane.js";
+import { recalculerCompteurs, routeCatalogue } from "./catalogue.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -85,6 +86,7 @@ export default {
     if (controller.cron === "30 2 * * *") {
       await expireOffers(env);
       await suivreImports(env).catch(() => console.error("suivi_imports_failed"));
+      await recalculerCompteurs(env).catch(() => console.error("compteurs_failed"));
       const regles = await policy(env);
       await purgeSeller(env, regles?.retention_days ?? (env.SELLER_RETENTION_DAYS || 180));
     } else {
@@ -194,6 +196,12 @@ async function routeApi(request, env, url, ctx) {
   if (estRouteMandats(path)) return routeMandats(request, env, url, { json, ApiError, exigerUtilisateur, lireJson, catalogueComplet });
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/account/profiles" && method === "POST") return activerProfil(request, env);
+  if ((path === "/api/catalogue/recherche" || path === "/api/catalogue/compte") && method === "GET") {
+    const carte = (lot) => ({ reference: lot.reference, titre: [lot.make, lot.model, lot.year].filter(Boolean).join(" "), url: cheminVehicule(lot),
+      annee: lot.year ?? null, km: lot.mileageKm ?? null, energie: lot.fuel ?? null, boite: lot.transmission ?? null, pays: lot.country ?? null,
+      photo: lot.photos?.[0]?.url ?? lot.photos?.[0] ?? null });
+    return routeCatalogue(request, env, url, ctx, { json, ApiError, carte });
+  }
   if (path === "/api/catalogue" && method === "GET") {
     return json((await catalogue(request, env)).map((lot) => ({ ...lot, url: cheminVehicule(lot) })));
   }
