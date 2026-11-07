@@ -274,9 +274,29 @@ class GoogleInactifTest(unittest.TestCase):
     def test_routes_fermees(self):
         with urllib.request.urlopen(self.base + "/api/auth/google/etat") as reponse:
             self.assertEqual(json.loads(reponse.read()), {"actif": False})
-        with self.assertRaises(urllib.error.HTTPError) as erreur:
-            OUVREUR.open(self.base + "/api/auth/google?retour=/vendre")
-        self.assertEqual(erreur.exception.code, 404)
+        # Lien suivi malgré tout : retour sur la page de départ avec un message, jamais vers un autre site.
+        for chemin, attendu in (("/api/auth/google?retour=/vendre", "/vendre?connexion=indisponible"),
+                                ("/api/auth/google?retour=//evil.example", "/?connexion=indisponible"),
+                                ("/api/auth/google/retour?code=x&state=y", "/?connexion=indisponible")):
+            with self.assertRaises(urllib.error.HTTPError) as erreur:
+                OUVREUR.open(self.base + chemin)
+            self.assertEqual((erreur.exception.code, erreur.exception.headers["Location"]), (303, attendu), chemin)
+        # Bouton présent mais masqué sur l'accueil, /vendre et le formulaire de mandat (bug : display:flex l'emportait).
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            navigateur = p.chromium.launch()
+            page = navigateur.new_page(viewport={"width": 390, "height": 844})
+            page.goto(self.base + "/")
+            page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
+            page.click("#account-button")
+            page.wait_for_selector("#auth-dialog[open]")
+            self.assertFalse(page.is_visible("#google-accueil"))
+            page.goto(self.base + "/vendre")
+            page.get_by_role("button", name="Me connecter").click()
+            self.assertEqual(page.locator(".bouton-google:visible").count(), 0)
+            page.goto(self.base + "/vendre?connexion=indisponible")
+            self.assertIn("pas encore disponible", page.text_content("#message"))
+            navigateur.close()
 
 
 if __name__ == "__main__":

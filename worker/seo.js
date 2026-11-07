@@ -306,23 +306,10 @@ export function carteVehicule(lot, ctx) {
     <a class="carte-fiche" href="${chemin}">${escapeHtml(t("voir_fiche"))}<span class="visually-hidden"> : ${escapeHtml(titreLot(lot))}</span></a></div></li>`;
 }
 
-// Boutons du choix du public : liens (sans JavaScript) marqués aria-pressed ; SCRIPT_CHOIX_PUBLIC pose le cookie et recharge.
-export function choixPublic(ctx, chemin) {
-  const bouton = (valeur, cle) => `<a class="choix-public-bouton" role="button" href="${escapeHtml(chemin)}?public=${valeur}" data-public="${valeur}" aria-pressed="${ctx.public === valeur}">${escapeHtml(t(cle))}</a>`;
-  return `<div class="choix-public" id="choix-public" role="group" aria-label="${escapeHtml(t("public_groupe"))}">${bouton("resident", "public_resident")}${bouton("tre", "public_tre")}</div>`;
-}
-
-export const SCRIPT_CHOIX_PUBLIC = `<script>(()=>{const choisir=(b)=>{const v=b.dataset.public;if(v!=="tre"&&v!=="resident")return;document.cookie="public="+v+"; Path=/; Max-Age=31536000; SameSite=Lax; Secure";location.reload();};
-document.addEventListener("click",(e)=>{const b=e.target.closest&&e.target.closest("[data-public]");if(!b)return;e.preventDefault();choisir(b);});
-document.addEventListener("keydown",(e)=>{if(e.key===" "&&e.target.matches&&e.target.matches("[data-public]")){e.preventDefault();choisir(e.target);}});})();</script>`;
-
-// Styles des cartes, badges, prix et choix du public, partagés par l'accueil et les pages /vehicules.
+// Styles des cartes, badges et prix, partagés par l'accueil et les pages /vehicules.
 // Propriétés logiques (inline/block) pour préparer l'arabe.
 export const CSS_VITRINE = `
 .visually-hidden{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.choix-public{display:flex;flex-wrap:wrap;gap:8px;margin-block:18px 0}
-.choix-public-bouton{display:inline-flex;align-items:center;min-block-size:44px;padding-inline:16px;border:2px solid #185740;border-radius:24px;background:#fff;color:#185740;font-weight:700;text-decoration:none}
-.choix-public-bouton[aria-pressed="true"]{background:#185740;color:#fff}
 .cartes-vehicules{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:14px;margin:0;padding:0;list-style:none}
 .carte-vehicule{display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;border:1px solid #d7ddd8;border-radius:8px;background:#fff;color:#17201d}
 .carte-photo{display:block;aspect-ratio:4/3;background:#dfe5e1}
@@ -377,12 +364,10 @@ export async function vitrineAccueil(request, env, reponse) {
       if (Object.hasOwn(fr, cle)) element.setInnerContent(t(cle));
     } })
     .on("head", { element: (element) => element.append(`<style>${CSS_VITRINE}</style><script type="application/json" id="textes">${textesNavigateur}</script>`, { html: true }) })
-    .on("#choix-public", { element: (element) => element.replace(choixPublic(ctx, "/"), { html: true }) })
     .on(".header-tools", { element: (element) => element.prepend(boutonWhatsapp(ctx), { html: true }) })
     .on("#comment-ca-marche", remplir(sections.comment))
     .on("#nos-prix", remplir(sections.prix))
-    .on("#questions", remplir(sections.questions))
-    .on("body", { element: (element) => element.append(SCRIPT_CHOIX_PUBLIC, { html: true }) });
+    .on("#questions", remplir(sections.questions));
   if (sections.temoignages) {
     rewriter = rewriter.on("#temoignages", { element: (element) => {
       element.removeAttribute("hidden");
@@ -408,6 +393,9 @@ header a{color:#fff;text-decoration:none;font-weight:700}header img{width:36px;h
 .marque{display:inline-flex;align-items:center;gap:10px}
 .menu{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:15px}.menu a{font-weight:600;padding-block:6px}
 .outils{display:flex;align-items:center;gap:8px;margin-inline-start:auto}.compte{padding-block:6px}
+.bouton-deposer{display:inline-flex;align-items:center;gap:8px;min-block-size:40px;padding-inline:14px;border-radius:20px;background:var(--accent);color:#fff;font-size:14px;white-space:nowrap}
+.bouton-deposer svg{inline-size:18px;block-size:18px;fill:none;stroke:currentColor;stroke-width:2}
+@media(max-width:680px){.bouton-deposer{padding-inline:9px}.bouton-deposer span{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
 nav.ariane{font-size:14px;color:var(--soft);margin:16px 0}nav.ariane a{color:var(--soft)}
 h1{font-size:clamp(24px,5vw,36px);line-height:1.2;margin:0 0 8px}
 .meta{color:var(--soft);margin:0 0 16px}
@@ -435,7 +423,7 @@ function entete(ctx) {
   const lien = (ancre, cle) => `<a href="${ancre === "vehicules" ? "/vehicules" : `/#${ancre}`}">${escapeHtml(t(cle))}</a>`;
   return `<header><div class="shell"><a class="marque" href="/"><img src="/logo.png" alt="Logo M&amp;Y AUTO EXPORT" width="36" height="36">M&amp;Y AUTO EXPORT</a>
     <nav class="menu" aria-label="Navigation principale">${lien("vehicules", "menu_vehicules")}${lien("comment-ca-marche", "menu_comment")}${lien("nos-prix", "menu_prix")}${lien("questions", "menu_questions")}</nav>
-    <div class="outils">${ctx ? boutonWhatsapp(ctx) : ""}<a class="compte" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a></div></div></header>`;
+    <div class="outils"><a class="bouton-deposer" href="/vendre"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg><span>${escapeHtml(t("deposer_bouton"))}</span></a>${ctx ? boutonWhatsapp(ctx) : ""}<a class="compte" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a></div></div></header>`;
 }
 
 function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [], ctx = null }) {
@@ -465,7 +453,7 @@ function gabarit({ titre, description, canonique, robots, image, contenu, script
   ${entete(ctx)}
   <main class="shell">${contenu}</main>
   <footer><div class="shell"><strong>M&amp;Y AUTO EXPORT</strong> · Véhicules européens livrés en Tunisie · <a href="/vehicules">Tous les véhicules</a> · <a href="/conditions">Conditions générales de vente</a> · <a href="mailto:contact@myautoexport.com">contact@myautoexport.com</a></div></footer>
-${scripts}${ctx ? SCRIPT_CHOIX_PUBLIC : ""}
+${scripts}
 </body>
 </html>`;
 }
@@ -595,7 +583,7 @@ async function pageVehicule(request, env, url) {
           <small>${escapeHtml(prix.label)}</small><strong>${escapeHtml(prix.value)}</strong>
           ${lot.auction?.endsAt && lot.auction.status === "live" ? `<p>Fin de la vente : <time datetime="${escapeHtml(lot.auction.endsAt)}">${escapeHtml(new Date(lot.auction.endsAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis", dateStyle: "long", timeStyle: "short" }))}</time> (heure de Tunis)</p>` : ""}
           <p class="note">${NOTE_PRIX} Ces éléments sont communiqués sur demande avant tout engagement (<a href="/conditions#prix">conditions</a>).</p>
-          <div class="estimation">${choixPublic(ctx, cheminVehicule(lot))}${estimationVehicule(lot, ctx, { email: false })}</div>
+          <div class="estimation">${estimationVehicule(lot, ctx, { email: false })}</div>
           ${proposition?`<p class="proposal-reserve">Prix de réserve : <strong>${terms?escapeHtml(money(terms.reserveMinor,terms.currency)):"À renseigner par le vendeur"}</strong></p>`:""}
           <div class="actions">
             ${mandat ? `<button class="bouton" type="button" data-mandat-ref="${escapeHtml(lot.reference)}">${escapeHtml(t("mandat_bouton"))}</button>` : proposition?`<button class="bouton" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`:enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
@@ -644,7 +632,6 @@ async function pageListe(request, env) {
     contenu: `<nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › Véhicules</nav>
       <h1>Véhicules à vendre</h1>
       <p class="meta">${lots.length} véhicule${lots.length > 1 ? "s" : ""} en ligne. Prix en TND ou EUR selon l’annonce.</p>
-      ${choixPublic(ctx, "/vehicules")}
       ${lots.length ? `<ul class="cartes-vehicules" style="margin-block-start:16px">${lots.map((lot) => carteVehicule(lot, ctx)).join("")}</ul>` : "<p>Aucun véhicule en ligne pour le moment.</p>"}
       <p class="note">${NOTE_PRIX}</p>`,
     ctx

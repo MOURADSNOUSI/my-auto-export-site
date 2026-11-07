@@ -69,7 +69,8 @@ export function verifierIdentite(info, clientId, maintenant = Date.now()) {
 // deps : fonctions du Worker (sessions, limite d'inscription par IP, mot de passe inutilisable).
 export async function routeGoogle(request, env, url, { json, ApiError, ouvrirSession, reserverInscription, motDePasseInutilisable, adresseIp }) {
   if (url.pathname === "/api/auth/google/etat" && request.method === "GET") return json({ actif: actif(env) });
-  if (!actif(env)) throw new ApiError(404, "Connexion avec Google indisponible.");
+  // Non configurée : retour sur la page de départ avec un message, plutôt qu'une réponse JSON dans le navigateur.
+  if (!actif(env)) return redirection(avecParametre(retourSur(url.searchParams.get("retour")), "connexion", "indisponible"));
 
   if (url.pathname === "/api/auth/google" && request.method === "GET") {
     const etat = base64url(crypto.getRandomValues(new Uint8Array(32)));
