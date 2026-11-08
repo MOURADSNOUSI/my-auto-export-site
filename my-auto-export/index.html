@@ -487,8 +487,8 @@
     /* Les anciens styles des liens du menu (.main-nav a) ne s'appliquent pas aux interrupteurs. */
     .site-header .main-nav .my-bascule > a { justify-content: center; border-bottom: 0; }
     .compte-creer[hidden] { display: none; }
-    /* Menu replié sous 1280 px : liens, devise, langue, favoris et compte ne tiennent plus sur une ligne. */
-    @media (max-width: 1279px) {
+    /* Menu replié sous 1366 px : liens, devise, langue, favoris et compte ne tiennent plus sur une ligne. */
+    @media (max-width: 1365px) {
       .site-header .account-chip span { display: none; }
       .menu-button { display: grid; }
       .main-nav { position: absolute; top: 100%; inset-inline: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 8px 24px 16px; background: var(--my-nuit); border-bottom: 0; box-shadow: var(--my-ombre-2); }
@@ -498,6 +498,23 @@
     }
     @media (max-width: 680px) {
       .compte-creer { display: none; }
+    }
+    /* Mêmes dimensions que l'en-tête commun des autres pages (design/composants.css, .my-entete) : largeur 1200 px,
+       hauteur 64 px, logo 40 px (34 px sous 420 px), marque et menu en 16 px. */
+    .site-header .header-inner { width: min(var(--my-largeur), 100% - 2 * var(--my-gouttiere)); min-height: 64px; gap: var(--my-esp-4); }
+    .site-header .brand { gap: var(--my-esp-2); }
+    .site-header .brand img { width: 40px; height: 40px; }
+    .site-header .brand-name { font-size: 1rem; font-weight: var(--my-graisse-titre); line-height: 1.55; }
+    .site-header .brand-name small { font-size: var(--my-taille-xs); font-weight: var(--my-graisse-forte); line-height: 1.55; }
+    .site-header .main-nav { margin-inline-start: var(--my-esp-4); }
+    .site-header .main-nav > a { font-size: 1rem; padding-inline: var(--my-esp-3); }
+    @media (max-width: 1365px) { .site-header .main-nav { margin-inline-start: 0; } .site-header .main-nav > a { padding-inline: 4px; } }
+    @media (max-width: 420px) {
+      .site-header .header-inner { gap: var(--my-esp-2); }
+      .site-header .brand { gap: var(--my-esp-1); }
+      .site-header .brand img { width: 34px; height: 34px; }
+      .site-header .brand-name { font-size: var(--my-taille-s); }
+      .site-header .brand-name small { display: none; }
     }
     #deposer-dialog .dialog-head{align-items:center}#deposer-dialog .bonjour{margin-block:18px 4px;font-size:22px;font-weight:750}#deposer-dialog .actions-deposer{display:grid;gap:10px;margin-block-start:18px}#deposer-dialog .actions-deposer button{inline-size:100%;min-block-size:48px;justify-content:center;font-size:15px}
 </style>

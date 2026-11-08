@@ -8,7 +8,7 @@ import { marketplace } from "./marketplace.js";
 import { diagnosticValid, expireOffers, policy } from "./marketplace-domain.js";
 import { marketplacePage } from "./marketplace-pages.js";
 import { estRouteMcp, routeMcp } from "./mcp.js";
-import { cheminVehicule, controleQuotidien, controlerApresPublication, estRouteSeo, page404, redirectionPublic, routeSeo, vitrineAccueil } from "./seo.js";
+import { cheminVehicule, controleQuotidien, controlerApresPublication, enteteEspaceVendeur, estRouteSeo, page404, redirectionPublic, routeSeo, vitrineAccueil } from "./seo.js";
 import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
 import { REGLAGES_INTERRUPTEURS, REGLAGES_SITE, reglageActif, ecrireInterrupteur, ecrireReglageSite, journaliser, listerReglages, listerReglagesSite, validerReglageSite } from "./reglages.js";
 import { mettreAJourTaux, routeAdminPrix } from "./prix.js";
@@ -150,8 +150,11 @@ async function servirFichier(request, env, url, alias) {
   if (["/admin", "/admin.html", "/vendre", "/vendre.html", "/admin-vendeurs", "/admin-vendeurs.html"].includes(url.pathname)) {
     const entetes = new Headers(reponse.headers);
     entetes.set("X-Robots-Tag", "noindex, nofollow");
-    return new Response(reponse.body, { status: reponse.status, headers: entetes });
+    const page = new Response(reponse.body, { status: reponse.status, headers: entetes });
+    // Espace vendeur : même en-tête que l'accueil et le catalogue.
+    return ["/vendre", "/vendre.html"].includes(url.pathname) && reponse.ok && request.method === "GET" ? enteteEspaceVendeur(request, env, page) : page;
   }
+  if (alias === "/vendre" && reponse.ok && request.method === "GET") return enteteEspaceVendeur(request, env, reponse);
   if (!["/", "/index.html"].includes(url.pathname) || !reponse.ok || request.method !== "GET") return reponse;
   // Mode « propositions seules » (LEGACY_AUCTIONS_ENABLED à "false") : l'accueil masque enchères et achat immédiat.
   // Le mode de production est configuré dans wrangler.jsonc.

@@ -329,6 +329,9 @@ export function carteVehicule(lot, ctx) {
 
 // Styles des cartes, badges et prix, partagés par l'accueil et les pages /vehicules.
 // Propriétés logiques (inline/block) pour préparer l'arabe.
+const CSS_WHATSAPP = `.bouton-whatsapp{display:inline-flex;align-items:center;min-block-size:40px;padding-inline:12px;border-radius:20px;background:#166b3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap}
+`;
+
 export const CSS_VITRINE = `
 .visually-hidden{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .cartes-vehicules{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:14px;margin:0;padding:0;list-style:none}
@@ -352,8 +355,7 @@ export const CSS_VITRINE = `
 .prix-detail li span:last-child{white-space:nowrap}.prix-total{font-weight:700}
 .bouton-contact{display:inline-flex;align-items:center;justify-content:center;min-block-size:44px;padding-inline:16px;border-radius:var(--my-rayon-pilule, 6px);background:var(--my-nuit, #185740);color:#fff;font-weight:700;text-decoration:none;justify-self:start}
 .carte-fiche{margin-block-start:auto;color:#185740;font-weight:700}
-.bouton-whatsapp{display:inline-flex;align-items:center;min-block-size:40px;padding-inline:12px;border-radius:20px;background:#166b3e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap}
-.etapes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin:0;padding:0;list-style:none}
+${CSS_WHATSAPP}.etapes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin:0;padding:0;list-style:none}
 .etapes li,.lignes-prix,.temoignages li,.faq{padding:14px 16px;border:1px solid #d7ddd8;border-radius:8px;background:#fff}
 .etapes h3{margin:0 0 6px;font-size:16px}.etapes p{margin:0}
 .lignes-prix{margin:0;padding-inline-start:34px}
@@ -415,16 +417,21 @@ export async function vitrineAccueil(request, env, reponse) {
 
 // --- Gabarit commun ---
 
+// Règles de l'en-tête commun (pages du Worker et /vendre). Menu replié sous 1366 px, comme sur l'accueil
+// (my-auto-export/index.html) : l'en-tête garde la même forme d'une page à l'autre.
+export const CSS_ENTETE = `.my-entete{font-family:var(--my-police)}
+.my-entete .my-nav .my-reglages-entete{margin-inline-start:auto}.my-entete .my-nav{flex:1}
+@media(max-width:1365px){.my-entete .my-nav{display:none}.my-entete .my-burger{display:inline-flex}}
+@media(max-width:420px){.compte-entete{padding-inline:var(--my-esp-3)}}
+`;
+
 const STYLE = `
 :root{--ink:#17201d;--soft:#44514c;--paper:#f3f5f3;--surface:#fff;--line:#d7ddd8;--accent:#0f6b4f}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;font:16px/1.55 var(--my-police);color:var(--ink);background:var(--paper)}
 a{color:var(--accent)}img{max-width:100%;display:block}
 .shell{width:min(1100px,100% - 32px);margin:0 auto}
-.my-entete .my-nav .my-reglages-entete{margin-inline-start:auto}.my-entete .my-nav{flex:1}
-@media(max-width:1100px){.my-entete .my-nav{display:none}.my-entete .my-burger{display:inline-flex}}
-@media(max-width:420px){.compte-entete{padding-inline:var(--my-esp-3)}}
-nav.ariane{font-size:14px;color:var(--soft);margin:16px 0}nav.ariane a{color:var(--soft)}
+${CSS_ENTETE}nav.ariane{font-size:14px;color:var(--soft);margin:16px 0}nav.ariane a{color:var(--soft)}
 h1{font-size:clamp(24px,5vw,36px);line-height:1.2;margin:0 0 8px}
 .meta{color:var(--soft);margin:0 0 16px}
 .fiche{display:grid;gap:24px}@media(min-width:860px){.fiche{grid-template-columns:3fr 2fr}}
@@ -458,7 +465,7 @@ export function reglagesEntete(ctx, chemin) {
 // En-tête commun des pages rendues par le Worker (design system, design/composants.css) : menu par façon d'acheter,
 // devise et langue, compte, WhatsApp si un numéro est saisi (ctx absent : page d'erreur). Menu mobile en <details> :
 // il s'ouvre sans JavaScript.
-function entete(ctx, chemin) {
+export function entete(ctx, chemin) {
   const liens = [["/vehicules", "menu_vehicules"], ["/#comment-ca-marche", "menu_mandat"], ["/vendre", "menu_vendre"], ["/#contact", "menu_contact"]]
     .map(([href, cle]) => `<a href="${href}"${href === chemin ? ' aria-current="page"' : ""}>${escapeHtml(t(cle))}</a>`).join("");
   return `<header class="my-entete my-sur-nuit"><div class="my-conteneur my-entete-interieur">
@@ -467,6 +474,16 @@ function entete(ctx, chemin) {
     <div class="my-entete-actions">${ctx ? boutonWhatsapp(ctx) : ""}<a class="my-bouton my-bouton--action my-bouton--petit compte-entete" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a>
       <details class="my-burger menu-mobile"><summary class="my-bouton my-bouton--contour my-bouton--petit" aria-label="${escapeHtml(t("menu_ouvrir"))}">☰</summary>
         <nav class="menu-mobile-panneau" aria-label="Navigation principale (mobile)">${liens}${reglagesEntete(ctx, chemin)}</nav></details></div></div></header>`;
+}
+
+// Espace vendeur (/vendre, my-auto-export/vendre.html, et /mes-vehicules qui le sert) : en-tête commun inséré avant
+// l'ancien bandeau, gardé comme barre de l'espace vendeur (déconnexion pilotée par vendeur.js).
+export async function enteteEspaceVendeur(request, env, reponse) {
+  const ctx = await contexteVitrine(request, env);
+  return new HTMLRewriter()
+    .on("head", { element: (element) => element.append(`<link rel="preload" href="/polices/noto-sans-latin.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/design/tokens.css"><link rel="stylesheet" href="/design/composants.css"><style>${CSS_ENTETE}${CSS_WHATSAPP}</style>`, { html: true }) })
+    .on("body > header", { element: (element) => element.before(entete(ctx, "/vendre"), { html: true }) })
+    .transform(reponse);
 }
 
 function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [], ctx = null, typeOg = "website" }) {
