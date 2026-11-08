@@ -18,8 +18,11 @@ export const fr = {
   whatsapp_aria: "Nous écrire sur WhatsApp (nouvel onglet)",
 
   // Hero
-  hero_titre: "Votre voiture d'Europe, livrée en Tunisie.",
-  hero_sous_titre: "Prix estimé, détail complet.",
+  hero_titre: "Découvrez les annonces auto faites pour vous.",
+  // {n} : nombre d'annonces en ligne arrondi vers le bas (worker/seo.js, nombreAnnoncesAccueil) ; moins de 10 annonces :
+  // hero_sous_titre_peu.
+  hero_sous_titre: "Plus de {n} voitures vérifiées et inspectées.",
+  hero_sous_titre_peu: "Des voitures vérifiées et inspectées.",
 
   // Catalogue (/vehicules)
   catalogue_titre: "Véhicules disponibles",

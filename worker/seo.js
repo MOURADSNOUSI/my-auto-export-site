@@ -374,17 +374,37 @@ function sectionsAccueil(ctx) {
   };
 }
 
+// Sous-titre de l'accueil : « Plus de N voitures… », N arrondi vers le bas à la dizaine, la centaine ou au millier et
+// toujours inférieur au nombre d'annonces en ligne (« plus de » reste vrai). Même total que /vehicules sans filtre (cache
+// 10 minutes). null sous 10 annonces ou si le comptage échoue : texte sans nombre.
+export function nombreAnnoncesAccueil(n) {
+  if (!Number.isFinite(n) || n < 11) return null;
+  const pas = n <= 100 ? 10 : n <= 1000 ? 100 : 1000;
+  return Math.floor((n - 1) / pas) * pas;
+}
+
+async function sousTitreAccueil(env) {
+  let n = null;
+  try {
+    n = nombreAnnoncesAccueil(await compter(env, { tri: "recent" }));
+  } catch {
+    console.error("accueil_compte_failed");
+  }
+  return n === null ? t("hero_sous_titre_peu") : t("hero_sous_titre", { n: new Intl.NumberFormat("fr-FR").format(n) });
+}
+
 // Accueil : textes (data-texte), choix du public, WhatsApp et sections insérés dans index.html. Les cartes des véhicules
 // lisibles sans JavaScript sont sur /vehicules, lié depuis le menu.
 export async function vitrineAccueil(request, env, reponse) {
-  const ctx = await contexteVitrine(request, env);
+  const [ctx, sousTitre] = await Promise.all([contexteVitrine(request, env), sousTitreAccueil(env)]);
   const sections = sectionsAccueil(ctx);
   const textesNavigateur = JSON.stringify(Object.fromEntries(TEXTES_NAVIGATEUR.map((cle) => [cle, t(cle)]))).replace(/</g, "\\u003c");
   const remplir = (html) => ({ element: (element) => element.setInnerContent(html, { html: true }) });
   let rewriter = new HTMLRewriter()
     .on("[data-texte]", { element: (element) => {
       const cle = element.getAttribute("data-texte");
-      if (Object.hasOwn(fr, cle)) element.setInnerContent(t(cle));
+      if (cle === "hero_sous_titre") element.setInnerContent(sousTitre);
+      else if (Object.hasOwn(fr, cle)) element.setInnerContent(t(cle));
     } })
     // Libellés d'accessibilité et infobulles (data-texte-aria, data-texte-title), devise active de l'en-tête.
     .on("[data-texte-aria]", { element: (element) => {
