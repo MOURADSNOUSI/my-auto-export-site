@@ -1,4 +1,4 @@
-// Formulaire « Je veux ce véhicule » (achat sur mandat, chantier 4). Les textes viennent du serveur
+// Formulaire « Je confie le mandat » (achat sur mandat, chantier 4). Les textes viennent du serveur
 // (/api/mandats/formulaire/<réf.>, fichier de traductions) ; les textes légaux sont insérés comme texte brut.
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 async function request(path, method = "GET", body) {

@@ -1,7 +1,7 @@
 """Intégration de la marketplace avec la configuration de production (master).
 
 - la configuration livrée désactive les enchères et active les propositions libres ;
-- /vehicules/<slug> reste la page SEO, /vehicules/<référence> redirige en 301 vers elle ;
+- /vehicule/<slug> reste la page SEO, /vehicule/<référence> redirige en 301 vers elle ;
 - les routes de proposition /api/marketplace/… répondent ;
 - les pages de la marketplace portent les en-têtes de sécurité.
 
@@ -160,15 +160,15 @@ class IntegrationMarketplaceTest(unittest.TestCase):
         self.assertIn('data-proposal-only="true"', html)
 
     def test_page_seo_et_reference_nue(self):
-        canonique = "/vehicules/peugeot-208-2022-int-seo"
+        canonique = "/vehicule/peugeot-208-2022-int-seo"
         statut, html, _ = self.requete(canonique, suivre=False)
         self.assertEqual(statut, 200)
         self.assertIn(f'<link rel="canonical" href="https://www.myautoexport.com{canonique}">', html)
         self.assertIn('data-proposal-ref="INT-SEO"', html)
-        for nue in ("/vehicules/INT-SEO", "/vehicules/int-seo"):
+        for nue in ("/vehicule/INT-SEO", "/vehicule/int-seo"):
             statut, _, entetes = self.requete(nue, suivre=False)
             self.assertEqual((statut, entetes.get("Location")), (301, self.base + canonique), nue)
-        self.assertEqual(self.requete("/vehicules/inconnu-0000", suivre=False)[0], 404)
+        self.assertEqual(self.requete("/vehicule/inconnu-0000", suivre=False)[0], 404)
 
     def test_route_de_proposition(self):
         statut, corps, _ = self.requete("/api/marketplace/proposal-vehicles/INT-SEO")

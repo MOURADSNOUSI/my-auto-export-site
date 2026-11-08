@@ -395,7 +395,7 @@ class AccueilTest(unittest.TestCase):
 
     def test_fiche_garde_sa_structure_et_ses_codes(self):
         chemin = self.fiches["ACC-JEUNE"]
-        self.assertEqual(chemin, f"/vehicules/peugeot-208-{ANNEE - 1}-acc-jeune")
+        self.assertEqual(chemin, f"/vehicule/peugeot-208-{ANNEE - 1}-acc-jeune")
         statut, html, _ = self.page(chemin)
         self.assertEqual(statut, 200)
         self.assertIn(f'<link rel="canonical" href="https://www.myautoexport.com{chemin}">', html)
@@ -404,9 +404,9 @@ class AccueilTest(unittest.TestCase):
         types = [json.loads(b)["@type"] for b in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)]
         self.assertEqual(types, ["Car", "BreadcrumbList"])
         self.assertIn("Proposer une offre", html)
-        statut, _, entetes = self.page("/vehicules/ancien-titre-acc-jeune")
+        statut, _, entetes = self.page("/vehicule/ancien-titre-acc-jeune")
         self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}{chemin}"))
-        statut, html, _ = self.page(f"/vehicules/seat-ibiza-{ANNEE - 2}-acc-retire")
+        statut, html, _ = self.page(f"/vehicule/seat-ibiza-{ANNEE - 2}-acc-retire")
         self.assertEqual(statut, 410)
         self.assertIn('<meta name="robots" content="noindex">', html)
 
@@ -539,6 +539,36 @@ class AccueilTest(unittest.TestCase):
         largeurs = mobile.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
         self.assertLessEqual(largeurs[0], largeurs[1])
         self.assertEqual(erreurs, [])
+
+    def test_fiche_boite_prix_action_et_donnees(self):
+        fiche = self.fiches["ACC-JEUNE"]
+        self.assertTrue(fiche.startswith("/vehicule/"))
+        # Prix masqués : les quatre postes restent visibles, « sur devis ».
+        _, html, _ = self.page(fiche, "resident")
+        for libelle in ("Prix du véhicule en Europe", "Frais de mandat M&amp;Y", "Transport vers la Tunisie", "Dédouanement estimé", "Total estimé rendu Tunisie"):
+            self.assertIn(libelle, html, libelle)
+        self.assertGreaterEqual(html.count("<dd>Sur devis</dd>"), 4)
+        # Un seul bouton d'action par fiche.
+        self.assertEqual(html.count("my-bouton--action my-bouton--large"), 1)
+        self.assertIn('<meta property="og:type" content="product">', html)
+        donnees = json.loads(re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)[0])
+        self.assertIn("Car", donnees["@type"] if isinstance(donnees["@type"], list) else [donnees["@type"]])
+        # Prix publics (TRE) : postes chiffrés dont la somme fait le total.
+        self.regler("prix_publics_actifs", True)
+        self.addCleanup(self.regler, "prix_publics_actifs", False)
+        _, html, _ = self.page(fiche, "tre")
+        boite = html[html.index('class="prix-postes"'):html.index("</dl>", html.index('class="prix-postes"'))]
+        montants = [int(re.sub(r"\D", "", m)) for m in re.findall(r"<dd>([\d\s\u202f\xa0]+)\xa0€</dd>", boite)]
+        self.assertEqual(len(montants), 4, boite)
+        self.assertEqual(sum(montants[:3]), montants[3], "véhicule + mandat + transport = total")
+        self.assertEqual(montants[3], self.estimations["ACC-JEUNE"]["prixTreEur"])
+        self.assertIn("Dédouanement FCR estimé", boite)
+        # Galerie et fiche sans débordement sur téléphone.
+        contexte = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.addCleanup(contexte.close)
+        page = contexte.new_page()
+        page.goto(self.base + fiche)
+        self.assertLessEqual(page.evaluate("document.documentElement.scrollWidth"), 390)
 
     def test_capture_bureau(self):
         context = self.browser.new_context(viewport={"width": 1440, "height": 900})

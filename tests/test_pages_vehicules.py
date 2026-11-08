@@ -161,17 +161,17 @@ class PagesVehiculesTest(unittest.TestCase):
     # --- Pages véhicules ---
 
     def test_adresse_lisible_et_permanente(self):
-        self.assertEqual(self.chemin("SEO-STOCK"), "/vehicules/peugeot-3008-2023-seo-stock")
+        self.assertEqual(self.chemin("SEO-STOCK"), "/vehicule/peugeot-3008-2023-seo-stock")
 
     def test_page_vehicule_indexable(self):
-        statut, html, _ = self.page("/vehicules/peugeot-3008-2023-seo-stock")
+        statut, html, _ = self.page("/vehicule/peugeot-3008-2023-seo-stock")
         self.assertEqual(statut, 200)
-        self.assertIn(f'<link rel="canonical" href="{DOMAINE}/vehicules/peugeot-3008-2023-seo-stock">', html)
+        self.assertIn(f'<link rel="canonical" href="{DOMAINE}/vehicule/peugeot-3008-2023-seo-stock">', html)
         self.assertNotIn('name="robots"', html)
         self.assertIn("<title>Peugeot 3008 GT Hybrid 2023 · 42 000 km · Réf. SEO-STOCK | M&amp;Y AUTO EXPORT</title>", html.replace(" ", " "))
         self.assertEqual(len(re.findall(r"<h1[ >]", html)), 1)
         # Caractéristiques dans le HTML servi, sans JavaScript.
-        for texte in ("<dt>Kilométrage</dt>", "<dd>Automatique</dd>", "<dd>France</dd>", "Prix indicatif export"):
+        for texte in ("<dt>Kilométrage</dt>", "<dd>Automatique</dd>", "<dd>France</dd>", "Estimation indicative : aucun engagement"):
             self.assertIn(texte, html)
         vehicule, ariane = self.json_ld(html)
         self.assertEqual(vehicule["@type"], ["Product", "Car"])
@@ -182,10 +182,10 @@ class PagesVehiculesTest(unittest.TestCase):
         self.assertEqual((vehicule["offers"]["price"], vehicule["offers"]["priceCurrency"]), (98000, "TND"))
         self.assertIn("ne sont pas compris", vehicule["offers"]["description"])
         self.assertEqual(ariane["@type"], "BreadcrumbList")
-        self.assertEqual(ariane["itemListElement"][-1]["item"], f"{DOMAINE}/vehicules/peugeot-3008-2023-seo-stock")
+        self.assertEqual(ariane["itemListElement"][-1]["item"], f"{DOMAINE}/vehicule/peugeot-3008-2023-seo-stock")
 
     def test_images_optimisees(self):
-        _, html, _ = self.page("/vehicules/peugeot-3008-2023-seo-stock")
+        _, html, _ = self.page("/vehicule/peugeot-3008-2023-seo-stock")
         self.assertIn('<source srcset="/photos/web/MY-0001-1.webp" type="image/webp">', html)
         image = re.search(r'<img src="/photos/MY-0001-1.jpg"[^>]*>', html).group(0)
         self.assertIn('alt="Peugeot 3008 GT Hybrid — photo 1 sur 1"', image)
@@ -203,25 +203,29 @@ class PagesVehiculesTest(unittest.TestCase):
         self.assertIn('href="/?lot=SEO-LIVE"', html)
 
     def test_vente_terminee_hors_index(self):
-        statut, html, _ = self.page("/vehicules/volvo-xc60-2020-seo-fin")
+        statut, html, _ = self.page("/vehicule/volvo-xc60-2020-seo-fin")
         self.assertEqual(statut, 200)
         self.assertIn('<meta name="robots" content="noindex">', html)
         self.assertIn("Vente terminée", html)
         self.assertNotIn('href="/?lot=SEO-FIN"', html)
 
     def test_vehicule_retire_repond_410(self):
-        statut, html, _ = self.page("/vehicules/fiat-500-2019-seo-retire")
+        statut, html, _ = self.page("/vehicule/fiat-500-2019-seo-retire")
         self.assertEqual(statut, 410)
         self.assertIn('<meta name="robots" content="noindex">', html)
 
     def test_redirections_et_404(self):
-        statut, _, entetes = self.page("/vehicules/ancien-titre-seo-stock")
-        self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicules/peugeot-3008-2023-seo-stock"))
-        statut, _, entetes = self.page("/vehicules/peugeot-3008-2023-seo-stock/")
-        self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicules/peugeot-3008-2023-seo-stock"))
-        statut, _, entetes = self.page("/vehicules/")
-        self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicules"))
-        for chemin in ("/vehicules/inconnu-0000", "/page-inexistante"):
+        statut, _, entetes = self.page("/vehicule/ancien-titre-seo-stock")
+        self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicule/peugeot-3008-2023-seo-stock"))
+        statut, _, entetes = self.page("/vehicule/peugeot-3008-2023-seo-stock/")
+        self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicule/peugeot-3008-2023-seo-stock"))
+        for chemin in ("/vehicule/", "/vehicule"):
+            statut, _, entetes = self.page(chemin)
+            self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicules"), chemin)
+        # Ancien préfixe des fiches (avant la refonte) : redirection permanente vers le nouveau.
+        statut, _, entetes = self.page("/vehicules/peugeot-3008-2023-seo-stock?x=1")
+        self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicule/peugeot-3008-2023-seo-stock?x=1"))
+        for chemin in ("/vehicule/inconnu-0000", "/page-inexistante"):
             statut, html, _ = self.page(chemin)
             self.assertEqual(statut, 404, chemin)
             self.assertIn('<meta name="robots" content="noindex">', html)
@@ -231,10 +235,10 @@ class PagesVehiculesTest(unittest.TestCase):
         statut, _, _ = self.requete("/api/admin/vehicles/SEO-MODIF", modifie, "PUT", self.cookie)
         self.assertEqual(statut, 200)
         adresses = [loc for loc, _ in self.sitemap()]
-        self.assertIn(f"{DOMAINE}/vehicules/renault-clio-2021-seo-modif", adresses)
-        self.assertNotIn(f"{DOMAINE}/vehicules/renault-clio-2022-seo-modif", adresses)
-        statut, _, entetes = self.page("/vehicules/renault-clio-2022-seo-modif")
-        self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicules/renault-clio-2021-seo-modif"))
+        self.assertIn(f"{DOMAINE}/vehicule/renault-clio-2021-seo-modif", adresses)
+        self.assertNotIn(f"{DOMAINE}/vehicule/renault-clio-2022-seo-modif", adresses)
+        statut, _, entetes = self.page("/vehicule/renault-clio-2022-seo-modif")
+        self.assertEqual((statut, entetes.get("Location")), (301, f"{self.base}/vehicule/renault-clio-2021-seo-modif"))
 
     # --- Sitemap, accueil, liste ---
 
@@ -244,13 +248,13 @@ class PagesVehiculesTest(unittest.TestCase):
         self.assertEqual(len(adresses), len(set(adresses)))
         for page in ("/", "/vehicules", "/conditions"):
             self.assertIn(DOMAINE + page, adresses)
-        self.assertIn(f"{DOMAINE}/vehicules/peugeot-3008-2023-seo-stock", adresses)
-        self.assertIn(f"{DOMAINE}/vehicules/audi-q5-2021-seo-live", adresses)
+        self.assertIn(f"{DOMAINE}/vehicule/peugeot-3008-2023-seo-stock", adresses)
+        self.assertIn(f"{DOMAINE}/vehicule/audi-q5-2021-seo-live", adresses)
         for exclue in ("volvo-xc60-2020-seo-fin", "fiat-500-2019-seo-retire"):
-            self.assertNotIn(f"{DOMAINE}/vehicules/{exclue}", adresses)
+            self.assertNotIn(f"{DOMAINE}/vehicule/{exclue}", adresses)
         self.assertNotIn(f"{DOMAINE}/importer-un-vehicule-en-tunisie", adresses, "brouillon non validé")
         for loc, lastmod in entrees:
-            if "/vehicules/" in loc:
+            if "/vehicule/" in loc:
                 self.assertRegex(lastmod or "", r"^\d{4}-\d{2}-\d{2}$", loc)
 
     def test_controle_seo_du_site_local(self):
@@ -265,7 +269,7 @@ class PagesVehiculesTest(unittest.TestCase):
         self.assertNotIn('id="tous-vehicules"', html)
         self.assertIn('href="/vehicules"', html)
         statut, html, _ = self.page("/vehicules")
-        self.assertIn('href="/vehicules/peugeot-3008-2023-seo-stock"', html)
+        self.assertIn('href="/vehicule/peugeot-3008-2023-seo-stock"', html)
         self.assertNotIn("seo-fin", html)
         self.assertNotIn("seo-retire", html)
 
@@ -275,7 +279,7 @@ class PagesVehiculesTest(unittest.TestCase):
         self.assertIn(f'<link rel="canonical" href="{DOMAINE}/vehicules">', html)
         liste = self.json_ld(html)[0]
         self.assertEqual(liste["@type"], "ItemList")
-        self.assertIn(f"{DOMAINE}/vehicules/peugeot-3008-2023-seo-stock", [item["url"] for item in liste["itemListElement"]])
+        self.assertIn(f"{DOMAINE}/vehicule/peugeot-3008-2023-seo-stock", [item["url"] for item in liste["itemListElement"]])
 
     def test_administration_non_indexee(self):
         for chemin in ("/admin", "/admin.html"):
@@ -298,20 +302,20 @@ class PagesVehiculesTest(unittest.TestCase):
         page.goto(self.base + "/?lot=SEO-STOCK")
         page.wait_for_selector("#lot-dialog[open]")
         self.assertIn("Peugeot 3008 GT Hybrid", page.inner_text("#lot-dialog-title"))
-        self.assertEqual(page.get_attribute(".lot-card .lot-title a[href='/vehicules/peugeot-3008-2023-seo-stock']", "href"),
-                         "/vehicules/peugeot-3008-2023-seo-stock")
+        self.assertEqual(page.get_attribute(".lot-card .lot-title a[href='/vehicule/peugeot-3008-2023-seo-stock']", "href"),
+                         "/vehicule/peugeot-3008-2023-seo-stock")
 
     def test_affichage_mobile_sans_defilement_horizontal(self):
         context = self.browser.new_context(viewport={"width": 360, "height": 740}, device_scale_factor=2, is_mobile=True, has_touch=True)
         self.addCleanup(context.close)
         page = context.new_page()
-        for chemin in ("/vehicules/peugeot-3008-2023-seo-stock", "/vehicules", "/importer-un-vehicule-en-tunisie", "/page-inexistante"):
+        for chemin in ("/vehicule/peugeot-3008-2023-seo-stock", "/vehicules", "/importer-un-vehicule-en-tunisie", "/page-inexistante"):
             page.goto(self.base + chemin)
             largeurs = page.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
             self.assertLessEqual(largeurs[0], largeurs[1], chemin)
             taille = page.evaluate("parseFloat(getComputedStyle(document.body).fontSize)")
             self.assertGreaterEqual(taille, 16, chemin)
-        page.goto(self.base + "/vehicules/peugeot-3008-2023-seo-stock")
+        page.goto(self.base + "/vehicule/peugeot-3008-2023-seo-stock")
         for hauteur in page.eval_on_selector_all(".bouton", "els => els.map((el) => el.getBoundingClientRect().height)"):
             self.assertGreaterEqual(hauteur, 44, "zone tactile")
 

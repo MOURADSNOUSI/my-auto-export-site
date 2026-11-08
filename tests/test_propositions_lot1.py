@@ -118,7 +118,7 @@ class Lot1PropositionsTest(fixtures.SellerFixture):
                 ref,_=self.vehicle()
                 with self.subTest(width=width),browser.new_context(viewport={'width':width,'height':height}) as context:
                     context.add_cookies([{'name':'my_session','value':self.tokens['other'],'url':self.base}]);page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-                    page.goto(self.base+'/vehicules/'+ref);page.get_by_role('button',name='Proposer une offre',exact=True).click();popup=page.locator('#proposal-dialog');expect(popup).to_contain_text(ref);expect(popup).to_contain_text('Prix de réserve')
+                    page.goto(self.base+'/vehicule/'+ref);page.get_by_role('button',name='Proposer une offre',exact=True).click();popup=page.locator('#proposal-dialog');expect(popup).to_contain_text(ref);expect(popup).to_contain_text('Prix de réserve')
                     popup.locator('[name=amount]').fill('49999.999');popup.locator('[name=intention]').check();popup.get_by_role('button',name='Envoyer ma proposition').click();expect(popup.locator('.proposal-error')).to_have_text(ERROR)
                     self.assertLessEqual(popup.bounding_box()['width'],width-16);self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'),width)
                     popup.locator('[name=amount]').fill('50000.000');popup.locator('[name=message]').fill('Visite possible samedi.');popup.get_by_role('button',name='Envoyer ma proposition').click();expect(popup).to_contain_text('Votre proposition a été envoyée')
@@ -156,7 +156,7 @@ class Lot1PropositionsTest(fixtures.SellerFixture):
         ref,_=self.vehicle(reserve=None);email=uuid.uuid4().hex+'@example.test';password='LocalFormTest42!'
         self.assertEqual(self.call('POST','/api/register',{'name':'Test saisie','email':email,'phone':'12345678','password':password},who=None)[0],201)
         with sync_playwright() as pw,pw.chromium.launch(headless=True) as browser:
-            page=browser.new_page();page.goto(self.base+'/vehicules/'+ref);page.get_by_role('button',name='Proposer une offre',exact=True).click();popup=page.locator('#proposal-dialog')
+            page=browser.new_page();page.goto(self.base+'/vehicule/'+ref);page.get_by_role('button',name='Proposer une offre',exact=True).click();popup=page.locator('#proposal-dialog')
             popup.locator('[name=amount]').fill('52000.125');popup.locator('[name=message]').fill('Je souhaite des précisions.')
             login=popup.locator('#proposal-login');login.locator('[name=email]').fill(email);login.locator('[name=password]').fill(password);login.get_by_role('button',name='Se connecter',exact=True).click()
             expect(popup.locator('#proposal-auth')).to_be_hidden()

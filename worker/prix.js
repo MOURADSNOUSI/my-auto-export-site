@@ -103,6 +103,8 @@ export function calculerPrix(vehicule, parametres) {
   const v = parametres.valeurs || {};
   const sortie = {
     prixResidentTnd: null, prixTreEur: null, dedouanementFcrEstimeTnd: null, regimeResident: null,
+    // Boîte de prix de la fiche : quatre postes dont la somme est le total (véhicule, frais de mandat, transport, dédouanement).
+    postesResident: null, postesTre: null,
     motifNonEligibleResident: null, motifNonEligibleFcr: null, detail: [],
     taux: { valeur: null, date: null, source: null, manuel: false }, avertissements: []
   };
@@ -175,6 +177,12 @@ export function calculerPrix(vehicule, parametres) {
       ligne(`Résident : immatriculation${grille.reduction_immatriculation_pct ? ` (-${grille.reduction_immatriculation_pct} %)` : ""}`, immat, "TND");
       ligne(`Résident : commission (${commissionPct} % du prix d'achat + ${commissionFixe} TND)`, commission, "TND");
       sortie.prixResidentTnd = valeurTnd + dd + dc + tva + redevanceResident + transitaire + port + immat + commission;
+      const vehiculeTnd = Math.round(prixEur * taux.valeur);
+      sortie.postesResident = {
+        vehicule: vehiculeTnd, mandat: commission,
+        transport: valeurTnd - vehiculeTnd, // transport et assurance compris dans la valeur en douane (CAF)
+        dedouanement: dd + dc + tva + redevanceResident + transitaire + port + immat
+      };
     }
   }
 
@@ -184,6 +192,7 @@ export function calculerPrix(vehicule, parametres) {
   ligne("TRE : transport", Math.round(transportEur), "EUR");
   ligne(`TRE : commission (${commissionPct} % du prix d'achat + ${commissionFixe} TND convertis)`, commissionEur, "EUR");
   sortie.prixTreEur = Math.round(prixEur) + Math.round(transportEur) + commissionEur;
+  sortie.postesTre = { vehicule: Math.round(prixEur), mandat: commissionEur, transport: Math.round(transportEur) };
 
   sortie.motifNonEligibleFcr = motifNonEligible(parametres.eligibilite?.fcr, contexte);
   if (!sortie.motifNonEligibleFcr) {

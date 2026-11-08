@@ -312,3 +312,29 @@ describe("mettreAJourTaux", () => {
     expect(await mettreAJourTaux(env())).toEqual({ ok: true, source: "ExchangeRate-API", valeur: 3.39 });
   });
 });
+
+describe("postes de la boîte de prix", () => {
+  it("additionnent exactement le total, côté résident comme côté TRE", () => {
+    for (const vehicule of [
+      { prixEur: 15000, year: new Date().getUTCFullYear() - 1, engineCc: 1200, fuel: "Essence" },
+      { prixEur: 9800, year: new Date().getUTCFullYear() - 3, engineCc: 1900, fuel: "Diesel", transportEur: 900 },
+      { prixEur: 22000, year: new Date().getUTCFullYear() - 2, engineCc: 0, fuel: "Électrique" }
+    ]) {
+      const r = calculerPrix(vehicule, parametres());
+      if (r.postesResident) {
+        const { vehicule: v, mandat, transport, dedouanement } = r.postesResident;
+        expect(v + mandat + transport + dedouanement, JSON.stringify(vehicule)).toBe(r.prixResidentTnd);
+        expect(Math.min(v, mandat, transport, dedouanement)).toBeGreaterThanOrEqual(0);
+      }
+      const { vehicule: v, mandat, transport } = r.postesTre;
+      expect(v + mandat + transport).toBe(r.prixTreEur);
+      expect(v).toBe(Math.round(vehicule.prixEur));
+    }
+  });
+
+  it("reste vide sans prix d'achat", () => {
+    const r = calculerPrix({ year: 2024, engineCc: 1200, fuel: "Essence" }, parametres());
+    expect([r.postesResident, r.postesTre]).toEqual([null, null]);
+  });
+});
+

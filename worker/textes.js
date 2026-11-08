@@ -81,6 +81,19 @@ export const fr = {
 
   // Mentions de prix
   prix_sur_demande: "Estimation sur demande",
+  prix_sur_devis: "Sur devis",
+  prix_note_fiche: "Estimation indicative : aucun engagement avant votre mandat écrit et le devis définitif.",
+  prix_conditions: "Conditions",
+  prix_boite_resident: "Prix estimé rendu Tunisie",
+  prix_boite_tre: "Prix estimé pour un Tunisien de l'étranger",
+  prix_poste_vehicule: "Prix du véhicule en Europe",
+  prix_poste_mandat: "Frais de mandat M&Y",
+  prix_poste_transport: "Transport vers la Tunisie",
+  prix_poste_dedouanement: "Dédouanement estimé",
+  prix_poste_fcr: "Dédouanement FCR estimé, à régler en Tunisie",
+  prix_total_resident: "Total estimé rendu Tunisie",
+  prix_total_tre: "Total estimé (hors dédouanement)",
+  prix_masque_explication: "Les montants s'afficheront dès que nos taux auront été validés par notre transitaire. Demandez-nous l'estimation détaillée de ce véhicule.",
   prix_resident_devis: "Prix résident sur devis",
   prix_resident_explication: "L'importation par un résident dépend d'un régime en attente de textes d'application. Contactez-nous pour un devis.",
   prix_reserve_tre: "Réservé aux Tunisiens résidant à l'étranger",
@@ -118,7 +131,7 @@ export const fr = {
   temoignages_titre: "Ils ont reçu leur voiture",
 
   // Demande d'achat sur mandat (chantier 4)
-  mandat_bouton: "Je veux ce véhicule",
+  mandat_bouton: "Je confie le mandat",
   mandat_titre: "Demande d'achat sur mandat",
   mandat_intro: "Vous fixez un prix maximum. Nous achetons le véhicule pour votre compte s'il est obtenu à ce prix, puis organisons le transport et le dédouanement.",
   mandat_residence: "Où habitez-vous ?",

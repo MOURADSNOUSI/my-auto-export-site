@@ -160,7 +160,7 @@ class MandatsTest(unittest.TestCase):
     def test_mandats_ouverts_remplacent_la_proposition(self):
         html = self.fiche("MDT-JEUNE")
         self.assertIn('data-mandat-ref="MDT-JEUNE"', html)
-        self.assertIn("Je veux ce véhicule", html)
+        self.assertIn("Je confie le mandat", html)
         self.assertNotIn('data-proposal-ref="MDT-JEUNE"', html)
         self.assertTrue(next(l for l in self.api("/api/catalogue")[1] if l["reference"] == "MDT-JEUNE")["mandat"])
         statut, data, _ = self.api("/api/mandats/formulaire/MDT-JEUNE")
@@ -168,7 +168,7 @@ class MandatsTest(unittest.TestCase):
         self.assertEqual(data["vehicule"], {"reference": "MDT-JEUNE", "titre": "Peugeot 308"})
         for cle in ("mandat", "cgv", "acompte"):
             self.assertIn("À FAIRE RELIRE PAR UN JURISTE", data["textes"][cle])
-        self.assertEqual(data["libelles"]["mandat_bouton"], "Je veux ce véhicule")
+        self.assertEqual(data["libelles"]["mandat_bouton"], "Je confie le mandat")
         self.assertEqual(self.api("/api/mandats/formulaire/INCONNU")[0], 404)
 
     # --- Demande du client ---
@@ -267,7 +267,7 @@ class MandatsTest(unittest.TestCase):
         erreurs = []
         page.on("pageerror", lambda e: erreurs.append(str(e)))
         page.goto(self.fiches["MDT-AUTRE"])
-        page.get_by_role("button", name="Je veux ce véhicule").click()
+        page.get_by_role("button", name="Je confie le mandat").click()
         dialogue = page.locator("#mandat-dialog")
         expect(dialogue).to_contain_text("Demande d'achat sur mandat")
         expect(dialogue.locator("#mandat-auth")).to_be_hidden()

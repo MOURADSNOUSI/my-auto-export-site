@@ -44,14 +44,16 @@ export function lireFiltres(searchParams) {
 
 // Annonces visibles du public : en ligne, non vendues ; annonces de vendeurs publiées, vendeur non suspendu, diagnostic
 // valide (mêmes règles que worker/index.js catalogueComplet) ; ventes terminées sans vendeur affecté exclues.
+const SQL_VENDEUR_VALIDE = `EXISTS (SELECT 1 FROM seller_submissions s WHERE 'SV-' || s.id = v.reference AND s.stage = 'published'
+      AND NOT EXISTS (SELECT 1 FROM marketplace_suspensions x WHERE x.user_id = s.user_id)
+      AND EXISTS (SELECT 1 FROM seller_diagnostics d JOIN partner_garages g ON g.id = d.garage_id WHERE d.submission_id = s.id
+        AND d.diagnostic_status = 'approved' AND d.valid_until >= date('now') AND g.active = 1 AND g.valid_until >= date('now')))`;
+
 function conditionsVisibles(env, maintenant) {
   const conditions = [
     "v.removed = 0",
     "COALESCE(v.c_statut, '') NOT IN ('sold', 'archived', 'inactive')",
-    `(v.reference NOT LIKE 'SV-%' OR EXISTS (SELECT 1 FROM seller_submissions s WHERE 'SV-' || s.id = v.reference AND s.stage = 'published'
-      AND NOT EXISTS (SELECT 1 FROM marketplace_suspensions x WHERE x.user_id = s.user_id)
-      AND EXISTS (SELECT 1 FROM seller_diagnostics d JOIN partner_garages g ON g.id = d.garage_id WHERE d.submission_id = s.id
-        AND d.diagnostic_status = 'approved' AND d.valid_until >= date('now') AND g.active = 1 AND g.valid_until >= date('now'))))`
+    `(v.reference NOT LIKE 'SV-%' OR ${SQL_VENDEUR_VALIDE})`
   ];
   const valeurs = [];
   if (!legacyAuctionsEnabled(env)) {
@@ -184,6 +186,33 @@ export async function lireCompteurs(env, ctx = null, maintenant = new Date()) {
     }
   }
   return Object.fromEntries(Object.keys(FILTRES_TEXTE).map((cle) => [cle, JSON.parse(lignes.get(cle).valeurs)]));
+}
+
+// Fiche : le segment d'adresse finit par la référence (…-ol-11721446) ; les suffixes possibles sont cherchés par index et
+// la plus longue référence l'emporte (…-my-0001 désigne MY-0001, pas 0001). Renvoie l'élément du catalogue, ou null :
+// { lot, removed (retirée ou vente terminée : page 410), offerOwnerAssigned, sellerUnavailable (annonce vendeur non
+// valide : 404) }.
+export function suffixesReference(segment) {
+  const morceaux = String(segment || "").toLowerCase().split("-").filter(Boolean);
+  return [...new Set(morceaux.slice(-8).map((_, i, liste) => liste.slice(i).join("-")))].filter((s) => s.length <= 64);
+}
+
+export async function chargerFiche(env, segment, maintenant = new Date()) {
+  const suffixes = suffixesReference(segment);
+  if (!suffixes.length) return null;
+  const { results } = await env.DB.prepare(
+    `SELECT v.reference, v.data, v.removed, v.c_ref_slug,
+       EXISTS (SELECT 1 FROM vehicle_offer_owners ow WHERE ow.vehicle_id = v.reference) AS proprietaire,
+       CASE WHEN v.reference LIKE 'SV-%' THEN ${SQL_VENDEUR_VALIDE} ELSE 1 END AS vendeur_valide
+     FROM vehicles v WHERE v.c_ref_slug IN (${suffixes.map(() => "?").join(",")})`
+  ).bind(...suffixes).all();
+  const row = results.sort((a, b) => b.c_ref_slug.length - a.c_ref_slug.length)[0];
+  if (!row) return null;
+  const lot = JSON.parse(row.data);
+  const offerOwnerAssigned = Boolean(row.proprietaire);
+  const terminee = !legacyAuctionsEnabled(env) && !offerOwnerAssigned && lot.status === "open" && Boolean(lot.endsAt) && Date.parse(lot.endsAt) <= maintenant.getTime();
+  const sellerUnavailable = !row.vendeur_valide;
+  return { lot: legacyAuctionsEnabled(env) ? lot : lot1Public(lot), source: "base", removed: Boolean(row.removed) || terminee || sellerUnavailable, offerOwnerAssigned, sellerUnavailable };
 }
 
 // API JSON : /api/catalogue/recherche (page d'annonces) et /api/catalogue/compte (nombre pour « Voir les N véhicules »).

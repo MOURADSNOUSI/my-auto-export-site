@@ -11,6 +11,10 @@ ALTER TABLE vehicles ADD COLUMN c_annee INTEGER GENERATED ALWAYS AS (json_extrac
 ALTER TABLE vehicles ADD COLUMN c_km INTEGER GENERATED ALWAYS AS (json_extract(data, '$.mileageKm')) VIRTUAL;
 ALTER TABLE vehicles ADD COLUMN c_prix_eur REAL GENERATED ALWAYS AS (json_extract(data, '$.prixEur')) VIRTUAL;
 ALTER TABLE vehicles ADD COLUMN c_statut TEXT GENERATED ALWAYS AS (json_extract(data, '$.status')) VIRTUAL;
+-- Référence telle qu'elle figure en fin d'adresse de fiche (minuscules, « . » et « _ » en « - ») : fiche lue par index,
+-- sans charger tout le catalogue.
+ALTER TABLE vehicles ADD COLUMN c_ref_slug TEXT GENERATED ALWAYS AS (lower(replace(replace(reference, '.', '-'), '_', '-'))) VIRTUAL;
+CREATE INDEX vehicles_ref_slug ON vehicles(c_ref_slug);
 
 -- Tri par défaut (plus récents d'abord) et pagination par curseur (updated_at, reference).
 CREATE INDEX vehicles_catalogue_recent ON vehicles(removed, updated_at DESC, reference DESC);

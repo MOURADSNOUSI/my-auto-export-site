@@ -124,7 +124,7 @@ class CatalogueFiltreTest(unittest.TestCase):
 
     def references(self, html):
         """Références des cartes, dans l'ordre (chaque carte a trois liens vers sa fiche)."""
-        return list(dict.fromkeys(re.findall(r'href="/vehicules/[^"]*-(cat-\d\d)"', html)))
+        return list(dict.fromkeys(re.findall(r'href="/vehicule/[^"]*-(cat-\d\d)"', html)))
 
     def test_compteurs_des_options_et_total(self):
         _, html, _ = self.page("/vehicules")

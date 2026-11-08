@@ -1,6 +1,6 @@
-import {legacyAuctionsEnabled,lot1Public,reserveTerms} from './proposal-domain.js';
+import {freeOffersEnabled,legacyAuctionsEnabled,lot1Public,reserveTerms} from './proposal-domain.js';
 const money=(v,c)=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:c,minimumFractionDigits:c==='TND'?3:2}).format(v/(c==='TND'?1000:100));
-import { sellerMedia } from "./seller.js";
+import { sellerMedia, verifiedSellerLots } from "./seller.js";
 // Référencement : pages véhicules rendues par le Worker, sitemap dynamique, liste indexable de l'accueil,
 // page 404 et contrôle SEO (après chaque publication et chaque jour à 07:00, heure de Paris).
 // Les pages sont calculées à chaque requête depuis le catalogue (lots.json + administration) : ajouter, modifier
@@ -10,12 +10,14 @@ import { calculerPrix, lireParametresPrix } from "./prix.js";
 import { REGLAGES_SITE, lireReglagesSite } from "./reglages.js";
 import { NOMBRE_QUESTIONS, TEXTES_NAVIGATEUR, fr, t } from "./textes.js";
 import { vehiculeMandat } from "./mandats.js";
-import { ErreurFiltre, TRIS, compter, lireCompteurs, lireFiltres as lireFiltresCatalogue, marquerCompteursPerimes, rechercher } from "./catalogue.js";
+import { ErreurFiltre, TRIS, chargerFiche, compter, lireCompteurs, lireFiltres as lireFiltresCatalogue, marquerCompteursPerimes, rechercher } from "./catalogue.js";
 
 export const SITE = "https://www.myautoexport.com";
 // Pages statiques indexables. Ajouter ici une page informative une fois son contenu validé (et sa balise noindex retirée).
 export const PAGES_STATIQUES = ["/", "/vehicules", "/conditions"];
-const PREFIXE = "/vehicules/";
+const PREFIXE = "/vehicule/";
+// Ancien préfixe des fiches (avant la refonte) : redirigé en 301 vers le nouveau.
+const ANCIEN_PREFIXE = "/vehicules/";
 const MAX_VERIFICATIONS_LIENS = 40; // sous la limite de 50 sous-requêtes par exécution du plan gratuit
 const JOURNAL_CONSERVE = 90;
 
@@ -29,7 +31,7 @@ export function slug(texte) {
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-// /vehicules/porsche-cayenne-2024-7750872 : la référence, en fin d'adresse, rend l'adresse unique et permanente.
+// /vehicule/porsche-cayenne-2024-7750872 : la référence, en fin d'adresse, rend l'adresse unique et permanente.
 export function cheminVehicule(lot) {
   const debut = slug([lot.make, lot.model, lot.year].filter(Boolean).join(" "));
   return `${PREFIXE}${debut ? `${debut}-` : ""}${slug(lot.reference)}`;
@@ -102,10 +104,13 @@ export function descriptionPage(lot) {
 }
 
 function caracteristiques(lot) {
+  const immatriculation = /^\d{4}-\d{2}-\d{2}$/.test(lot.premiereImmatriculation || "") ? lot.premiereImmatriculation.split("-").reverse().join("/") : null;
   const lignes = [
-    ["Marque", lot.make], ["Modèle", lot.model], ["Version", lot.trim], ["Année", lot.year],
+    ["Marque", lot.make], ["Modèle", lot.model], ["Version", lot.trim], ["Année", lot.year], ["Première immatriculation", immatriculation],
     ["Kilométrage", Number.isFinite(lot.mileageKm) ? `${nombreFr(lot.mileageKm)} km` : null],
-    ["Énergie", lot.fuel], ["Catégorie", lot.bodyType], ["Provenance", lot.country],
+    ["Énergie", lot.fuel], ["Boîte de vitesses", lot.transmission], ["Carrosserie", lot.bodyType],
+    ["Puissance", Number.isFinite(lot.powerHp) ? `${lot.powerHp} ch` : null], ["Cylindrée", Number.isFinite(lot.engineCc) ? `${nombreFr(lot.engineCc)} cm³` : null],
+    ["Couleur", lot.color], ["Portes", lot.doors], ["Places", lot.seats], ["Pays d'origine", lot.country],
     ["Lieu d'enlèvement", lot.pickupLocation], ["Disponible à partir du", lot.availableFrom],
     ...(Array.isArray(lot.specs) ? lot.specs : [])
   ];
@@ -136,7 +141,11 @@ export function donneesStructurees(lot, url) {
   if (Number.isFinite(lot.mileageKm)) vehicule.mileageFromOdometer = { "@type": "QuantitativeValue", value: lot.mileageKm, unitCode: "KMT" };
   if (lot.fuel) vehicule.fuelType = lot.fuel;
   if (lot.bodyType) vehicule.bodyType = lot.bodyType;
-  if (spec(lot, "Transmission")) vehicule.vehicleTransmission = spec(lot, "Transmission");
+  if (lot.transmission || spec(lot, "Transmission")) vehicule.vehicleTransmission = lot.transmission || spec(lot, "Transmission");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(lot.premiereImmatriculation || "")) vehicule.dateVehicleFirstRegistered = lot.premiereImmatriculation;
+  if (Number.isFinite(lot.engineCc)) vehicule.vehicleEngine = { "@type": "EngineSpecification", engineDisplacement: { "@type": "QuantitativeValue", value: lot.engineCc, unitCode: "CMQ" } };
+  if (lot.color) vehicule.color = lot.color;
+  if (lot.country) vehicule.countryOfOrigin = { "@type": "Country", name: lot.country };
   if (photos.length) vehicule.image = photos;
   if (Number.isFinite(prix)) {
     vehicule.offers = {
@@ -460,7 +469,7 @@ function entete(ctx, chemin) {
         <nav class="menu-mobile-panneau" aria-label="Navigation principale (mobile)">${liens}${reglagesEntete(ctx, chemin)}</nav></details></div></div></header>`;
 }
 
-function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [], ctx = null }) {
+function gabarit({ titre, description, canonique, robots, image, contenu, scripts = '', donnees = [], ctx = null, typeOg = "website" }) {
   const chemin = canonique ? new URL(canonique).pathname : "/";
   return `<!doctype html>
 <html lang="fr">
@@ -472,7 +481,7 @@ function gabarit({ titre, description, canonique, robots, image, contenu, script
   ${robots ? `<meta name="robots" content="${robots}">` : ""}
   ${canonique ? `<link rel="canonical" href="${escapeHtml(canonique)}">` : ""}
   <link rel="icon" href="/logo.png" type="image/png">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="${typeOg}">
   <meta property="og:site_name" content="M&amp;Y AUTO EXPORT">
   <meta property="og:locale" content="fr_TN">
   <meta property="og:title" content="${escapeHtml(titre)}">
@@ -545,13 +554,15 @@ async function lotsAvecEtat(request, env) {
 }
 
 export function estRouteSeo(path) {
-  return path === "/sitemap.xml" || path === "/vehicules" || path.startsWith(PREFIXE);
+  return path === "/sitemap.xml" || path === "/vehicules" || path === PREFIXE.slice(0, -1) || path.startsWith(PREFIXE) || path.startsWith(ANCIEN_PREFIXE);
 }
 
 export async function routeSeo(request, env, url) {
   if (url.pathname === "/sitemap.xml") return sitemap(request, env);
   if (url.searchParams.has("public")) return redirectionPublic(url);
   if (url.pathname === "/vehicules") return pageListe(request, env, url);
+  if (url.pathname === PREFIXE || url.pathname === PREFIXE.slice(0, -1)) return Response.redirect(`${url.origin}/vehicules`, 301);
+  if (url.pathname.startsWith(ANCIEN_PREFIXE)) return Response.redirect(`${url.origin}${PREFIXE}${url.pathname.slice(ANCIEN_PREFIXE.length)}${url.search}`, 301);
   if (url.pathname.endsWith("/")) {
     return Response.redirect(`${url.origin}${url.pathname.replace(/\/+$/, "")}`, 301);
   }
@@ -566,9 +577,17 @@ function diagnosticVendeur(lot) {
 }
 
 async function pageVehicule(request, env, url) {
-  const items = await lotsAvecEtat(request, env);
   const demande = url.pathname.toLowerCase();
-  let item = items.find((entry) => cheminVehicule(entry.lot) === demande);
+  let item;
+  if (!legacyAuctionsEnabled(env)) {
+    // Fiche lue directement dans D1 (index sur la référence) : pas de chargement du catalogue entier.
+    const trouve = await chargerFiche(env, demande.slice(PREFIXE.length));
+    if (!trouve) return page404();
+    if (cheminVehicule(trouve.lot) !== demande) return Response.redirect(`${url.origin}${cheminVehicule(trouve.lot)}`, 301);
+    [item] = trouve.lot.reference.startsWith("SV-") ? await verifiedSellerLots(env, [trouve]) : [trouve];
+  }
+  const items = item ? null : await lotsAvecEtat(request, env);
+  item ??= items.find((entry) => cheminVehicule(entry.lot) === demande);
   if (!item) {
     // Ancienne adresse (marque, modèle ou année modifiés) ou référence seule (/vehicules/SV-…, liens des offres) :
     // redirection permanente vers l'adresse actuelle. La plus longue référence l'emporte : …-my-0001 désigne MY-0001, pas 0001.
@@ -596,7 +615,6 @@ async function pageVehicule(request, env, url) {
   const photos = photosLot(lot);
   const webp = await variantesWebp(env, request, photos);
   const titre = titreLot(lot);
-  const prix = prixAffiche(lot);
   const enVente = indexable(item);
   // Offres privées : toutes les annonces en mode « propositions seules », sinon les annonces vendeur et celles dont
   // le vendeur a été affecté (worker/proposals.js). Les enchères et l'achat immédiat restent sur l'accueil (/?lot=…).
@@ -605,10 +623,12 @@ async function pageVehicule(request, env, url) {
   const proposition = !mandat && enVente && (!legacyAuctionsEnabled(env) || Boolean(lot.marketplace) || Boolean(item.offerOwnerAssigned));
   const terms = reserveTerms(lot);
   const sujet = encodeURIComponent(`Véhicule réf. ${lot.reference} — ${titre}`);
-  const galerie = photos.length
-    ? `<div class="galerie-principale">${image(photos[0], webp[0], `${titre} — photo 1 sur ${photos.length}`, { principale: true })}</div>
-       ${photos.length > 1 ? `<ul class="vignettes">${photos.slice(1).map((photo, index) => `<li><a href="${escapeHtml(photo.startsWith("photos/") ? `/${photo}` : photo)}">${image(photo, webp[index + 1], `${titre} — photo ${index + 2} sur ${photos.length}`)}</a></li>`).join("")}</ul>` : ""}`
-    : `<div class="galerie-principale"><p class="sans-photo">Photo à confirmer</p></div>`;
+  const galerie = galerieFiche(photos, webp, titre);
+  const delai = delaiLivraison(lot, ctx);
+  // Un seul bouton d'action : mandat si les demandes sont ouvertes, sinon proposition d'offre (ou enchère, mode historique).
+  const action = mandat ? `<button class="my-bouton my-bouton--action my-bouton--large" type="button" data-mandat-ref="${escapeHtml(lot.reference)}">${escapeHtml(t("mandat_bouton"))}</button>`
+    : proposition ? `<button class="my-bouton my-bouton--action my-bouton--large" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`
+    : enVente ? `<a class="my-bouton my-bouton--action my-bouton--large" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : "";
 
   const contenu = `
     <nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › <a href="/vehicules">Véhicules</a> › ${escapeHtml(titre)}</nav>
@@ -617,16 +637,17 @@ async function pageVehicule(request, env, url) {
     <article data-reference="${escapeHtml(lot.reference)}"><div class="fiche">
       <section aria-label="Photos">${galerie}</section>
       <div>
-        <section class="carte prix" aria-label="Prix">
-          <small>${escapeHtml(prix.label)}</small><strong>${escapeHtml(prix.value)}</strong>
+        <section class="carte prix boite-prix" aria-labelledby="titre-prix">
+          <h2 id="titre-prix">${escapeHtml(t(ctx.public === "resident" ? "prix_boite_resident" : "prix_boite_tre"))}</h2>
           ${lot.auction?.endsAt && lot.auction.status === "live" ? `<p>Fin de la vente : <time datetime="${escapeHtml(lot.auction.endsAt)}">${escapeHtml(new Date(lot.auction.endsAt).toLocaleString("fr-FR", { timeZone: "Africa/Tunis", dateStyle: "long", timeStyle: "short" }))}</time> (heure de Tunis)</p>` : ""}
-          <p class="note">${NOTE_PRIX} Ces éléments sont communiqués sur demande avant tout engagement (<a href="/conditions#prix">conditions</a>).</p>
-          <div class="estimation">${estimationVehicule(lot, ctx, { email: false })}</div>
-          ${proposition?`<p class="proposal-reserve">Prix de réserve : <strong>${terms?escapeHtml(money(terms.reserveMinor,terms.currency)):"À renseigner par le vendeur"}</strong></p>`:""}
-          <div class="actions">
-            ${mandat ? `<button class="bouton" type="button" data-mandat-ref="${escapeHtml(lot.reference)}">${escapeHtml(t("mandat_bouton"))}</button>` : proposition?`<button class="bouton" type="button" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`:enVente ? `<a class="bouton" href="/?lot=${encodeURIComponent(lot.reference)}">${lot.status === "stock" ? "Demander l'achat" : "Voir l'enchère"}</a>` : ""}
-            <a class="bouton secondaire" href="mailto:contact@myautoexport.com?subject=${sujet}">Poser une question</a>
+          ${badgesEligibilite(estimation(lot, ctx), ctx)}
+          <div class="estimation">${boitePrix(lot, ctx)}</div>
+          ${delai ? `<p class="my-badge my-badge--accent">${escapeHtml(t("carte_delai", { delai }))}</p>` : ""}
+          ${proposition && (terms || !freeOffersEnabled(env)) ? `<p class="proposal-reserve">Prix de réserve : <strong>${terms?escapeHtml(money(terms.reserveMinor,terms.currency)):"À renseigner par le vendeur"}</strong></p>`:""}
+          <div class="fiche-action">${action}
+            <p class="fiche-secondaire"><a href="mailto:contact@myautoexport.com?subject=${sujet}">Poser une question</a>${whatsappChiffres(ctx) ? ` · <a href="https://wa.me/${whatsappChiffres(ctx)}?text=${encodeURIComponent(t("contact_message", { reference: lot.reference }))}" target="_blank" rel="noopener">${escapeHtml(t("contact_whatsapp"))}</a>` : ""}</p>
           </div>
+          <p class="note">${escapeHtml(t("prix_note_fiche"))} <a href="/conditions#prix">${escapeHtml(t("prix_conditions"))}</a></p>
         </section>
         <section class="carte" aria-labelledby="titre-caracteristiques" style="margin-top:16px">
           <h2 id="titre-caracteristiques">Caractéristiques</h2>
@@ -645,11 +666,61 @@ async function pageVehicule(request, env, url) {
     // Vente terminée : la page reste consultable mais sort de l'index et du sitemap.
     robots: enVente ? "" : "noindex",
     image: photos.length ? absolue(photos[0]) : null,
+    typeOg: "product",
     donnees: donneesStructurees(lot, canonique),
-    contenu,
+    contenu: `<style>${CSS_FICHE}</style>${contenu}`,
     ctx
   }), 200, ENTETES_VITRINE);
 }
+
+// Boîte de prix de la fiche : prix du véhicule en Europe, frais de mandat M&Y, transport vers la Tunisie, dédouanement
+// estimé, total. Montants issus de calculerPrix (paramètres de /admin-prix) ; « sur devis » tant que les réglages
+// prix_publics_actifs (et prix_resident_actif pour un résident) ne les autorisent pas.
+function boitePrix(lot, ctx) {
+  const r = estimation(lot, ctx);
+  const { prix_publics_actifs: publics, prix_resident_actif: resident } = ctx.site;
+  const resid = ctx.public === "resident";
+  const surDevis = escapeHtml(t("prix_sur_devis"));
+  if (resid && r && r.motifNonEligibleResident !== null) {
+    return `<p class="prix-statut">${escapeHtml(t("prix_reserve_tre"))}</p>`;
+  }
+  const postes = resid ? (publics && resident ? r?.postesResident : null) : (publics ? r?.postesTre : null);
+  const devise = resid ? "TND" : "EUR";
+  const valeur = (n) => (postes ? escapeHtml(montant(n, devise)) : surDevis);
+  const lignes = [["prix_poste_vehicule", postes?.vehicule], ["prix_poste_mandat", postes?.mandat], ["prix_poste_transport", postes?.transport]];
+  if (resid) lignes.push(["prix_poste_dedouanement", postes?.dedouanement]);
+  const total = postes ? (resid ? r.prixResidentTnd : r.prixTreEur) : null;
+  const fcr = !resid && postes && r.dedouanementFcrEstimeTnd !== null ? `<div class="prix-ligne"><dt>${escapeHtml(t("prix_poste_fcr"))}</dt><dd>${escapeHtml(tnd(r.dedouanementFcrEstimeTnd))}</dd></div>` : "";
+  const detail = postes ? `<details class="prix-detail"><summary>${escapeHtml(t("prix_detail"))}</summary><ul>${r.detail.filter((l) => l.libelle.startsWith(resid ? "Résident :" : "TRE :") || (!resid && l.libelle.startsWith("FCR :")))
+    .map((l) => `<li><span>${escapeHtml(l.libelle)}</span><span>${escapeHtml(montant(l.montant, l.devise))}</span></li>`).join("")}</ul></details>` : "";
+  return `<dl class="prix-postes">${lignes.map(([cle, n]) => `<div class="prix-ligne"><dt>${escapeHtml(t(cle))}</dt><dd>${valeur(n)}</dd></div>`).join("")}
+      <div class="prix-ligne prix-total-ligne"><dt>${escapeHtml(t(resid ? "prix_total_resident" : "prix_total_tre"))}</dt><dd>${postes ? escapeHtml(montant(total, devise)) : escapeHtml(t(resid ? "prix_resident_devis" : "prix_sur_demande"))}</dd></div>${fcr}</dl>
+    ${postes ? `<p class="prix-mention">${escapeHtml(t("prix_mention", { date: dateTaux(r, ctx) }))}</p>` : `<p class="prix-mention">${escapeHtml(t(resid ? "prix_resident_explication" : "prix_masque_explication"))}</p>`}
+    ${detail}`;
+}
+
+// Galerie : bande défilante (glisser au doigt, défilement par vignettes ancrées), sans JavaScript ; première photo
+// prioritaire, les suivantes à la demande.
+function galerieFiche(photos, webp, titre) {
+  if (!photos.length) return `<div class="galerie-principale"><p class="sans-photo">Photo à confirmer</p></div>`;
+  const vues = photos.map((photo, i) => `<li id="photo-${i + 1}">${image(photo, webp[i], `${titre} — photo ${i + 1} sur ${photos.length}`, { principale: i === 0 })}</li>`).join("");
+  const vignettes = photos.length > 1 ? `<ol class="galerie-vignettes" aria-label="Choisir une photo">${photos.map((photo, i) => `<li><a href="#photo-${i + 1}" aria-label="Photo ${i + 1}">${image(photo, null, "")}</a></li>`).join("")}</ol>` : "";
+  return `<ul class="galerie-bande" aria-label="Photos (${photos.length})">${vues}</ul>${vignettes}`;
+}
+
+const CSS_FICHE = `
+.fiche>*,.fiche .carte{min-inline-size:0}
+.galerie-bande{inline-size:100%;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;gap:0;margin:0;padding:0;list-style:none;border-radius:var(--my-rayon-m);background:#dfe5e1;aspect-ratio:4/3}
+.galerie-bande>li{flex:0 0 100%;scroll-snap-align:start}.galerie-bande img{inline-size:100%;block-size:100%;object-fit:cover}
+.galerie-vignettes{display:flex;gap:6px;overflow-x:auto;margin:8px 0 0;padding:0;list-style:none}
+.galerie-vignettes a{display:block;inline-size:72px;block-size:54px;overflow:hidden;border-radius:4px;border:2px solid transparent}
+.galerie-vignettes a:focus-visible,.galerie-vignettes a:hover{border-color:var(--my-nuit)}.galerie-vignettes img{inline-size:100%;block-size:100%;object-fit:cover}
+.boite-prix{display:grid;gap:var(--my-esp-3)}.boite-prix h2{margin:0;font-size:var(--my-taille-l);color:var(--my-nuit)}
+.boite-prix dl.prix-postes{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin:0}.prix-ligne{display:flex;justify-content:space-between;gap:var(--my-esp-3);padding-block:var(--my-esp-2);border-block-end:1px solid var(--my-trait)}
+.prix-ligne dt{flex:1;min-inline-size:0;color:var(--my-encre-doux)}.prix-ligne dd{margin:0;max-inline-size:55%;font-weight:var(--my-graisse-forte);text-align:end}
+.prix-total-ligne{border-block-end:0;font-size:var(--my-taille-l)}.prix-total-ligne dt,.prix-total-ligne dd{color:var(--my-nuit);font-weight:var(--my-graisse-titre)}
+.fiche-action{display:grid;gap:var(--my-esp-2)}.fiche-secondaire{display:flex;flex-wrap:wrap;gap:var(--my-esp-3);font-size:var(--my-taille-s)}
+`;
 
 // Libellés des filtres du catalogue, dans l'ordre de la page.
 const FILTRES_LIBELLES = [["marque", "filtre_marque"], ["modele", "filtre_modele"], ["carrosserie", "filtre_carrosserie"], ["energie", "filtre_energie"], ["boite", "filtre_boite"]];

@@ -257,7 +257,7 @@ class VendeurTest(SellerFixture):
         s=self.draft(True);payload='<img src=x onerror=alert(1)>'
         code,p,_=self.call('PUT','/api/seller/submissions/'+s['id'],{'revision':s['revision'],'data':{**s['data'],'description':payload}});self.assertEqual(code,200,p)
         code,p,_=self.review(self.submit(p['submission']));self.assertEqual(code,200,p)
-        html=self.call('GET','/vehicules/SV-'+s['id'],who=None)[1].decode();self.assertNotIn(payload,html);self.assertIn('&lt;img',html)
+        html=self.call('GET','/vehicule/SV-'+s['id'],who=None)[1].decode();self.assertNotIn(payload,html);self.assertIn('&lt;img',html)
         self.assertEqual(self.call('PUT','/api/admin/vehicles/SV-'+s['id'],{'make':'Fake','model':'Fake','status':'stock','photos':[]},'admin')[0],409)
 
     def test_13_upload_content_exif_and_stale_revision(self):
@@ -310,12 +310,12 @@ class VendeurTest(SellerFixture):
         s=self.published()
         with sync_playwright() as pw,pw.chromium.launch(headless=True) as browser:
             buyer=browser.new_context();buyer.add_cookies([{'name':'my_session','value':self.tokens['other'],'url':self.base}]);page=buyer.new_page()
-            page.goto(self.base+'/vehicules/SV-'+s['id']);page.get_by_role('button',name='Proposer une offre',exact=True).click()
+            page.goto(self.base+'/vehicule/SV-'+s['id']);page.get_by_role('button',name='Proposer une offre',exact=True).click()
             popup=page.locator('#proposal-dialog');popup.locator('[name=amount]').fill('60000.001');popup.locator('[name=intention]').check();popup.get_by_role('button',name='Envoyer ma proposition').click()
             expect(popup).to_contain_text('Votre proposition a été envoyée')
             page.goto(self.base+'/mes-offres');expect(page.get_by_text('En attente',exact=True).first).to_be_visible()
             seller=browser.new_context();seller.add_cookies([{'name':'my_session','value':self.tokens['seller'],'url':self.base}]);review=seller.new_page();review.goto(self.base+'/vendeur/offres')
-            article=review.locator('article',has=review.locator('a[href="/vehicules/SV-'+s['id']+'"]'))
+            article=review.locator('article',has=review.locator('a[href="/vehicule/SV-'+s['id']+'"]'))
             article.get_by_role('button',name='Accepter l’offre',exact=True).click();expect(article).to_contain_text('Acceptée par le vendeur')
             article.get_by_role('button',name='Historique',exact=True).click();expect(article.locator('ol')).to_contain_text('Acceptée par le vendeur')
             self.assertEqual(article.locator('[data-action=contract]').count(),0);buyer.close();seller.close()

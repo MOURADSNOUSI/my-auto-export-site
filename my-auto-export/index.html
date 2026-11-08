@@ -479,11 +479,16 @@
     .site-header .account-chip small { color: var(--my-or); }
     .site-header .tool-count { background: var(--my-or); color: var(--my-nuit); }
     .compte-creer { margin-inline-start: 6px; white-space: nowrap; }
+    /* Le menu garde la largeur de son contenu (jamais de chevauchement avec les favoris) ; « Mon compte » en icône seule
+       (libellé lu par les lecteurs d'écran, « Créer un compte » est à côté). */
+    .site-header .main-nav { flex: 1 0 auto; min-width: max-content; }
+    .site-header .account-chip span { display: none; }
+    .site-header .account-chip { margin-left: 4px; padding-left: 10px; }
     /* Les anciens styles des liens du menu (.main-nav a) ne s'appliquent pas aux interrupteurs. */
     .site-header .main-nav .my-bascule > a { justify-content: center; border-bottom: 0; }
     .compte-creer[hidden] { display: none; }
-    /* Menu replié dès 1180 px : liens, devise et langue ne tiennent plus sur une ligne. */
-    @media (max-width: 1180px) {
+    /* Menu replié sous 1280 px : liens, devise, langue, favoris et compte ne tiennent plus sur une ligne. */
+    @media (max-width: 1279px) {
       .site-header .account-chip span { display: none; }
       .menu-button { display: grid; }
       .main-nav { position: absolute; top: 100%; inset-inline: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 8px 24px 16px; background: var(--my-nuit); border-bottom: 0; box-shadow: var(--my-ombre-2); }
@@ -1133,7 +1138,7 @@
     }
 
     function boutonAchat(lot) {
-      if(lot.mandat)return `<button type="button" class="buy-now" data-mandat-ref="${escapeHtml(lot.reference)}">${escapeHtml(TEXTES.mandat_bouton || "Je veux ce véhicule")}</button>`;
+      if(lot.mandat)return `<button type="button" class="buy-now" data-mandat-ref="${escapeHtml(lot.reference)}">${escapeHtml(TEXTES.mandat_bouton || "Je confie le mandat")}</button>`;
       if(PROPOSALS_ONLY||lot.marketplace)return `<button type="button" class="buy-now" data-proposal-ref="${escapeHtml(lot.reference)}">Proposer une offre</button>`;
       return Number.isFinite(lot.buyNowPriceTnd)
         ? `<button class="buy-now" type="button" data-buynow="${escapeHtml(lot.reference)}">Acheter maintenant · ${formatTnd(lot.buyNowPriceTnd)}</button>`
@@ -1471,7 +1476,7 @@
         ${lot.auction && compte.disponible ? "" : `<div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>`}
         ${lot.diagnosticVerified?'<p>Diagnostic vérifié par M&Y AUTO EXPORT</p>':''}${prixEnchere(lot)}${boutonAchat(lot)}
         ${panneauEnchere(lot)}
-        <div class="lot-actions">${lot.marketplace?`<a href="/vehicules/${escapeHtml(lot.reference)}">Consulter et faire une offre privée</a>`:lienLot(lot)}</div>`;
+        <div class="lot-actions">${lot.marketplace?`<a href="/vehicule/${escapeHtml(lot.reference)}">Consulter et faire une offre privée</a>`:lienLot(lot)}</div>`;
       document.getElementById("lot-dialog-body").dataset.photos = JSON.stringify(photos.map((photo) => photo.url));
       if (!lotDialog.open) lotDialog.showModal();
       if (!PROPOSALS_ONLY && lot.auction && compte.disponible) suivreEnchere(reference);

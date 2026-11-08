@@ -22,7 +22,7 @@ class ProductionCompatibilityTest(fixtures.SellerFixture):
                 'indicativePriceTnd': 65000, 'reservePriceTnd': 50000, 'photos': [], **extra}
         code, payload, _ = self.call('PUT', '/api/admin/vehicles/' + ref, data, 'admin')
         self.assertEqual(code, 200, payload)
-        return ref, '/vehicules/citroen-c5-2021-' + ref.lower()
+        return ref, '/vehicule/citroen-c5-2021-' + ref.lower()
 
     def test_canonical_pages_and_home_links_keep_the_offer_form(self):
         ref, path = self.vehicle()
@@ -34,7 +34,7 @@ class ProductionCompatibilityTest(fixtures.SellerFixture):
         # Liens vers les fiches lisibles sans JavaScript sur /vehicules (l'accueil n'a plus de liste).
         self.assertIn(path.encode(), self.call('GET', '/vehicules', who=None)[1])
         self.assertIn(path.encode(), self.call('GET', '/sitemap.xml', who=None)[1])
-        self.assertEqual(self.call('GET', '/vehicules/ancienne-adresse-'+ref.lower(), who=None)[0], 200)
+        self.assertEqual(self.call('GET', '/vehicule/ancienne-adresse-'+ref.lower(), who=None)[0], 200)
         for width in [1440, 390]:
             with self.subTest(width=width), sync_playwright() as pw, pw.chromium.launch() as browser:
                 page = browser.new_page(viewport={'width': width, 'height': 1000})
@@ -56,7 +56,7 @@ class ProductionCompatibilityTest(fixtures.SellerFixture):
         data={**s['data'],'priceCurrency':'EUR','priceAmount':'20000.00','publicReserveAmount':'12345.67','minimumAmount':'12000.01'}
         s=self.call('PUT','/api/seller/submissions/'+s['id'],{'revision':s['revision'],'data':data})[1]['submission']
         code,payload,_=self.review(self.submit(s));self.assertEqual(code,200,payload);s=payload['submission']
-        html=self.call('GET','/vehicules/SV-'+s['id'],who=None)[1].decode()
+        html=self.call('GET','/vehicule/SV-'+s['id'],who=None)[1].decode()
         self.assertIn('20\u202f000,00',html)
         self.assertIn('12\u202f345,67',html)
         self.assertNotIn('12\u202f000,01',html)
