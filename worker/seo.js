@@ -375,8 +375,8 @@ function sectionsAccueil(ctx) {
 }
 
 // Sous-titre de l'accueil : « Plus de N voitures… », N arrondi vers le bas à la dizaine, la centaine ou au millier et
-// toujours inférieur au nombre d'annonces en ligne (« plus de » reste vrai). Même total que /vehicules sans filtre (cache
-// 10 minutes). null sous 10 annonces ou si le comptage échoue : texte sans nombre.
+// toujours inférieur au nombre d'annonces en ligne (« plus de » reste vrai). Même total que /vehicules sans filtre, dans un
+// cache séparé de 10 minutes. null sous 10 annonces ou si le comptage échoue : texte sans nombre.
 export function nombreAnnoncesAccueil(n) {
   if (!Number.isFinite(n) || n < 11) return null;
   const pas = n <= 100 ? 10 : n <= 1000 ? 100 : 1000;
@@ -386,7 +386,7 @@ export function nombreAnnoncesAccueil(n) {
 async function sousTitreAccueil(env) {
   let n = null;
   try {
-    n = nombreAnnoncesAccueil(await compter(env, { tri: "recent" }));
+    n = nombreAnnoncesAccueil(await compter(env, { tri: "recent" }, null, new Date(), "compte-accueil"));
   } catch {
     console.error("accueil_compte_failed");
   }

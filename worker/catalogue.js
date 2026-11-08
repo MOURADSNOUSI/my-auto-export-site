@@ -127,9 +127,10 @@ export async function rechercher(env, filtres, curseur = null, maintenant = new 
   };
 }
 
-// Nombre d'annonces d'une recherche, mis en cache 10 minutes par combinaison de filtres (hors tri et page).
-export async function compter(env, filtres, ctx = null, maintenant = new Date()) {
-  const cle = new Request(`https://cache.myautoexport.invalid/compte?${new URLSearchParams(Object.entries(filtres).filter(([k]) => k !== "tri").sort()).toString()}`);
+// Nombre d'annonces d'une recherche, mis en cache 10 minutes par combinaison de filtres (hors tri et page). espace :
+// cache séparé pour un autre usage (accueil), qui ne fige pas le total affiché par /vehicules.
+export async function compter(env, filtres, ctx = null, maintenant = new Date(), espace = "compte") {
+  const cle = new Request(`https://cache.myautoexport.invalid/${espace}?${new URLSearchParams(Object.entries(filtres).filter(([k]) => k !== "tri").sort()).toString()}`);
   const cache = globalThis.caches?.default;
   const enCache = cache && await cache.match(cle);
   if (enCache) return Number(await enCache.text());
