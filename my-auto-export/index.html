@@ -514,6 +514,51 @@
       .site-header .brand-name { font-size: var(--my-taille-s); }
       .site-header .brand-name small { display: none; }
     }
+    /* --- Page personnelle (#account-dialog) : design system (bleu nuit et or), textes lisibles sur téléphone --- */
+    #account-dialog { width: min(820px, calc(100% - 28px)); font-family: var(--my-police); color: var(--my-encre, var(--ink)); }
+    #account-dialog .dialog-inner { padding: 24px; }
+    #account-dialog .account-tete { align-items: center; gap: 14px; margin-bottom: 20px; }
+    #account-dialog .account-avatar { display: grid; flex: 0 0 auto; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--my-nuit); color: var(--my-or); font-size: 22px; font-weight: 750; }
+    #account-dialog .account-identite { flex: 1; min-width: 0; }
+    #account-dialog .account-surtitre { display: block; color: var(--my-encre-doux, var(--muted)); font-size: 13px; }
+    #account-dialog .account-tete h2 { margin: 2px 0 0; color: var(--my-nuit); font-size: 22px; line-height: 1.25; overflow-wrap: anywhere; }
+    #account-dialog .account-numero { color: var(--my-encre-doux, var(--muted)); font-weight: 650; }
+    #account-dialog .account-meta { margin: 4px 0 0; color: var(--my-encre-doux, var(--muted)); font-size: 14px; overflow-wrap: anywhere; }
+    #account-dialog .close-dialog { align-self: start; border-radius: 50%; }
+    #account-dialog .espaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    #account-dialog .espace { display: grid; gap: 2px; min-height: 64px; padding: 12px 16px; border: 1px solid var(--line); border-radius: var(--my-rayon-m, 8px); background: #fff; color: var(--my-nuit); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+    #account-dialog .espace strong { font-size: 16px; }
+    #account-dialog .espace small { color: var(--my-encre-doux, var(--muted)); font-size: 13px; font-weight: 600; }
+    #account-dialog .espace:hover { border-color: var(--my-nuit); }
+    #account-dialog .espace-actif { border-color: var(--my-nuit); background: var(--my-nuit); color: #fff; cursor: default; }
+    #account-dialog .espace-actif small { color: var(--my-or); }
+    #account-dialog .espaces-note { margin: 8px 0 18px; color: var(--my-encre-doux, var(--muted)); font-size: 13px; }
+    #account-dialog .raccourcis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+    #account-dialog .raccourcis a { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--my-rayon-m, 8px); background: var(--my-nuit-100, #f3f5f3); color: var(--my-nuit); font-size: 15px; font-weight: 700; text-decoration: none; }
+    #account-dialog .raccourcis a:hover { border-color: var(--my-nuit); }
+    #account-dialog .raccourcis span { color: var(--my-or-texte, #8a6420); font-size: 18px; }
+    #account-dialog .account-onglets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+    #account-dialog .account-onglets button { display: grid; gap: 2px; min-height: 72px; align-content: center; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--my-rayon-m, 8px); background: #fff; color: var(--my-encre-doux, var(--ink-soft)); font: inherit; font-size: 14px; font-weight: 650; text-align: left; cursor: pointer; }
+    #account-dialog .account-onglets button span { color: var(--my-nuit); font-size: 24px; font-weight: 750; line-height: 1.1; }
+    #account-dialog .account-onglets button:hover { border-color: var(--my-nuit); }
+    #account-dialog .account-onglets button[aria-pressed="true"] { border-color: var(--my-or); background: var(--my-or-100, #fbefd9); color: var(--my-nuit); box-shadow: inset 0 -3px var(--my-or); }
+    #account-dialog .account-panel { min-height: 160px; padding: 18px 20px; border-radius: var(--my-rayon-m, 8px); }
+    #account-dialog .account-panel h3 { margin: 0 0 4px; color: var(--my-nuit); font-size: 18px; }
+    #account-dialog .account-panel > p, #account-dialog .account-panel .account-empty { color: var(--my-encre-doux, var(--muted)); font-size: 14px; }
+    #account-dialog .account-list li, #account-dialog .account-list .muted { font-size: 14px; }
+    #account-dialog .account-pied { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    #account-dialog .bouton-compte { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: var(--my-rayon-pilule, 999px); background: #fff; color: var(--my-nuit); font: inherit; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; }
+    #account-dialog .bouton-compte:hover { border-color: var(--my-nuit); }
+    #account-dialog .bouton-compte.admin-link { margin: 0; border-color: var(--my-nuit); }
+    @media (max-width: 680px) {
+      #account-dialog .dialog-inner { padding: 18px 16px; }
+      #account-dialog .account-avatar { width: 44px; height: 44px; font-size: 19px; }
+      #account-dialog .account-tete h2 { font-size: 19px; }
+      #account-dialog .raccourcis { grid-template-columns: 1fr; }
+      #account-dialog .account-onglets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #account-dialog .account-pied { justify-content: stretch; }
+      #account-dialog .bouton-compte { flex: 1; justify-content: center; }
+    }
     #deposer-dialog .dialog-head{align-items:center}#deposer-dialog .bonjour{margin-block:18px 4px;font-size:22px;font-weight:750}#deposer-dialog .actions-deposer{display:grid;gap:10px;margin-block-start:18px}#deposer-dialog .actions-deposer button{inline-size:100%;min-block-size:48px;justify-content:center;font-size:15px}
 </style>
 <link rel="stylesheet" href="/proposal-dialog.css">
@@ -1319,9 +1364,12 @@
         return;
       }
       const user = compte.user;
-      const profils = `<nav class="account-nav" aria-label="Mes espaces"><button type="button" ${user.profiles.buyer ? 'data-buyer-space aria-current="page"' : 'data-enable-profile="buyer"'}>${user.profiles.buyer ? "Espace Acheteur" : "Activer mon profil Acheteur"}</button>${user.profiles.seller ? '<a class="text-action" href="/mes-vehicules">Espace Vendeur</a>' : '<button type="button" data-enable-profile="seller">Activer mon profil Vendeur</button>'}</nav><p class="form-footnote">Une connexion commune, des offres et dossiers séparés par espace.</p>`;
+      // Deux espaces, une seule connexion : l'espace actif est marqué, l'autre s'ouvre ou s'active d'un clic.
+      const espace = (actif, attributs, titre, detail) => `<${attributs.startsWith("href") ? "a" : "button type=\"button\""} class="espace${actif ? " espace-actif" : ""}" ${attributs}><strong>${titre}</strong><small>${detail}</small></${attributs.startsWith("href") ? "a" : "button"}>`;
+      const profils = `<nav class="espaces" aria-label="Mes espaces">${user.profiles.buyer ? espace(true, 'data-buyer-space aria-current="page"', "Espace Acheteur", "Espace ouvert") : espace(false, 'data-enable-profile="buyer"', "Espace Acheteur", "Activer mon profil Acheteur")}${user.profiles.seller ? espace(false, 'href="/mes-vehicules"', "Espace Vendeur", "Annonces et offres reçues →") : espace(false, 'data-enable-profile="seller"', "Espace Vendeur", "Activer mon profil Vendeur")}</nav><p class="espaces-note">Une connexion commune, des offres et dossiers séparés par espace.</p>`;
+      const pied = (admin) => `<div class="account-pied">${admin ? `<a class="bouton-compte admin-link" href="/admin">Administration du catalogue</a>` : ""}<button class="bouton-compte" type="button" data-logout>Se déconnecter</button></div>`;
       if (!user.profiles.buyer) {
-        document.getElementById("account-body").innerHTML = `<div class="dialog-head"><h2 id="account-title">Mes espaces</h2><button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>${profils}<p>Votre profil Vendeur est actif. Retrouvez vos annonces, diagnostics et offres reçues dans votre espace Vendeur.</p><button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
+        document.getElementById("account-body").innerHTML = `<div class="dialog-head"><h2 id="account-title">Mes espaces</h2><button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>${profils}<p>Votre profil Vendeur est actif. Retrouvez vos annonces, diagnostics et offres reçues dans votre espace Vendeur.</p>${pied(user.role === "admin")}`;
         if (!accountDialog.open) accountDialog.showModal();
         return;
       }
@@ -1343,13 +1391,14 @@
         ["documents", "Documents · Factures", compte.invoices.length]
       ];
       document.getElementById("account-body").innerHTML = `
-        <div class="dialog-head"><div><span class="lot-meta">Page personnelle · Acheteur</span><h2 id="account-title">${escapeHtml(user.name)} ${numeroMembre(user)}</h2>
+        <div class="dialog-head account-tete"><span class="account-avatar" aria-hidden="true">${escapeHtml((user.name || "?").trim().charAt(0).toUpperCase() || "?")}</span>
+          <div class="account-identite"><span class="account-surtitre">Page personnelle · Acheteur</span><h2 id="account-title">${escapeHtml(user.name)} <span class="account-numero">${numeroMembre(user)}</span></h2>
           <p class="account-meta">${escapeHtml(user.email)}${user.phone ? ` · ${escapeHtml(user.phone)}` : ""} · membre depuis le ${date(user.createdAt)}</p></div>
           <button class="close-dialog" type="button" data-close aria-label="Fermer">×</button></div>
         ${user.depositTnd>0?`<p class="deposit-history"><strong>Solde du dépôt de garantie existant : ${formatTnd(user.depositTnd)}</strong><br>Pour toute question ou demande de restitution, <a href="mailto:contact@myautoexport.com?subject=D%C3%A9p%C3%B4t%20de%20garantie">contactez l’équipe</a>.</p>`:""}
         ${profils}
-        <p><a class="text-action" href="/mes-mandats">${escapeHtml(TEXTES.mandat_mes_titre || "Mes demandes d'achat")}</a> · <a class="text-action" href="/mes-offres">Mes propositions d'achat</a></p>
-        <nav class="account-nav" aria-label="Rubriques de l'espace acheteur">${vues.map(([id, label, count], index) => `<button type="button" data-account-view="${id}" aria-pressed="${index === 0}"><span>${count}</span>${label}</button>`).join("")}</nav>
+        <div class="raccourcis"><a href="/mes-mandats">${escapeHtml(TEXTES.mandat_mes_titre || "Mes demandes d'achat")}<span aria-hidden="true">→</span></a><a href="/mes-offres">Mes propositions d'achat<span aria-hidden="true">→</span></a></div>
+        <nav class="account-onglets" aria-label="Rubriques de l'espace acheteur">${vues.map(([id, label, count], index) => `<button type="button" data-account-view="${id}" aria-pressed="${index === 0}"><span>${count}</span>${label}</button>`).join("")}</nav>
         <section class="account-panel" data-account-panel="vehicles">
           <h3>Mes véhicules (${compte.vehicles.length})</h3><p>Véhicules rattachés à ton compte acheteur.</p>
           ${compte.vehicles.length ? `<ul class="account-list">${compte.vehicles.map((vehicle) => `<li><span><strong>${escapeHtml(`${vehicle.make} ${vehicle.model} ${vehicle.trim || ""}`.trim())}</strong><br><span class="muted">Réf. ${escapeHtml(vehicle.reference)} · ${statutsVehicule[vehicle.status] || "Statut à confirmer"}${vehicle.purchasedAt ? ` · ${date(vehicle.purchasedAt)}` : ""}</span></span></li>`).join("")}</ul>` : `<p class="account-empty">Aucun véhicule n'est encore associé à ce compte.</p>`}
@@ -1374,8 +1423,7 @@
           ${compte.invoices.length ? `<ul class="account-list">${compte.invoices.map((invoice) => `<li class="invoice-item"><span class="invoice-details"><strong>${escapeHtml(invoice.invoiceNumber)}</strong><small>${escapeHtml(date(invoice.issuedAt))} · ${formatTnd(invoice.totalTnd)} · ${statutsFacture[invoice.status] || "Statut à confirmer"}</small></span>${invoice.documentAvailable ? `<a class="invoice-download" href="/api/invoices/${encodeURIComponent(invoice.id)}/document">Télécharger PDF</a>` : `<span class="muted">PDF non disponible</span>`}</li>`).join("")}</ul>` : `<p class="account-empty">Aucune facture associée à ce compte.</p>`}
           <p class="form-footnote">Les factures sont privées et accessibles uniquement après connexion au compte concerné.</p>
         </section>
-        ${user.role === "admin" ? `<a class="logout-button admin-link" href="/admin">Administration du catalogue</a>` : ""}
-        <button class="logout-button" type="button" data-logout>Se déconnecter</button>`;
+        ${pied(user.role === "admin")}`;
       document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((button) => {
         button.addEventListener("click", () => {
           document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((tab) => tab.setAttribute("aria-pressed", String(tab === button)));
