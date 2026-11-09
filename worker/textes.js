@@ -3,15 +3,13 @@
 // Aucun fait réglementaire ni chiffré non vérifié : délais, taux et garanties restent au devis.
 export const fr = {
   // En-tête
+  menu_informer: "S'informer",
   menu_vehicules: "Véhicules",
   menu_mandat: "Achat sur mandat",
   menu_vendre: "Vendre mon véhicule",
   menu_contact: "Contact",
   menu_ouvrir: "Menu",
   compte_creer: "Créer un compte",
-  devise_groupe: "Devise des prix",
-  langue_groupe: "Langue",
-  langue_bientot: "Arabe : bientôt disponible",
   compte_titre: "Mon compte",
   compte_action: "Se connecter",
   whatsapp: "WhatsApp",
@@ -199,6 +197,13 @@ export const fr = {
 };
 
 export const NOMBRE_QUESTIONS = 5;
+
+// Menu « S'informer » de l'en-tête (worker/seo.js, menuInformer) : colonnes et liens. Pages à venir : liens « # ».
+export const MENU_INFORMER = [
+  { titre: "Magazine", liens: ["Actualité auto"] },
+  { titre: "Conseils", liens: ["Acheter une occasion", "Vendre une occasion", "Téléchargements", "Sécurité achat et vente de voiture"] },
+  { titre: "Services", liens: ["Crédit auto", "Assurance auto", "Évaluation prix voiture", "Inspection auto", "Certificat de conformité (CoC)"] }
+];
 
 // Texte d'une clé, avec ses valeurs {nom} remplacées. Texte brut : l'appelant l'échappe avant de l'insérer en HTML.
 export function t(cle, valeurs = {}) {

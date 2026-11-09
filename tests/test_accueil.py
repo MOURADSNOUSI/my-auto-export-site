@@ -496,16 +496,34 @@ class AccueilTest(unittest.TestCase):
         self.assertTrue(page.url.startswith(self.base + "/vendre"), page.url)
         self.assertEqual(erreurs, [])
 
-    def test_entete_devise_langue_et_compte(self):
-        # Devise : lien ?public= (sans JavaScript), position active selon le cookie ou le réglage par défaut.
-        for chemin, attendu in (("/", "/?public="), ("/vehicules", "/vehicules?public="), (self.fiches["ACC-JEUNE"], f"{self.fiches['ACC-JEUNE']}?public=")):
+    def test_entete_menu_informer_et_compte(self):
+        # Plus de choix de devise ni de langue dans l'en-tête ; menu « S'informer » (3 colonnes) en tête du menu.
+        for chemin in ("/", "/vehicules", self.fiches["ACC-JEUNE"]):
             _, html, _ = self.page(chemin, "resident")
-            self.assertRegex(html, rf'<a href="{re.escape(attendu)}resident"[^>]*aria-current="true"[^>]*>TND</a>', chemin)
-            self.assertRegex(html, rf'<a href="{re.escape(attendu)}tre"(?![^>]*aria-current)[^>]*>EUR</a>', chemin)
-            self.assertRegex(self.page(chemin, "tre")[1], rf'<a href="{re.escape(attendu)}tre"[^>]*aria-current="true"[^>]*>EUR</a>', chemin)
-            # Arabe annoncé mais désactivé tant que les textes n'existent pas.
-            self.assertRegex(html, r'<span aria-disabled="true" lang="ar"[^>]*title="Arabe : bientôt disponible"[^>]*>AR</span>', chemin)
-            self.assertIn('aria-label="Devise des prix"', html, chemin)
+            self.assertNotIn("my-bascule", html.split("<main", 1)[0], chemin)
+            self.assertNotIn(">TND</a>", html, chemin)
+            self.assertRegex(html, r'<button class="menu-informer-bouton" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="info-panel">S&#39;informer<svg', chemin)
+            panneau = html[html.index('id="info-panel"'):]
+            for titre in ("Magazine", "Conseils", "Services"):
+                self.assertIn(f">{titre}</p>", panneau, (chemin, titre))
+            self.assertIn("Certificat de conformité (CoC)", panneau, chemin)
+        # Menu « S'informer » : ouverture au clic, fermeture par Échap et par un clic en dehors ; en-tête sur une ligne à 1366 px.
+        for chemin in ("/", "/vehicules"):
+            contexte = self.browser.new_context(viewport={"width": 1366, "height": 800})
+            self.addCleanup(contexte.close)
+            page = contexte.new_page()
+            page.goto(self.base + chemin)
+            bouton = page.locator("nav .menu-informer-bouton").first
+            self.assertFalse(page.is_visible("#info-panel"), chemin)
+            bouton.click()
+            self.assertEqual((bouton.get_attribute("aria-expanded"), page.is_visible("#info-panel")), ("true", True), chemin)
+            page.keyboard.press("Escape")
+            self.assertEqual((bouton.get_attribute("aria-expanded"), page.is_visible("#info-panel")), ("false", False), chemin)
+            bouton.click()
+            page.mouse.click(1300, 700)
+            self.assertEqual(bouton.get_attribute("aria-expanded"), "false", chemin)
+            largeurs = page.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
+            self.assertLessEqual(largeurs[0], largeurs[1], chemin)
         context = self.browser.new_context(viewport={"width": 1440, "height": 900})
         self.addCleanup(context.close)
         page = context.new_page()
@@ -513,7 +531,7 @@ class AccueilTest(unittest.TestCase):
         page.on("pageerror", lambda e: erreurs.append(str(e)))
         page.goto(self.base + "/")
         page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
-        # Bureau : menu, devise et langue visibles ; « Créer un compte » ouvre l'inscription.
+        # Bureau : menu visible ; « Créer un compte » ouvre l'inscription.
         self.assertTrue(page.is_visible("#main-nav"))
         self.assertTrue(page.is_visible("#compte-creer"))
         self.assertEqual(page.text_content("#compte-creer"), "Créer un compte")

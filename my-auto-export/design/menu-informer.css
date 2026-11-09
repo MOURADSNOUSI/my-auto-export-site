@@ -1,0 +1,144 @@
+/* Menu « S'informer » de l'en-tête (worker/seo.js, menuInformer ; comportement : /menu-informer.js).
+   Bureau : panneau à trois colonnes sous le bouton. Menu mobile (accueil sous 1366 px, panneau <details> des autres
+   pages) : panneau dans le flux, une colonne, sans ombre ni bordure.
+   Couleurs de l'accueil (--ink, --line…), avec repli sur le design system pour les pages du Worker. Sélecteurs
+   .menu-informer … : plus précis que .main-nav a et .my-nav a, qui ne doivent pas styler les liens du panneau. */
+.menu-informer { position: relative; display: inline-flex; }
+
+.menu-informer .menu-informer-bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.my-sur-nuit .menu-informer .menu-informer-bouton { color: var(--my-blanc, #fff); }
+.menu-informer .menu-informer-bouton:hover,
+.menu-informer.open .menu-informer-bouton { background: rgb(255 255 255 / 0.12); }
+.menu-informer .menu-informer-bouton svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.2s ease;
+}
+.menu-informer.open .menu-informer-bouton svg { transform: rotate(180deg); }
+
+.menu-informer .info-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  width: min(760px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--line, #d7ddd8);
+  border-radius: var(--radius, 8px);
+  background: var(--surface, #fff);
+  color: var(--ink, #17201d);
+  box-shadow: 0 16px 30px #1015131f;
+}
+.menu-informer.open .info-panel { display: grid; }
+.menu-informer .info-titre {
+  margin: 0 0 8px;
+  color: var(--gold-ink, #7a5a1f);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.menu-informer .info-panel ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.menu-informer .info-panel a {
+  display: block;
+  min-height: 0;
+  min-block-size: 0;
+  margin-inline: -10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--ink, #17201d);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-decoration: none;
+  white-space: normal;
+}
+.menu-informer .info-panel a:hover,
+.menu-informer .info-panel a:focus-visible { background: var(--green-pale, #e4f0e9); color: var(--green-dark, #185740); }
+
+/* Menu mobile : le panneau s'intègre dans l'accordéon bleu nuit. */
+.menu-mobile-panneau .menu-informer { display: block; }
+.menu-mobile-panneau .menu-informer .menu-informer-bouton {
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 0;
+  background: none;
+}
+.menu-mobile-panneau .menu-informer .info-panel {
+  position: static;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  width: auto;
+  padding: 12px 0 8px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--my-blanc, #fff);
+  box-shadow: none;
+}
+.menu-mobile-panneau .menu-informer .info-titre { color: var(--my-or, #c99d4d); }
+.menu-mobile-panneau .menu-informer .info-panel a { margin-inline: 0; padding: 8px 12px; color: var(--my-blanc, #fff); }
+.menu-mobile-panneau .menu-informer .info-panel a:hover,
+.menu-mobile-panneau .menu-informer .info-panel a:focus-visible { background: rgb(255 255 255 / 0.12); color: var(--my-blanc, #fff); }
+
+/* Accueil : même intégration sous 1366 px, largeur où son menu passe en accordéon (index.html). */
+@media (max-width: 1365px) {
+  .main-nav .menu-informer { display: block; }
+  .main-nav .menu-informer .menu-informer-bouton {
+    justify-content: space-between;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 4px;
+    border-bottom: 1px solid rgb(255 255 255 / 0.14);
+    border-radius: 0;
+    background: none;
+  }
+  .main-nav .menu-informer .info-panel {
+    position: static;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: auto;
+    padding: 12px 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--my-blanc, #fff);
+    box-shadow: none;
+  }
+  .main-nav .menu-informer .info-titre { padding-inline: 4px; color: var(--my-or, #c99d4d); }
+  .main-nav .menu-informer .info-panel a { display: block; margin-inline: 0; padding: 8px 12px; border-bottom: 0; color: var(--my-blanc, #fff); font-size: 15px; }
+  .main-nav .menu-informer .info-panel a:hover,
+  .main-nav .menu-informer .info-panel a:focus-visible { background: rgb(255 255 255 / 0.12); color: var(--my-blanc, #fff); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-informer .menu-informer-bouton svg { transition: none; }
+}

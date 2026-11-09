@@ -8,7 +8,7 @@ import { sellerMedia, verifiedSellerLots } from "./seller.js";
 import { catalogueComplet, etatEnchere, resumesEncheres } from "./index.js";
 import { calculerPrix, lireParametresPrix } from "./prix.js";
 import { REGLAGES_SITE, lireReglagesSite } from "./reglages.js";
-import { NOMBRE_QUESTIONS, TEXTES_NAVIGATEUR, fr, t } from "./textes.js";
+import { MENU_INFORMER, NOMBRE_QUESTIONS, TEXTES_NAVIGATEUR, fr, t } from "./textes.js";
 import { vehiculeMandat } from "./mandats.js";
 import { ErreurFiltre, TRIS, chargerFiche, compter, lireCompteurs, lireFiltres as lireFiltresCatalogue, marquerCompteursPerimes, rechercher } from "./catalogue.js";
 
@@ -406,7 +406,7 @@ export async function vitrineAccueil(request, env, reponse) {
       if (cle === "hero_sous_titre") element.setInnerContent(sousTitre);
       else if (Object.hasOwn(fr, cle)) element.setInnerContent(t(cle));
     } })
-    // Libellés d'accessibilité et infobulles (data-texte-aria, data-texte-title), devise active de l'en-tête.
+    // Libellés d'accessibilité et infobulles (data-texte-aria, data-texte-title).
     .on("[data-texte-aria]", { element: (element) => {
       const cle = element.getAttribute("data-texte-aria");
       if (Object.hasOwn(fr, cle)) element.setAttribute("aria-label", t(cle));
@@ -415,11 +415,9 @@ export async function vitrineAccueil(request, env, reponse) {
       const cle = element.getAttribute("data-texte-title");
       if (Object.hasOwn(fr, cle)) element.setAttribute("title", t(cle));
     } })
-    .on("[data-devise]", { element: (element) => {
-      if (element.getAttribute("data-devise") === ctx.public) element.setAttribute("aria-current", "true");
-    } })
     .on("head", { element: (element) => element.append(`<style>${CSS_VITRINE}</style><script type="application/json" id="textes">${textesNavigateur}</script>`, { html: true }) })
     .on(".header-tools", { element: (element) => element.prepend(boutonWhatsapp(ctx), { html: true }) })
+    .on("#main-nav", { element: (element) => element.prepend(menuInformer(), { html: true }) })
     .on("#comment-ca-marche", remplir(sections.comment))
     .on("#nos-prix", remplir(sections.prix))
     .on("#questions", remplir(sections.questions));
@@ -440,7 +438,7 @@ export async function vitrineAccueil(request, env, reponse) {
 // Règles de l'en-tête commun (pages du Worker et /vendre). Menu replié sous 1366 px, comme sur l'accueil
 // (my-auto-export/index.html) : l'en-tête garde la même forme d'une page à l'autre.
 export const CSS_ENTETE = `.my-entete{font-family:var(--my-police)}
-.my-entete .my-nav .my-reglages-entete{margin-inline-start:auto}.my-entete .my-nav{flex:1}
+.my-entete .my-nav > a{white-space:nowrap}
 @media(max-width:1365px){.my-entete .my-nav{display:none}.my-entete .my-burger{display:inline-flex}}
 @media(max-width:420px){.compte-entete{padding-inline:var(--my-esp-3)}}
 `;
@@ -472,28 +470,33 @@ dl{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:6px 16px;margin
 footer{margin-top:48px;padding:24px 0;border-top:1px solid var(--line);font-size:14px;color:var(--soft)}
 `;
 
-// En-tête commun : menu vers les ancres de l'accueil, « Mon compte » (espace acheteur de l'accueil), WhatsApp si un
-// numéro est saisi (ctx absent : page d'erreur, sans WhatsApp).
-// Devise (TND pour un résident, EUR pour un Tunisien de l'étranger) : liens ?public= (cookie, sans JavaScript) vers la
-// page courante ; langue : FR seule tant que les textes arabes n'existent pas.
-export function reglagesEntete(ctx, chemin) {
-  const devise = (valeur, libelle) => `<a href="${escapeHtml(chemin)}?public=${valeur}"${ctx?.public === valeur ? ' aria-current="true"' : ""}>${libelle}</a>`;
-  return `<div class="my-reglages-entete"><div class="my-bascule" role="group" aria-label="${escapeHtml(t("devise_groupe"))}">${devise("resident", "TND")}${devise("tre", "EUR")}</div>`
-    + `<div class="my-bascule" role="group" aria-label="${escapeHtml(t("langue_groupe"))}"><span aria-current="true" lang="fr">FR</span><span aria-disabled="true" lang="ar" title="${escapeHtml(t("langue_bientot"))}">AR</span></div></div>`;
+// Menu « S'informer » : bouton et panneau à trois colonnes, en premier dans le menu de chaque page (accueil compris,
+// inséré dans #main-nav). Ouverture et fermeture par /menu-informer.js, styles dans /design/menu-informer.css. suffixe :
+// identifiants distincts quand le menu figure deux fois dans la page (menu de bureau et menu mobile).
+export function menuInformer(suffixe = "") {
+  const id = `info-panel${suffixe}`;
+  const colonnes = MENU_INFORMER.map(({ titre, liens }, i) => `<div class="info-colonne"><p class="info-titre" id="${id}-titre-${i + 1}">${escapeHtml(titre)}</p>`
+    + `<ul aria-labelledby="${id}-titre-${i + 1}">${liens.map((lien) => `<li><a href="#">${escapeHtml(lien)}</a></li>`).join("")}</ul></div>`).join("");
+  return `<div class="menu-informer"><button class="menu-informer-bouton" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="${id}">`
+    + `${escapeHtml(t("menu_informer"))}<svg aria-hidden="true"><use href="#i-chevron"/></svg></button><div class="info-panel" id="${id}">${colonnes}</div></div>`;
 }
 
+// Icône du chevron pour les pages sans le jeu d'icônes de l'accueil (même tracé que #i-chevron de index.html).
+const SPRITE_ENTETE = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol></svg>';
+export const RESSOURCES_MENU_INFORMER = '<link rel="stylesheet" href="/design/menu-informer.css"><script src="/menu-informer.js" defer></script>';
+
 // En-tête commun des pages rendues par le Worker (design system, design/composants.css) : menu par façon d'acheter,
-// devise et langue, compte, WhatsApp si un numéro est saisi (ctx absent : page d'erreur). Menu mobile en <details> :
+// « S'informer », compte, WhatsApp si un numéro est saisi (ctx absent : page d'erreur). Menu mobile en <details> :
 // il s'ouvre sans JavaScript.
 export function entete(ctx, chemin) {
   const liens = [["/vehicules", "menu_vehicules"], ["/#comment-ca-marche", "menu_mandat"], ["/vendre", "menu_vendre"], ["/#contact", "menu_contact"]]
     .map(([href, cle]) => `<a href="${href}"${href === chemin ? ' aria-current="page"' : ""}>${escapeHtml(t(cle))}</a>`).join("");
-  return `<header class="my-entete my-sur-nuit"><div class="my-conteneur my-entete-interieur">
+  return `${SPRITE_ENTETE}<header class="my-entete my-sur-nuit"><div class="my-conteneur my-entete-interieur">
     <a class="my-marque" href="/"><img src="/logo.png" alt="" width="40" height="40"><span>M&amp;Y AUTO EXPORT<small>Véhicules sans frontières</small></span></a>
-    <nav class="my-nav" aria-label="Navigation principale">${liens}${reglagesEntete(ctx, chemin)}</nav>
+    <nav class="my-nav" aria-label="Navigation principale">${menuInformer()}${liens}</nav>
     <div class="my-entete-actions">${ctx ? boutonWhatsapp(ctx) : ""}<a class="my-bouton my-bouton--action my-bouton--petit compte-entete" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a>
       <details class="my-burger menu-mobile"><summary class="my-bouton my-bouton--contour my-bouton--petit" aria-label="${escapeHtml(t("menu_ouvrir"))}">☰</summary>
-        <nav class="menu-mobile-panneau" aria-label="Navigation principale (mobile)">${liens}${reglagesEntete(ctx, chemin)}</nav></details></div></div></header>`;
+        <nav class="menu-mobile-panneau" aria-label="Navigation principale (mobile)">${menuInformer("-mobile")}${liens}</nav></details></div></div></header>`;
 }
 
 // Espace vendeur (/vendre, my-auto-export/vendre.html, et /mes-vehicules qui le sert) : en-tête commun inséré avant
@@ -501,7 +504,7 @@ export function entete(ctx, chemin) {
 export async function enteteEspaceVendeur(request, env, reponse) {
   const ctx = await contexteVitrine(request, env);
   return new HTMLRewriter()
-    .on("head", { element: (element) => element.append(`<link rel="preload" href="/polices/noto-sans-latin.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/design/tokens.css"><link rel="stylesheet" href="/design/composants.css"><style>${CSS_ENTETE}${CSS_WHATSAPP}</style>`, { html: true }) })
+    .on("head", { element: (element) => element.append(`<link rel="preload" href="/polices/noto-sans-latin.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/design/tokens.css"><link rel="stylesheet" href="/design/composants.css">${RESSOURCES_MENU_INFORMER}<style>${CSS_ENTETE}${CSS_WHATSAPP}</style>`, { html: true }) })
     .on("body > header", { element: (element) => element.before(entete(ctx, "/vendre"), { html: true }) })
     .transform(reponse);
 }
@@ -532,6 +535,7 @@ function gabarit({ titre, description, canonique, robots, image, contenu, script
   <link rel="stylesheet" href="/design/tokens.css">
   <link rel="stylesheet" href="/design/composants.css">
   <link rel="stylesheet" href="/proposal-dialog.css">
+  ${RESSOURCES_MENU_INFORMER}
 </head>
 <body>
   ${entete(ctx, chemin)}
