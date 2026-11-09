@@ -38,7 +38,7 @@ function carte(a, index) {
     ${photo ? `<img src="${echapper(photo)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}
     <h3>${echapper(titre)}</h3>
     <p>${echapper(infos.join(" · "))}</p>
-    <p><strong>${echapper(euros(a.prixEur))}</strong> · fin de l'enchère : ${echapper(dateHeure(a.finEnchere))}</p>
+    <p><strong>${echapper(euros(a.prixEur))}</strong>${a.prixAchatImmediatEur ? " (prix d'achat immédiat OpenLane, hors TVA et frais)" : ""} · fin de l'enchère : ${echapper(dateHeure(a.finEnchere))}</p>
     <p>Réf. future : ${echapper(a.reference || "—")}${https(a.lien) ? ` · <a href="${echapper(https(a.lien))}" target="_blank" rel="noopener noreferrer">Annonce OpenLane ↗</a>` : ""}</p>
     ${a.dejaImporte ? "<p><strong>Déjà importée</strong></p>" : importable ? `<button class="button primary" type="button" data-importer="${index}">Importer en brouillon</button>` : "<p>Marque ou modèle manquant : import impossible.</p>"}
   </li>`;

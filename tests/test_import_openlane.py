@@ -35,7 +35,7 @@ def annonce(numero, fin="2099-01-01T12:00:00Z", **champs):
     """Annonce à la forme réelle de TheCarApi (contrat 2026-10-05) ; engine_cc (absent chez TheCarApi) pour le repli."""
     return {"auction_id_str": numero, "site_name": "openlane", "clean_make": "Peugeot", "clean_model": "3008", "registration_year": 2023, "is_buy_now": True,
             "date_first_registration": "2021-03-15T00:00:00", "mileage": 64000, "fuel_group": "Diesel", "gearbox_group": "Manual", "hp": 130,
-            "public_price_eur": 14500, "engine_cc": 1499, "original_url": f"https://www.openlane.eu/en/car/info?auctionId={numero}",
+            "buy_now_price": 14500, "public_price_eur": 19600, "engine_cc": 1499, "original_url": f"https://www.openlane.eu/en/car/info?auctionId={numero}",
             "auction_end_at": fin, "thumbnail_url": f"/image-vault/{numero}.webp?k=1&exp=1&sig=s",
             "images": [{"url": f"https://images.openlane.eu/carimgs/{numero}/general/1.jpg", "served_url": f"/image-vault/{numero}.webp"}], **champs}
 
@@ -165,8 +165,8 @@ class ImportOpenlaneTest(unittest.TestCase):
         self.assertEqual(data["annonces"][0]["reference"], "OL-1001")
         self.assertFalse(data["annonces"][0]["dejaImporte"])
         envoi = FauxTheCarApi.requetes[-1]
-        self.assertEqual((envoi["cle"], envoi["params"]["site"], envoi["params"]["brand"], envoi["params"]["price_to"]), ("cle-de-test", "openlane", "Peugeot", "30000"),
-                         "préfiltre M&Y appliqué, plafond de prix conservé")
+        self.assertEqual((envoi["cle"], envoi["params"]["site"], envoi["params"]["brand"], envoi["params"]["price_to"]), ("cle-de-test", "openlane", "Peugeot", "41100"),
+                         "préfiltre M&Y appliqué, plafond de 30 000 € élargi au prix tout compris de TheCarApi")
         self.assertEqual((envoi["params"]["buy_now"], envoi["params"]["year_from"]), ("true", "2022"), "achat immédiat, 2022 ou après")
         self.rechercher(year_from=2024)
         self.assertEqual(FauxTheCarApi.requetes[-1]["params"]["year_from"], "2024", "un filtre plus strict reste possible")
@@ -177,6 +177,14 @@ class ImportOpenlaneTest(unittest.TestCase):
             a = {**next(x for x in self.rechercher()["annonces"] if x["numero"] == "1004"), "numero": numero, **champs}
             self.assertEqual(self.api("/api/admin/import", {"annonce": a}, "POST", self.cookie)[0], 400, numero)
         self.assertEqual(self.api("/api/admin/import/recherche?brand=%3Cscript%3E", cookie=self.cookie)[0], 400)
+        # Prix d'achat immédiat : obligatoire, plafond exact appliqué à ce prix (pas au prix tout compris de TheCarApi).
+        FauxTheCarApi.resultats = [annonce("1005", buy_now_price=None), annonce("1006", buy_now_price=29000, public_price_eur=38000),
+                                   annonce("1007", buy_now_price=31000, public_price_eur=40000)]
+        trouvees = self.rechercher()["annonces"]
+        self.assertEqual([(a["numero"], a["prixEur"]) for a in trouvees], [("1006", 29000)])
+        self.assertEqual([a["numero"] for a in self.rechercher(price_to=25000)["annonces"]], [], "prix de la recherche appliqué exactement")
+        sans_prix = {**trouvees[0], "numero": "1005", "prixAchatImmediatEur": None}
+        self.assertEqual(self.api("/api/admin/import", {"annonce": sans_prix}, "POST", self.cookie)[0], 400, "sans prix d'achat immédiat")
 
     def test_import_en_brouillon_puis_remise_en_ligne(self):
         FauxTheCarApi.resultats = [annonce("2002")]

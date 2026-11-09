@@ -84,9 +84,17 @@ export function annonceImport(brute) {
   const cylindree = nombre(brute.engine_cc ?? brute.cylinder_capacity ?? brute.cc ?? brute.displacement ?? brute.engine_capacity);
   const puissance = nombre(brute.hp);
   const immatriculation = String(brute.date_first_registration ?? "").slice(0, 10);
+  const achatImmediat = brute.is_buy_now === true;
+  // Prix d'achat immédiat affiché par OpenLane (buy_now_price), hors TVA et frais : c'est le prix d'achat attendu par
+  // calculerPrix. public_price_eur (= buynow_final) ajoute TVA et frais d'OpenLane (environ +35 % sur la réponse du
+  // 9 novembre 2026) : gardé seulement pour une annonce aux enchères, sans prix d'achat immédiat.
+  const prixAchatImmediat = nombre(brute.buy_now_price);
+  const prixAchatImmediatEur = achatImmediat && prixAchatImmediat !== null && prixAchatImmediat > 0 ? prixAchatImmediat : null;
   return {
     ...voiture,
-    achatImmediat: brute.is_buy_now === true,
+    prixEur: prixAchatImmediatEur ?? voiture.prixEur,
+    prixAchatImmediatEur,
+    achatImmediat,
     numero,
     reference: referenceImport(numero),
     marque: texte(brute.clean_make ?? brute.brand ?? brute.make, 80),
@@ -129,10 +137,16 @@ async function importsSuivis(env) {
   return ligne.n;
 }
 
+// TheCarApi filtre price_to sur public_price_eur (prix d'achat immédiat + TVA + frais, vérifié le 9 novembre 2026 :
+// price_to=20000 renvoie des prix tout compris jusqu'à 19 952 € et des prix d'achat immédiat jusqu'à 17 400 €). Plafond
+// envoyé élargi (TVA jusqu'à 27 % et 3 000 € de frais) pour ne perdre aucune annonce ; le plafond exact est appliqué au
+// prix d'achat immédiat par horsFiltres.
+export const plafondApi = (prixMaxEur) => Math.ceil(prixMaxEur * 1.27 + 3000);
+
 // Paramètres envoyés à TheCarApi : préfiltre de l'administration, puis recherche du moment (marque, modèle, carburant,
 // année, prix, page), qui ne peut que le resserrer. Lève ErreurCatalogue(400) si une valeur est invalide.
 export function parametresImport(searchParams, filtres) {
-  const p = { site: "openlane", limit: "24", year_from: String(filtres.anneeMin), kilometers_to: String(filtres.kmMax), price_to: String(filtres.prixMaxEur) };
+  const p = { site: "openlane", limit: "24", year_from: String(filtres.anneeMin), kilometers_to: String(filtres.kmMax), price_to: String(filtres.achatImmediat ? plafondApi(filtres.prixMaxEur) : filtres.prixMaxEur) };
   if (filtres.anneeMax !== null) p.year_to = String(filtres.anneeMax);
   if (filtres.achatImmediat) p.buy_now = "true";
   if (filtres.carburant) p.fuel = filtres.carburant;
@@ -153,7 +167,10 @@ export function parametresImport(searchParams, filtres) {
   const annee = entier("year_from");
   if (annee !== null) p.year_from = String(Math.max(annee, filtres.anneeMin));
   const prix = entier("price_to");
-  if (prix !== null) p.price_to = String(Math.min(prix, filtres.prixMaxEur));
+  if (prix !== null) {
+    const plafond = Math.min(prix, filtres.prixMaxEur);
+    p.price_to = String(filtres.achatImmediat ? plafondApi(plafond) : plafond);
+  }
   const page = entier("page");
   if (page !== null) {
     if (page < 1 || page > 50) throw new ErreurCatalogue(400, "Filtre « page » invalide (1 à 50).");
@@ -165,6 +182,7 @@ export function parametresImport(searchParams, filtres) {
 // Contrôle d'une annonce contre le préfiltre (en plus du filtre envoyé à l'API, et à l'import). Motif, ou null.
 export function horsFiltres(annonce, filtres) {
   if (filtres.achatImmediat && annonce.achatImmediat !== true) return "annonce hors achat immédiat";
+  if (filtres.achatImmediat && !(Number.isFinite(annonce.prixAchatImmediatEur) && annonce.prixAchatImmediatEur > 0)) return "sans prix d'achat immédiat affiché";
   if (!Number.isInteger(annonce.annee) || annonce.annee < filtres.anneeMin) return `véhicule antérieur à ${filtres.anneeMin}`;
   if (filtres.anneeMax !== null && annonce.annee > filtres.anneeMax) return `véhicule postérieur à ${filtres.anneeMax}`;
   if (Number.isFinite(annonce.km) && annonce.km > filtres.kmMax) return `plus de ${filtres.kmMax} km`;
@@ -176,7 +194,10 @@ export async function rechercherAnnonces(env, searchParams) {
   const filtres = await lireFiltres(env);
   const donnees = await appelerTheCarApi(env, parametresImport(searchParams, filtres));
   const liste = [donnees?.results, donnees?.cars, donnees?.data, donnees?.items, donnees].find(Array.isArray) || [];
-  const annonces = liste.filter((brute) => brute && typeof brute === "object").map(annonceImport).filter((a) => !horsFiltres(a, filtres));
+  // Prix maximum de la recherche (contrôlé par parametresImport) : appliqué exactement, comme celui du préfiltre.
+  const prixRecherche = Number((searchParams.get("price_to") || "").trim()) || null;
+  const filtresRecherche = prixRecherche ? { ...filtres, prixMaxEur: Math.min(filtres.prixMaxEur, prixRecherche) } : filtres;
+  const annonces = liste.filter((brute) => brute && typeof brute === "object").map(annonceImport).filter((a) => !horsFiltres(a, filtresRecherche));
   const references = annonces.map((a) => a.reference).filter(Boolean);
   const deja = new Set();
   if (references.length) {
