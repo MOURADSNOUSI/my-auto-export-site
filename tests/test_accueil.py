@@ -500,7 +500,7 @@ class AccueilTest(unittest.TestCase):
         # Plus de choix de devise ni de langue dans l'en-tête ; menu « S'informer » (3 colonnes) en tête du menu.
         for chemin in ("/", "/vehicules", self.fiches["ACC-JEUNE"]):
             _, html, _ = self.page(chemin, "resident")
-            self.assertNotIn("my-bascule", html.split("<main", 1)[0], chemin)
+            self.assertNotIn('class="my-bascule"', html, chemin)
             self.assertNotIn(">TND</a>", html, chemin)
             self.assertRegex(html, r'<button class="menu-informer-bouton" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="info-panel">S&#39;informer<svg', chemin)
             panneau = html[html.index('id="info-panel"'):]
