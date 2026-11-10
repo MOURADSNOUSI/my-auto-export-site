@@ -31,3 +31,6 @@ document.addEventListener("keydown", (event) => {
   const ouvert = menus.find((menu) => menu.classList.contains("open"));
   if (ouvert) fermerMenu(ouvert, true);
 });
+
+// Pages « S'informer » imprimables (check-lists) : bouton « Imprimer ou enregistrer en PDF ».
+document.querySelector("[data-imprimer]")?.addEventListener("click", () => window.print());

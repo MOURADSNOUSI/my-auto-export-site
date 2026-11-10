@@ -8,7 +8,8 @@ import { sellerMedia, verifiedSellerLots } from "./seller.js";
 import { catalogueComplet, etatEnchere, resumesEncheres } from "./index.js";
 import { calculerPrix, lireParametresPrix } from "./prix.js";
 import { REGLAGES_SITE, lireReglagesSite } from "./reglages.js";
-import { MENU_INFORMER, NOMBRE_QUESTIONS, TEXTES_NAVIGATEUR, fr, t } from "./textes.js";
+import { NOMBRE_QUESTIONS, TEXTES_NAVIGATEUR, fr, t } from "./textes.js";
+import { COLONNES_INFORMER, MISE_A_JOUR, PAGES_INFORMER } from "./informer.js";
 import { vehiculeMandat } from "./mandats.js";
 import { ErreurFiltre, TRIS, chargerFiche, compter, lireCompteurs, lireFiltres as lireFiltresCatalogue, marquerCompteursPerimes, rechercher } from "./catalogue.js";
 
@@ -475,8 +476,8 @@ footer{margin-top:48px;padding:24px 0;border-top:1px solid var(--line);font-size
 // identifiants distincts quand le menu figure deux fois dans la page (menu de bureau et menu mobile).
 export function menuInformer(suffixe = "") {
   const id = `info-panel${suffixe}`;
-  const colonnes = MENU_INFORMER.map(({ titre, liens }, i) => `<div class="info-colonne"><p class="info-titre" id="${id}-titre-${i + 1}">${escapeHtml(titre)}</p>`
-    + `<ul aria-labelledby="${id}-titre-${i + 1}">${liens.map((lien) => `<li><a href="#">${escapeHtml(lien)}</a></li>`).join("")}</ul></div>`).join("");
+  const colonnes = COLONNES_INFORMER.map(({ titre, pages }, i) => `<div class="info-colonne"><p class="info-titre" id="${id}-titre-${i + 1}">${escapeHtml(titre)}</p>`
+    + `<ul aria-labelledby="${id}-titre-${i + 1}">${pages.map((chemin) => `<li><a href="${chemin}">${escapeHtml(PAGES_INFORMER[chemin].menu)}</a></li>`).join("")}</ul></div>`).join("");
   return `<div class="menu-informer"><button class="menu-informer-bouton" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="${id}">`
     + `${escapeHtml(t("menu_informer"))}<svg aria-hidden="true"><use href="#i-chevron"/></svg></button><div class="info-panel" id="${id}">${colonnes}</div></div>`;
 }
@@ -595,13 +596,14 @@ async function lotsAvecEtat(request, env) {
 }
 
 export function estRouteSeo(path) {
-  return path === "/sitemap.xml" || path === "/vehicules" || path === PREFIXE.slice(0, -1) || path.startsWith(PREFIXE) || path.startsWith(ANCIEN_PREFIXE);
+  return Object.hasOwn(PAGES_INFORMER, path) || path === "/sitemap.xml" || path === "/vehicules" || path === PREFIXE.slice(0, -1) || path.startsWith(PREFIXE) || path.startsWith(ANCIEN_PREFIXE);
 }
 
 export async function routeSeo(request, env, url) {
   if (url.pathname === "/sitemap.xml") return sitemap(request, env);
   if (url.searchParams.has("public")) return redirectionPublic(url);
   if (url.pathname === "/vehicules") return pageListe(request, env, url);
+  if (Object.hasOwn(PAGES_INFORMER, url.pathname)) return pageInformer(request, env, url.pathname);
   if (url.pathname === PREFIXE || url.pathname === PREFIXE.slice(0, -1)) return Response.redirect(`${url.origin}/vehicules`, 301);
   if (url.pathname.startsWith(ANCIEN_PREFIXE)) return Response.redirect(`${url.origin}${PREFIXE}${url.pathname.slice(ANCIEN_PREFIXE.length)}${url.search}`, 301);
   if (url.pathname.endsWith("/")) {
@@ -834,6 +836,63 @@ const CSS_CATALOGUE = `
 
 // Catalogue : filtres, total, une page de cartes et lien vers la suivante (curseur). Pages filtrées ou suivantes non
 // indexées (la page sans filtre reste la page canonique).
+// Pages du menu « S'informer » (worker/informer.js) : article, sources, autres pages de la rubrique. Indexables.
+const CSS_INFORMER = `
+.article{max-width:760px}.article .chapo{font-size:18px;color:var(--soft);margin:0 0 8px}
+.article .maj{font-size:14px;color:var(--soft);margin:0 0 24px}
+.article h2{margin:32px 0 10px;font-size:21px;line-height:1.3;color:var(--my-nuit,#14213d)}
+.article ul,.article ol{padding-inline-start:22px}.article li{margin:6px 0}
+.article ul.cases{list-style:none;padding:0}.article ul.cases li{position:relative;padding-inline-start:30px}
+.article ul.cases li::before{content:"";position:absolute;inset-inline-start:0;top:4px;width:16px;height:16px;border:2px solid var(--my-nuit,#14213d);border-radius:3px}
+.article .avertissement{margin:32px 0 0;padding:14px 16px;border-inline-start:4px solid var(--my-or,#c99d4d);background:var(--my-or-100,#fbefd9);font-size:14px}
+.article .sources{margin-top:24px;font-size:14px;color:var(--soft)}.article .sources li{overflow-wrap:anywhere}
+.article .actions-article{display:flex;flex-wrap:wrap;gap:10px;margin:28px 0 0}
+.voir-aussi{margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}.voir-aussi h2{font-size:18px;margin:0 0 12px}
+.voir-aussi ul{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:8px;margin:0;padding:0;list-style:none}
+.voir-aussi a{display:block;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--my-nuit,#14213d);font-weight:650;text-decoration:none}
+.voir-aussi a:hover{border-color:var(--my-nuit,#14213d)}
+@media print{.my-entete,.voir-aussi,.actions-article,footer,nav.ariane,.sprite-entete{display:none!important}.article{max-width:none}}
+`;
+
+// Typographie française : espace insécable avant « ? », « : », « ! », « ; », « » » et après « « » (pas de signe seul en
+// début de ligne).
+const insecables = (texte) => texte.replace(/ ([?:!;»])/g, "\u00a0$1").replace(/« /g, "«\u00a0");
+
+async function pageInformer(request, env, chemin) {
+  const page = PAGES_INFORMER[chemin];
+  const ctx = await contexteVitrine(request, env);
+  const colonne = COLONNES_INFORMER.find((c) => c.pages.includes(chemin));
+  const canonique = `${SITE}${chemin}`;
+  const dateMaj = new Date(`${MISE_A_JOUR}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  const autres = COLONNES_INFORMER.flatMap((c) => c.pages).filter((c) => c !== chemin);
+  const actions = [
+    page.imprimable ? '<button class="my-bouton my-bouton--contour" type="button" data-imprimer>Imprimer ou enregistrer en PDF</button>' : "",
+    page.action ? `<a class="my-bouton my-bouton--action" href="${page.action.href}">${escapeHtml(page.action.libelle)}</a>` : ""
+  ].join("");
+  const donnees = [{
+    "@context": "https://schema.org", "@type": "Article", headline: page.titre, description: page.description, inLanguage: "fr",
+    dateModified: MISE_A_JOUR, mainEntityOfPage: canonique, publisher: { "@type": "Organization", name: "M&Y AUTO EXPORT", logo: { "@type": "ImageObject", url: `${SITE}/logo.png` } }
+  }, {
+    "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: `${SITE}/` },
+      { "@type": "ListItem", position: 2, name: page.menu, item: canonique }
+    ]
+  }];
+  return reponseHtml(gabarit({
+    titre: `${page.titre} | M&Y AUTO EXPORT`,
+    description: page.description,
+    canonique, donnees, ctx, typeOg: "article",
+    contenu: `<style>${CSS_INFORMER}</style><nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › ${escapeHtml(colonne.titre)} › ${escapeHtml(page.menu)}</nav>
+    <article class="article"><h1>${escapeHtml(insecables(page.titre))}</h1><p class="chapo">${escapeHtml(insecables(page.chapo))}</p><p class="maj">Mis à jour le ${escapeHtml(dateMaj)}</p>
+      ${page.sections.map((section) => `<section><h2>${escapeHtml(insecables(section.titre))}</h2>${insecables(section.html)}</section>`).join("")}
+      ${actions ? `<div class="actions-article">${actions}</div>` : ""}
+      <p class="avertissement">Ces informations sont générales et peuvent évoluer. Elles ne remplacent pas l'avis de la douane, de l'ATTT ou d'un professionnel : vérifiez votre situation avant d'engager un achat.</p>
+      ${page.sources.length ? `<section class="sources"><h2>Sources</h2><ul>${page.sources.map(([libelle, url]) => `<li><a href="${escapeHtml(url)}" rel="noopener" target="_blank">${escapeHtml(libelle)}</a></li>`).join("")}</ul></section>` : ""}
+    </article>
+    <nav class="voir-aussi" aria-label="Autres pages S'informer"><h2>À lire aussi</h2><ul>${autres.map((c) => `<li><a href="${c}">${escapeHtml(PAGES_INFORMER[c].menu)}</a></li>`).join("")}</ul></nav>`
+  }), 200, { "Cache-Control": "public, max-age=300" });
+}
+
 async function pageListe(request, env, url) {
   let filtres;
   try {
@@ -896,6 +955,7 @@ async function sitemap(request, env) {
   const items = (await lotsAvecEtat(request, env)).filter(indexable);
   const urls = [
     ...PAGES_STATIQUES.map((chemin) => ({ loc: `${SITE}${chemin}` })),
+    ...Object.keys(PAGES_INFORMER).map((chemin) => ({ loc: `${SITE}${chemin}`, lastmod: MISE_A_JOUR })),
     ...items.map((item) => ({ loc: `${SITE}${cheminVehicule(item.lot)}`, lastmod: dateIso(item.updatedAt || item.lot.createdAt) }))
   ];
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
