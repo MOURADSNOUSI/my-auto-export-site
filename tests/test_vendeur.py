@@ -360,3 +360,15 @@ class VendeurTest(SellerFixture):
         self.sql("WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<120) INSERT INTO marketplace_api_attempts(user_id,at) SELECT 2,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM n")
         try:self.assertEqual(self.call('POST','/api/marketplace/privacy',{'kind':'access','reason':'Test de limite'},'other')[0],429)
         finally:self.sql('DELETE FROM marketplace_api_attempts WHERE user_id=2')
+
+    def test_23_inspection_page_lists_validated_partners_only(self):
+        # Page publique « Inspection auto » : garages validés dans /admin-vendeurs, sans leur contact.
+        code,html,_=self.call('GET','/services/inspection-auto',who=None);html=html.decode()
+        self.assertEqual(code,200)
+        self.assertIn('une <strong>inspection officielle et détaillée</strong> est obligatoire',html)
+        self.assertIn('<strong>Garage partenaire</strong>',html);self.assertIn('Tunis',html)
+        self.assertNotIn('contact@example.test',html)
+        autre=self.call('POST','/api/admin/seller/garages',{'name':'Garage Desactive','address':'Sfax','contact':'cache@example.test','professionalNumber':'GAR-002','validUntil':'2099-12-31'},'admin')[1]['garage']['id']
+        self.assertIn('Garage Desactive',self.call('GET','/services/inspection-auto',who=None)[1].decode())
+        self.assertEqual(self.call('PUT',f'/api/admin/seller/garages/{autre}',{'active':False},'admin')[0],200)
+        self.assertNotIn('Garage Desactive',self.call('GET','/services/inspection-auto',who=None)[1].decode(),'garage désactivé retiré de la page')

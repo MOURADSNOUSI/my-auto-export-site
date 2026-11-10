@@ -847,6 +847,9 @@ const CSS_INFORMER = `
 .article .avertissement{margin:32px 0 0;padding:14px 16px;border-inline-start:4px solid var(--my-or,#c99d4d);background:var(--my-or-100,#fbefd9);font-size:14px}
 .article .sources{margin-top:24px;font-size:14px;color:var(--soft)}.article .sources li{overflow-wrap:anywhere}
 .article .actions-article{display:flex;flex-wrap:wrap;gap:10px;margin:28px 0 0}
+.partenaires{margin:18px 0 0;padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:#fff}.partenaires h3{margin:0 0 10px;font-size:17px;color:var(--my-nuit,#14213d)}
+.partenaires ul{display:grid;gap:10px;margin:0;padding:0;list-style:none}.partenaires li{display:grid;gap:2px;margin:0;padding-block-end:10px;border-block-end:1px solid var(--line)}.partenaires li:last-child{border:0;padding:0}
+.partenaires li span{color:var(--my-or-texte,#8a6420);font-size:13px;font-weight:650}.partenaires li small{color:var(--soft);font-size:14px}.partenaires p{margin:0}
 .voir-aussi{margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}.voir-aussi h2{font-size:18px;margin:0 0 12px}
 .voir-aussi ul{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:8px;margin:0;padding:0;list-style:none}
 .voir-aussi a{display:block;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--my-nuit,#14213d);font-weight:650;text-decoration:none}
@@ -858,9 +861,28 @@ const CSS_INFORMER = `
 // début de ligne).
 const insecables = (texte) => texte.replace(/ ([?:!;»])/g, "\u00a0$1").replace(/« /g, "«\u00a0");
 
+// Garages et partenaires d'inspection affichés au public : ceux que l'administration a ajoutés et validés dans
+// /admin-vendeurs (actifs, encore valables, numéro professionnel saisi : mêmes règles que le choix du vendeur dans
+// worker/seller.js). Nom, adresse et type seulement, jamais le contact.
+const TYPES_PARTENAIRE = { partner: "Partenaire M&Y AUTO EXPORT", authorized: "Garage ou concessionnaire agréé", mandated: "Garage mandaté par M&Y AUTO EXPORT" };
+
+async function listePartenaires(env) {
+  let lignes = [];
+  try {
+    ({ results: lignes } = await env.DB.prepare(
+      "SELECT name, address, source_type FROM partner_garages WHERE active = 1 AND valid_until >= ? AND professional_number <> '' ORDER BY name LIMIT 100"
+    ).bind(new Date().toISOString().slice(0, 10)).all());
+  } catch {
+    console.error("partenaires_lecture_failed");
+  }
+  const titre = "<h3>Garages et partenaires validés</h3>";
+  if (!lignes.length) return `<div class="partenaires">${titre}<p>La liste des garages et partenaires validés sera publiée ici. En attendant, contactez-nous pour connaître le garage le plus proche de chez vous.</p></div>`;
+  return `<div class="partenaires">${titre}<ul>${lignes.map((g) => `<li><strong>${escapeHtml(g.name)}</strong><span>${escapeHtml(TYPES_PARTENAIRE[g.source_type] || TYPES_PARTENAIRE.partner)}</span><small>${escapeHtml(g.address)}</small></li>`).join("")}</ul></div>`;
+}
+
 async function pageInformer(request, env, chemin) {
   const page = PAGES_INFORMER[chemin];
-  const ctx = await contexteVitrine(request, env);
+  const [ctx, partenaires] = await Promise.all([contexteVitrine(request, env), page.partenaires ? listePartenaires(env) : ""]);
   const colonne = COLONNES_INFORMER.find((c) => c.pages.includes(chemin));
   const canonique = `${SITE}${chemin}`;
   const dateMaj = new Date(`${MISE_A_JOUR}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
@@ -884,7 +906,7 @@ async function pageInformer(request, env, chemin) {
     canonique, donnees, ctx, typeOg: "article",
     contenu: `<style>${CSS_INFORMER}</style><nav class="ariane" aria-label="Fil d'Ariane"><a href="/">Accueil</a> › ${escapeHtml(colonne.titre)} › ${escapeHtml(page.menu)}</nav>
     <article class="article"><h1>${escapeHtml(insecables(page.titre))}</h1><p class="chapo">${escapeHtml(insecables(page.chapo))}</p><p class="maj">Mis à jour le ${escapeHtml(dateMaj)}</p>
-      ${page.sections.map((section) => `<section><h2>${escapeHtml(insecables(section.titre))}</h2>${insecables(section.html)}</section>`).join("")}
+      ${page.sections.map((section) => `<section><h2>${escapeHtml(insecables(section.titre))}</h2>${insecables(section.html).replace("<!--partenaires-->", partenaires)}</section>`).join("")}
       ${actions ? `<div class="actions-article">${actions}</div>` : ""}
       <p class="avertissement">Ces informations sont générales et peuvent évoluer. Elles ne remplacent pas l'avis de la douane, de l'ATTT ou d'un professionnel : vérifiez votre situation avant d'engager un achat.</p>
       ${page.sources.length ? `<section class="sources"><h2>Sources</h2><ul>${page.sources.map(([libelle, url]) => `<li><a href="${escapeHtml(url)}" rel="noopener" target="_blank">${escapeHtml(libelle)}</a></li>`).join("")}</ul></section>` : ""}
