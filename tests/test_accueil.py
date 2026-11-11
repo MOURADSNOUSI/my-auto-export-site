@@ -342,9 +342,18 @@ class AccueilTest(unittest.TestCase):
             self.assertEqual(statut, 400, (invalide, data))
         self.regler("whatsapp_numero", "+216 12 345 678")
         self.addCleanup(self.regler, "whatsapp_numero", "")
-        for chemin in ("/", "/vehicules", self.fiches["ACC-JEUNE"]):
+        # Bouton WhatsApp dans la section Contact de l'accueil, plus dans l'en-tête d'aucune page.
+        _, html, _ = self.page("/")
+        contact = html[html.index('id="contact"'):html.index("</section>", html.index('id="contact"'))]
+        self.assertIn('<a class="bouton-whatsapp" href="https://wa.me/21612345678" target="_blank" rel="noopener"', contact)
+        for chemin in ("/", "/vehicules", self.fiches["ACC-JEUNE"], "/services/credit-auto"):
             _, html, _ = self.page(chemin)
-            self.assertIn('<a class="bouton-whatsapp" href="https://wa.me/21612345678" target="_blank" rel="noopener"', html, chemin)
+            entete = html[html.index("<header"):html.index("</header>")]
+            self.assertNotIn("wa.me", entete, chemin)
+        # Numéro saisi en 00… : lien wa.me au format international.
+        self.regler("whatsapp_numero", "0033611537978")
+        self.assertIn('href="https://wa.me/33611537978"', self.page("/")[1])
+        self.regler("whatsapp_numero", "+216 12 345 678")
         _, html, _ = self.page("/vehicules")
         self.assertIn("https://wa.me/21612345678?text=", self.carte(html, "ACC-JEUNE"))
 

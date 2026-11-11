@@ -240,8 +240,9 @@ function dateTaux(r, ctx) {
   return `${j}/${m}/${a}`;
 }
 
+// Numéro pour wa.me : chiffres seuls, au format international sans « + » ni « 00 » (0033… ou +33… → 33…).
 function whatsappChiffres(ctx) {
-  return String(ctx.site.whatsapp_numero || "").replace(/^\+/, "");
+  return String(ctx.site.whatsapp_numero || "").replace(/^(\+|00)/, "");
 }
 
 function boutonContact(lot, ctx, { email = true } = {}) {
@@ -417,7 +418,8 @@ export async function vitrineAccueil(request, env, reponse) {
       if (Object.hasOwn(fr, cle)) element.setAttribute("title", t(cle));
     } })
     .on("head", { element: (element) => element.append(`<style>${CSS_VITRINE}</style><script type="application/json" id="textes">${textesNavigateur}</script>`, { html: true }) })
-    .on(".header-tools", { element: (element) => element.prepend(boutonWhatsapp(ctx), { html: true }) })
+    // WhatsApp : dans la section Contact (le lien « Contact » de l'en-tête de chaque page y mène), plus dans l'en-tête.
+    .on("#contact .contact-actions", { element: (element) => element.append(boutonWhatsapp(ctx), { html: true }) })
     .on("#main-nav", { element: (element) => element.prepend(menuInformer(), { html: true }) })
     .on("#comment-ca-marche", remplir(sections.comment))
     .on("#nos-prix", remplir(sections.prix))
@@ -495,7 +497,7 @@ export function entete(ctx, chemin) {
   return `${SPRITE_ENTETE}<header class="my-entete my-sur-nuit"><div class="my-conteneur my-entete-interieur">
     <a class="my-marque" href="/"><img src="/logo.png" alt="" width="40" height="40"><span>M&amp;Y AUTO EXPORT<small>Véhicules sans frontières</small></span></a>
     <nav class="my-nav" aria-label="Navigation principale">${menuInformer()}${liens}</nav>
-    <div class="my-entete-actions">${ctx ? boutonWhatsapp(ctx) : ""}<a class="my-bouton my-bouton--action my-bouton--petit compte-entete" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a>
+    <div class="my-entete-actions"><a class="my-bouton my-bouton--action my-bouton--petit compte-entete" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a>
       <details class="my-burger menu-mobile"><summary class="my-bouton my-bouton--contour my-bouton--petit" aria-label="${escapeHtml(t("menu_ouvrir"))}">☰</summary>
         <nav class="menu-mobile-panneau" aria-label="Navigation principale (mobile)">${menuInformer("-mobile")}${liens}</nav></details></div></div></header>`;
 }
