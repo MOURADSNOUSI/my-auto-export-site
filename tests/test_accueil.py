@@ -437,7 +437,7 @@ class AccueilTest(unittest.TestCase):
         if CAPTURES:
             page.screenshot(path=str(Path(CAPTURES) / "accueil-390.png"), full_page=True)
             page.screenshot(path=str(Path(CAPTURES) / "accueil-390-haut.png"))
-        page.click("#account-button")
+        page.click("#compte-identifier")
         page.wait_for_selector("#auth-dialog[open]")
         self.assertIn("Mon compte", page.text_content("#account-label"))
         self.assertEqual(erreurs, [])
@@ -544,6 +544,9 @@ class AccueilTest(unittest.TestCase):
         self.assertTrue(page.is_visible("#main-nav"))
         self.assertTrue(page.is_visible("#compte-creer"))
         self.assertEqual(page.text_content("#compte-creer"), "Créer un compte")
+        self.assertTrue(page.is_visible("#compte-identifier"))
+        self.assertEqual(page.text_content("#compte-identifier"), "S'identifier")
+        self.assertFalse(page.is_visible("#account-button"), "icône du compte masquée tant qu'on n'est pas connecté")
         page.click("#compte-creer")
         page.wait_for_selector("#auth-dialog[open]")
         self.assertTrue(page.is_visible("#register-form"))
@@ -553,6 +556,8 @@ class AccueilTest(unittest.TestCase):
         page.click("#register-form [type=submit]")
         page.wait_for_selector("#auth-dialog[open]", state="detached")
         self.assertFalse(page.is_visible("#compte-creer"), "masqué une fois connecté")
+        self.assertFalse(page.is_visible("#compte-identifier"), "masqué une fois connecté")
+        self.assertTrue(page.is_visible("#account-button"))
         largeurs = page.evaluate("[document.documentElement.scrollWidth, window.innerWidth]")
         self.assertLessEqual(largeurs[0], largeurs[1])
         # Pages du Worker sur téléphone : menu en <details>, ouvert sans JavaScript.

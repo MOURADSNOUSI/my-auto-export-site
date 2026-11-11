@@ -312,7 +312,7 @@ class EncheresTest(unittest.TestCase):
         page.on("dialog", lambda dialog: dialog.accept())
         page.goto(self.base + "/")
         page.wait_for_function("catalogueEtat === 'ready' && compte.disponible")
-        page.click(".account-chip")
+        page.click("#compte-identifier")
         page.fill("#login-email", "dora@ex.com")
         page.fill("#login-password", MOT_DE_PASSE)
         page.click("#login-form [type=submit]")

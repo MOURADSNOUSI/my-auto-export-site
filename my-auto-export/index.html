@@ -483,7 +483,7 @@
     .site-header .main-nav { flex: 1 0 auto; min-width: max-content; }
     .site-header .account-chip span { display: none; }
     .site-header .account-chip { margin-left: 4px; padding-left: 10px; }
-    .compte-creer[hidden] { display: none; }
+    .compte-creer[hidden], .compte-identifier[hidden], .site-header .account-chip[hidden] { display: none; }
     /* Menu replié sous 1366 px : liens, devise, langue, favoris et compte ne tiennent plus sur une ligne. */
     @media (max-width: 1365px) {
       .site-header .account-chip span { display: none; }
@@ -491,9 +491,6 @@
       .main-nav { position: absolute; top: 100%; inset-inline: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 8px 24px 16px; background: var(--my-nuit); border-bottom: 0; box-shadow: var(--my-ombre-2); }
       .site-header.menu-open .main-nav { display: flex; }
       .main-nav > a { min-height: 48px; padding: 0 4px; border-bottom: 1px solid rgb(255 255 255 / 0.14); border-radius: 0; font-size: 16px; }
-    }
-    @media (max-width: 680px) {
-      .compte-creer { display: none; }
     }
     /* Mêmes dimensions que l'en-tête commun des autres pages (design/composants.css, .my-entete) : largeur 1200 px,
        hauteur 64 px, logo 40 px (34 px sous 420 px), marque et menu en 16 px. */
@@ -585,6 +582,7 @@
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></symbol><symbol id="i-user-plus" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M2 21c0-4.4 3.6-7 8-7 1.6 0 3.1.4 4.3 1.1M19 13v6M16 16h6"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></symbol>
   </svg>
 
@@ -606,8 +604,10 @@
         <button class="icon-button" type="button" id="nav-favorites" aria-label="Mes favoris">
           <svg><use class="filled" href="#i-heart"/></svg><span class="tool-count empty" id="nav-favorites-count">0</span>
         </button>
-        <button class="my-bouton my-bouton--action my-bouton--petit compte-creer" type="button" id="compte-creer" data-texte="compte_creer"></button>
-        <button class="account-chip" type="button" id="account-button" data-open-account>
+        <!-- Non connecté : « S'identifier » et « Créer un compte » ; connecté : l'icône du compte (account-chip). -->
+        <button class="my-bouton my-bouton--contour my-bouton--petit compte-identifier" type="button" id="compte-identifier"><svg class="icone-compte" aria-hidden="true"><use href="#i-user"/></svg><span class="libelle" data-texte="compte_identifier"></span></button>
+        <button class="my-bouton my-bouton--action my-bouton--petit compte-creer" type="button" id="compte-creer"><span class="libelle" data-texte="compte_creer"></span><svg class="icone-compte" aria-hidden="true"><use href="#i-user-plus"/></svg></button>
+        <button class="account-chip" type="button" id="account-button" data-open-account hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="filled" cx="12" cy="8" r="4"/><path class="filled" d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7Z"/></svg>
           <span id="account-label"><strong><span class="account-dot" id="account-dot" aria-hidden="true"></span><span data-texte="compte_titre"></span></strong><small data-texte="compte_action"></small></span>
         </button>
@@ -1270,6 +1270,15 @@
       } catch {}
       afficherCompte();
       if (new URLSearchParams(location.search).get("espace") === "acheteur") ouvrirEspace();
+      // ?compte=connexion ou ?compte=inscription : boutons « S'identifier » et « Créer un compte » des autres pages,
+      // traités une fois l'état du compte connu (déjà connecté : son espace).
+      const parametres = new URLSearchParams(location.search);
+      const demande = { connexion: "login", inscription: "register" }[parametres.get("compte")];
+      if (demande) {
+        parametres.delete("compte");
+        history.replaceState(null, "", location.pathname + (parametres.size ? `?${parametres}` : "") + location.hash);
+        if (compte.user || demande === "login") ouvrirEspace(); else ouvrirConnexion("register");
+      }
     }
 
     // Au moment de la connexion, les favoris gardés dans le navigateur rejoignent ceux du compte.
@@ -1312,6 +1321,8 @@
         : `<strong><span class="account-dot" aria-hidden="true"></span>${escapeHtml(TEXTES.compte_titre || "")}</strong><small>${escapeHtml(TEXTES.compte_action || "Se connecter")}</small>`;
       document.getElementById("account-button").setAttribute("aria-label", user ? `Mon espace acheteur, ${user.name}` : "Se connecter ou créer un compte");
       document.getElementById("compte-creer").hidden = Boolean(user);
+      document.getElementById("compte-identifier").hidden = Boolean(user);
+      document.getElementById("account-button").hidden = !user;
       majCompteurs();
     }
 
@@ -1629,6 +1640,7 @@
       allerAuCatalogue();
     });
     document.getElementById("compte-creer").addEventListener("click", () => ouvrirConnexion("register"));
+    document.getElementById("compte-identifier").addEventListener("click", () => ouvrirEspace());
     document.querySelectorAll("[data-open-account]").forEach((button) => button.addEventListener("click", () => ouvrirEspace()));
 
     const siteHeader = document.getElementById("site-header");

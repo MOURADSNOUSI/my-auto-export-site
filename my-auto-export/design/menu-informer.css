@@ -142,3 +142,23 @@
 @media (prefers-reduced-motion: reduce) {
   .menu-informer .menu-informer-bouton svg { transition: none; }
 }
+
+/* --- Boutons du compte (toutes les pages) : « S'identifier » (contour) et « Créer un compte » (plein, icône « + »).
+   Sur téléphone : icônes seules, libellé gardé pour les lecteurs d'écran. --- */
+.compte-identifier, .compte-creer { gap: 6px; white-space: nowrap; }
+.icone-compte { flex: 0 0 auto; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.compte-identifier[hidden], .compte-creer[hidden], [data-compte-membre][hidden] { display: none; }
+@media (max-width: 680px) {
+  .compte-identifier, .compte-creer { justify-content: center; inline-size: 40px; min-block-size: 40px; padding-inline: 0; }
+  .compte-identifier .libelle, .compte-creer .libelle { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Menu complet (1366 px et plus) : liens resserrés pour laisser la place à « S'identifier » et « Créer un compte »,
+   identiques sur l'accueil (.site-header) et les autres pages (.my-entete). Icône de « S'identifier » sur téléphone seulement. */
+@media (min-width: 1366px) {
+  .site-header .main-nav, .my-entete .my-nav { margin-inline-start: 4px; gap: 2px; }
+  .site-header .main-nav > a, .my-entete .my-nav > a, .menu-informer .menu-informer-bouton { padding-inline: 8px; }
+}
+@media (min-width: 681px) {
+  .compte-identifier .icone-compte { display: none; }
+}

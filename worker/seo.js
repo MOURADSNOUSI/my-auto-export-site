@@ -485,7 +485,17 @@ export function menuInformer(suffixe = "") {
 }
 
 // Icône du chevron pour les pages sans le jeu d'icônes de l'accueil (même tracé que #i-chevron de index.html).
-const SPRITE_ENTETE = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol></svg>';
+const SPRITE_ENTETE = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>'
+  + '<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></symbol>'
+  + '<symbol id="i-user-plus" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M2 21c0-4.4 3.6-7 8-7 1.6 0 3.1.4 4.3 1.1M19 13v6M16 16h6"/></symbol></svg>';
+
+// Boutons du compte : « S'identifier » et « Créer un compte » (vers l'accueil, qui ouvre la fenêtre de connexion),
+// remplacés par « Mon compte » quand /menu-informer.js trouve une session (/api/me). Sans JavaScript : les deux boutons.
+function boutonsCompte() {
+  return `<a class="my-bouton my-bouton--contour my-bouton--petit compte-identifier" href="/?compte=connexion" data-compte-invite><svg class="icone-compte" aria-hidden="true"><use href="#i-user"/></svg><span class="libelle">${escapeHtml(t("compte_identifier"))}</span></a>`
+    + `<a class="my-bouton my-bouton--action my-bouton--petit compte-creer" href="/?compte=inscription" data-compte-invite><span class="libelle">${escapeHtml(t("compte_creer"))}</span><svg class="icone-compte" aria-hidden="true"><use href="#i-user-plus"/></svg></a>`
+    + `<a class="my-bouton my-bouton--action my-bouton--petit compte-entete" href="/?espace=acheteur" data-compte-membre hidden>${escapeHtml(t("compte_titre"))}</a>`;
+}
 export const RESSOURCES_MENU_INFORMER = '<link rel="stylesheet" href="/design/menu-informer.css"><script src="/menu-informer.js" defer></script>';
 
 // En-tête commun des pages rendues par le Worker (design system, design/composants.css) : menu par façon d'acheter,
@@ -497,7 +507,7 @@ export function entete(ctx, chemin) {
   return `${SPRITE_ENTETE}<header class="my-entete my-sur-nuit"><div class="my-conteneur my-entete-interieur">
     <a class="my-marque" href="/"><img src="/logo.png" alt="" width="40" height="40"><span>M&amp;Y AUTO EXPORT<small>Véhicules sans frontières</small></span></a>
     <nav class="my-nav" aria-label="Navigation principale">${menuInformer()}${liens}</nav>
-    <div class="my-entete-actions"><a class="my-bouton my-bouton--action my-bouton--petit compte-entete" href="/?espace=acheteur">${escapeHtml(t("compte_titre"))}</a>
+    <div class="my-entete-actions">${boutonsCompte()}
       <details class="my-burger menu-mobile"><summary class="my-bouton my-bouton--contour my-bouton--petit" aria-label="${escapeHtml(t("menu_ouvrir"))}">☰</summary>
         <nav class="menu-mobile-panneau" aria-label="Navigation principale (mobile)">${menuInformer("-mobile")}${liens}</nav></details></div></div></header>`;
 }

@@ -137,7 +137,7 @@ class ProfilsComptesTest(fixtures.SellerFixture):
             try:
                 page = browser.new_page(viewport={"width": 390, "height": 844})
                 page.goto(self.base + "/")
-                page.locator("#account-button").click()
+                page.locator("#compte-identifier").click()
                 page.locator('[data-auth="register"]').click()
                 expect(page.locator("#register-account-type")).to_have_value("buyer")
                 page.locator("#register-account-type").select_option("both")

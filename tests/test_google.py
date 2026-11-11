@@ -288,7 +288,7 @@ class GoogleInactifTest(unittest.TestCase):
             page = navigateur.new_page(viewport={"width": 390, "height": 844})
             page.goto(self.base + "/")
             page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
-            page.click("#account-button")
+            page.click("#compte-identifier")
             page.wait_for_selector("#auth-dialog[open]")
             self.assertFalse(page.is_visible("#google-accueil"))
             page.goto(self.base + "/vendre")

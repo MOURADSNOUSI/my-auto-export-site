@@ -67,7 +67,7 @@ class EspaceAcheteurTest(unittest.TestCase):
         return page
 
     def inscrire(self, page, email, nom="Amine Test"):
-        page.click(".account-chip")
+        page.click("#compte-identifier")
         page.click("[data-auth='register']")
         page.fill("#register-name", nom)
         page.fill("#register-email", email)
@@ -107,7 +107,7 @@ class EspaceAcheteurTest(unittest.TestCase):
         page.wait_for_function("catalogueEtat !== 'loading' && compte.disponible")
         self.assertIsNone(page.evaluate("compte.user"), "la session doit être fermée côté serveur")
 
-        page.click(".account-chip")
+        page.click("#compte-identifier")
         page.fill("#login-email", "amine@example.com")
         page.fill("#login-password", "mauvais")
         page.click("#login-form [type=submit]")
@@ -131,7 +131,7 @@ class EspaceAcheteurTest(unittest.TestCase):
         page = self.nouvelle_page()
         self.inscrire(page, "double@example.com")
         autre = self.nouvelle_page()
-        autre.click(".account-chip")
+        autre.click("#compte-identifier")
         autre.click("[data-auth='register']")
         autre.fill("#register-name", "Autre")
         autre.fill("#register-email", "double@example.com")
@@ -146,7 +146,7 @@ class EspaceAcheteurTest(unittest.TestCase):
         page.locator(".lot-card", has_text="MY-0001").locator("[data-watch]").click()
         page.wait_for_timeout(500)
         autre = self.nouvelle_page()
-        autre.click(".account-chip")
+        autre.click("#compte-identifier")
         autre.fill("#login-email", "favoris@example.com")
         autre.fill("#login-password", "motdepasse-solide")
         autre.click("#login-form [type=submit]")

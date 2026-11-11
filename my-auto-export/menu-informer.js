@@ -34,3 +34,12 @@ document.addEventListener("keydown", (event) => {
 
 // Pages « S'informer » imprimables (check-lists) : bouton « Imprimer ou enregistrer en PDF ».
 document.querySelector("[data-imprimer]")?.addEventListener("click", () => window.print());
+
+// En-tête des pages du Worker : « Mon compte » à la place de « S'identifier » et « Créer un compte » si une session existe.
+if (document.querySelector("[data-compte-membre]")) {
+  fetch("/api/me", { credentials: "same-origin" }).then((reponse) => {
+    if (!reponse.ok) return;
+    document.querySelectorAll("[data-compte-invite]").forEach((lien) => { lien.hidden = true; });
+    document.querySelectorAll("[data-compte-membre]").forEach((lien) => { lien.hidden = false; });
+  }).catch(() => {});
+}

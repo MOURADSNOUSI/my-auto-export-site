@@ -10,6 +10,7 @@ export const fr = {
   menu_contact: "Contact",
   menu_ouvrir: "Menu",
   compte_creer: "Créer un compte",
+  compte_identifier: "S'identifier",
   compte_titre: "Mon compte",
   compte_action: "Se connecter",
   whatsapp: "WhatsApp",
