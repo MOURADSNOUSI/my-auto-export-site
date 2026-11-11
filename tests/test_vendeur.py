@@ -296,8 +296,11 @@ class VendeurTest(SellerFixture):
             page.goto(self.base+'/mes-vehicules');page.locator('#new-submission').click()
             page.locator('#vehicle-form').wait_for();page.locator('[name=vin]').fill('VF3'+uuid.uuid4().hex[:14].upper())
             page.locator('[name=location]').select_option(label='Tunis');page.locator('[name=originCountry]').select_option('FR')
-            page.locator('#continue-identification').click();page.locator('#model-step').wait_for(state='visible')
-            page.locator('[data-step="7"]').click();page.locator('[name=priceAmount]').fill('12345.678');page.locator('[name=minimumAmount]').fill('12000.001')
+            # Mise en vente en 4 étapes : véhicule, photos, inspection et documents, prix.
+            self.assertEqual(page.locator('[data-step]').count(),4)
+            for absent in ['licensePlate','productionDate','obs-engine','equipment','minimumAmount','deliveryTerms']:self.assertEqual(page.locator(f'[name={absent}]').count(),0,absent)
+            page.locator('#continue-identification').click();page.locator('#photos-step').wait_for(state='visible')
+            page.locator('[data-step="3"]').click();page.locator('[name=priceAmount]').fill('12345.678')
             self.assertEqual(page.locator('[name=saleType]').input_value(),'sale');self.assertTrue(page.locator('#submit-dossier').is_disabled())
             self.assertEqual(page.locator('[name=auctionEnd]').count(),0)
             page.locator('#save-draft').click();expect(page.locator('#message')).to_contain_text('enregistr')
@@ -372,3 +375,14 @@ class VendeurTest(SellerFixture):
         self.assertIn('Garage Desactive',self.call('GET','/services/inspection-auto',who=None)[1].decode())
         self.assertEqual(self.call('PUT',f'/api/admin/seller/garages/{autre}',{'active':False},'admin')[0],200)
         self.assertNotIn('Garage Desactive',self.call('GET','/services/inspection-auto',who=None)[1].decode(),'garage désactivé retiré de la page')
+
+    def test_24_simplified_listing_without_observations_and_known_defects(self):
+        # Mise en vente simplifiée : les 10 observations du diagnostic ne sont plus exigées ; défauts connus publiés.
+        s=self.draft(True)
+        data={**s['data'],'observations':{},'knownDefects':'Rayure légère sur le pare-chocs arrière'}
+        s=self.call('PUT',f"/api/seller/submissions/{s['id']}",{'revision':s['revision'],'data':data})[1]['submission']
+        detail=self.call('GET',f"/api/seller/submissions/{s['id']}")[1]
+        self.assertFalse([m for m in detail['missing'] if m.startswith('Diagnostic :')],detail['missing'])
+        code,p,_=self.review(self.submit(s));self.assertEqual(code,200,p)
+        lot=next(l for l in self.call('GET','/api/catalogue',who=None)[1] if l['reference']=='SV-'+s['id'])
+        self.assertIn(['Défauts connus déclarés par le vendeur','Rayure légère sur le pare-chocs arrière'],lot['specs'])

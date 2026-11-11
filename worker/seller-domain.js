@@ -48,7 +48,7 @@ export async function missing(env,row,files) {
  if(!d.diagnosticReference)errors.push('Référence du diagnostic');
  if(!d.diagnosticVin||d.diagnosticVin!==d.vin)errors.push('Le VIN déclaré du rapport doit correspondre au VIN du véhicule (confirmation humaine obligatoire)');
  if(!Number.isInteger(d.diagnosticMileageKm)||d.diagnosticMileageKm<0)errors.push('Kilométrage relevé au diagnostic');
- for(const [key,label]of Object.entries(SYSTEMS))if(!d.observations?.[key])errors.push(`Diagnostic : ${label}`);
+ // Observations du diagnostic : facultatives (elles figurent dans le rapport PDF, vérifié par l'équipe).
  const photos=files.filter(f=>PHOTO_KINDS.includes(f.kind));
  if(photos.length<rulesPolicy.min_photos)errors.push(`Au moins ${rulesPolicy.min_photos} photos du véhicule`);
  for(const kind of REQUIRED_PHOTOS)if(!photos.some(f=>f.kind===kind))errors.push(`Photo : ${FILE_LABELS[kind]}`);
@@ -79,6 +79,7 @@ export async function publicLot(env,row,files) {
  for(const [source,target] of [['powerHp','powerHp'],['displacementCc','engineCc'],['doors','doors'],['seats','seats']])if(Number.isFinite(d[source])&&d[source]>0)lot[target]=d[source];
  if(d.condition)lot.condition={'Neuf':'new','Occasion':'used','Accidenté':'accident','Endommagé':'damaged'}[d.condition];
  lot.specs=[...TECH_FIELDS,...HISTORY_FIELDS.filter(f=>['mechanicalCondition','runningCondition','knownAccidents','majorRepairs','serviceHistory'].includes(f[0]))].filter(([k])=>d[k]!==null&&d[k]!==undefined&&d[k]!=='').map(([k,l])=>k==='powerKw'?['Puissance',`${d[k]} kW`]:[l,String(d[k])]);
+ if(d.knownDefects)lot.specs.push(['Défauts connus déclarés par le vendeur',d.knownDefects]);
  const publicData=await publicMarketplaceLot(env,row,lot),visible=JSON.stringify(publicData).toUpperCase();
  if([d.vin,d.licensePlate].filter(v=>v&&v.length>=4).some(v=>visible.includes(v.toUpperCase())))throw new Error('private-identifiers');
  return publicData;

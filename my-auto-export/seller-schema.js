@@ -35,7 +35,7 @@ export const HISTORY_FIELDS = [
  ['majorRepairs','Réparations importantes','textarea'],['roadworthinessApplicable','Contrôle technique applicable','select',['Oui','Non']],
  ['roadworthinessUntil','Validité du contrôle technique','date'],['mechanicalCondition','État mécanique déclaré','textarea'],['runningCondition','État de fonctionnement','select',['Roulant','Non roulant','À contrôler']]
 ];
-export const TEXT_FIELDS = ['trim','productionDate','firstRegistrationCountry','description','diagnosticReference','diagnosticVin','diagnosticSummary',...TECH_FIELDS.filter(f=>f[2]!=='number').map(f=>f[0]),...HISTORY_FIELDS.filter(f=>f[2]!=='number').map(f=>f[0]),'auctionStart','auctionEnd'];
+export const TEXT_FIELDS = ['trim','productionDate','firstRegistrationCountry','description','knownDefects','diagnosticReference','diagnosticVin','diagnosticSummary',...TECH_FIELDS.filter(f=>f[2]!=='number').map(f=>f[0]),...HISTORY_FIELDS.filter(f=>f[2]!=='number').map(f=>f[0]),'auctionStart','auctionEnd'];
 export const NUMBER_FIELDS = [...TECH_FIELDS.filter(f=>f[2]==='number'),...HISTORY_FIELDS.filter(f=>f[2]==='number'),['diagnosticMileageKm','Kilométrage relevé au diagnostic','number',10000000],['reservePriceTnd','Prix de réserve (TND)','number',100000000],['priceAmount','Prix demandé','number',100000000]];
 export function validDate(value, past=false) {
  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10)===value && (!past || value<=new Date().toISOString().slice(0,10));
@@ -44,7 +44,7 @@ export function sanitizeExtra(src,fail) {
  const d={};
  for(const key of TEXT_FIELDS) {
   if(src[key]!=null && typeof src[key]!=='string') fail(400,`Texte attendu : ${key}`);
-  d[key]=String(src[key]||'').trim().slice(0,['description','diagnosticSummary','serviceHistory','knownAccidents','majorRepairs','mechanicalCondition'].includes(key)?3000:200);
+  d[key]=String(src[key]||'').trim().slice(0,['description','knownDefects','diagnosticSummary','serviceHistory','knownAccidents','majorRepairs','mechanicalCondition'].includes(key)?3000:200);
  }
  for(const [key,label,,max] of NUMBER_FIELDS) {
   d[key]=src[key]==null || src[key]==='' ? null : Number(src[key]);
