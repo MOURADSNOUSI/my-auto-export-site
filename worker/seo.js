@@ -314,6 +314,15 @@ function delaiLivraison(lot, ctx) {
   return lot.country && delais && Object.hasOwn(delais, lot.country) ? delais[lot.country] : null;
 }
 
+// Petit bouton rond WhatsApp de chaque annonce (cartes de l'accueil et de /vehicules), message pré-rempli avec la
+// référence. Rien sans numéro saisi dans /admin. Même icône dans les cartes de l'accueil (my-auto-export/index.html).
+export const ICONE_WHATSAPP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>';
+export function boutonWhatsappAnnonce(lot, ctx) {
+  if (!whatsappChiffres(ctx)) return "";
+  const message = t("contact_message", { reference: lot.reference });
+  return `<a class="carte-whatsapp" href="https://wa.me/${whatsappChiffres(ctx)}?text=${encodeURIComponent(message)}" target="_blank" rel="noopener" aria-label="${escapeHtml(t("whatsapp_annonce_aria", { titre: titreLot(lot), reference: lot.reference }))}">${ICONE_WHATSAPP}</a>`;
+}
+
 export function carteVehicule(lot, ctx) {
   const chemin = escapeHtml(cheminVehicule(lot));
   const titre = [titreLot(lot), lot.year].filter(Boolean).join(" ");
@@ -321,7 +330,7 @@ export function carteVehicule(lot, ctx) {
   const delai = delaiLivraison(lot, ctx);
   const badges = [lot.country ? `<span class="my-badge my-badge--info">${escapeHtml(lot.country)}</span>` : "",
     delai ? `<span class="my-badge my-badge--accent">${escapeHtml(t("carte_delai", { delai }))}</span>` : ""].filter(Boolean);
-  return `<li class="carte-vehicule"><a class="carte-photo" href="${chemin}" tabindex="-1" aria-hidden="true">${photoCarte(lot)}</a>
+  return `<li class="carte-vehicule">${boutonWhatsappAnnonce(lot, ctx)}<a class="carte-photo" href="${chemin}" tabindex="-1" aria-hidden="true">${photoCarte(lot)}</a>
     <div class="carte-corps"><h3 class="carte-titre"><a href="${chemin}">${escapeHtml(titre)}</a></h3>
     ${infos.length ? `<p class="carte-infos">${escapeHtml(infos.join(" · "))}</p>` : ""}
     ${badges.length ? `<p class="carte-badges">${badges.join("")}</p>` : ""}
@@ -337,7 +346,7 @@ const CSS_WHATSAPP = `.bouton-whatsapp{display:inline-flex;align-items:center;mi
 export const CSS_VITRINE = `
 .visually-hidden{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .cartes-vehicules{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:14px;margin:0;padding:0;list-style:none}
-.carte-vehicule{display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;border:1px solid #d7ddd8;border-radius:8px;background:#fff;color:#17201d}
+.carte-vehicule{position:relative;display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;border:1px solid #d7ddd8;border-radius:8px;background:#fff;color:#17201d}
 .carte-photo{display:block;aspect-ratio:4/3;background:#dfe5e1}
 .carte-photo img,.carte-photo picture{display:block;inline-size:100%;block-size:100%;object-fit:cover}
 .carte-sans-photo{display:block;block-size:100%}
@@ -357,7 +366,9 @@ export const CSS_VITRINE = `
 .prix-detail li span:last-child{white-space:nowrap}.prix-total{font-weight:700}
 .bouton-contact{display:inline-flex;align-items:center;justify-content:center;min-block-size:44px;padding-inline:16px;border-radius:var(--my-rayon-pilule, 6px);background:var(--my-nuit, #185740);color:#fff;font-weight:700;text-decoration:none;justify-self:start}
 .carte-fiche{margin-block-start:auto;color:#185740;font-weight:700}
-${CSS_WHATSAPP}.etapes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin:0;padding:0;list-style:none}
+${CSS_WHATSAPP}.carte-whatsapp,.lot-whatsapp{display:grid;place-items:center;inline-size:40px;block-size:40px;border-radius:50%;background:#166b3e;color:#fff;box-shadow:0 2px 6px rgb(16 21 19 / .25)}.carte-whatsapp:hover,.lot-whatsapp:hover{background:#0f5230}.carte-whatsapp svg,.lot-whatsapp svg{inline-size:22px;block-size:22px;fill:currentColor}
+.carte-whatsapp{position:absolute;inset-block-start:10px;inset-inline-end:10px;z-index:1}
+.etapes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;margin:0;padding:0;list-style:none}
 .etapes li,.lignes-prix,.temoignages li,.faq{padding:14px 16px;border:1px solid #d7ddd8;border-radius:8px;background:#fff}
 .etapes h3{margin:0 0 6px;font-size:16px}.etapes p{margin:0}
 .lignes-prix{margin:0;padding-inline-start:34px}
@@ -400,7 +411,9 @@ async function sousTitreAccueil(env) {
 export async function vitrineAccueil(request, env, reponse) {
   const [ctx, sousTitre] = await Promise.all([contexteVitrine(request, env), sousTitreAccueil(env)]);
   const sections = sectionsAccueil(ctx);
-  const textesNavigateur = JSON.stringify(Object.fromEntries(TEXTES_NAVIGATEUR.map((cle) => [cle, t(cle)]))).replace(/</g, "\\u003c");
+  // whatsapp_lien et whatsapp_icone : petit bouton WhatsApp des cartes construites dans le navigateur (vide sans numéro).
+  const textesNavigateur = JSON.stringify({ ...Object.fromEntries(TEXTES_NAVIGATEUR.map((cle) => [cle, t(cle)])),
+    whatsapp_lien: whatsappChiffres(ctx), whatsapp_icone: ICONE_WHATSAPP, contact_message: fr.contact_message, whatsapp_annonce_aria: fr.whatsapp_annonce_aria }).replace(/</g, "\\u003c");
   const remplir = (html) => ({ element: (element) => element.setInnerContent(html, { html: true }) });
   let rewriter = new HTMLRewriter()
     .on("[data-texte]", { element: (element) => {

@@ -197,8 +197,12 @@
     .lot-price { display: grid; gap: 1px; }
     .lot-price small { display: block; color: var(--muted); font-size: 12px; }
     .lot-price strong { font-size: 21px; line-height: 1.2; }
-    .lot-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: auto; }
-    .detail-link { min-height: 42px; padding: 0 12px; border: 0; border-radius: 22px; background: var(--green); color: white; font-size: 14px; font-weight: 750; }
+    .lot-actions { display: grid; grid-template-columns: 1fr; grid-auto-columns: auto; grid-auto-flow: column; gap: 8px; align-items: center; margin-top: auto; }
+    .detail-link { min-height: 42px; padding: 0 12px; border: 0; border-radius: 22px; background: var(--green); color: white; font-size: 14px; font-weight: 750; white-space: nowrap; }
+    .lot-actions .lot-whatsapp { inline-size: 42px; block-size: 42px; }
+    /* « Voir la fiche », WhatsApp et favori sur une ligne dans la colonne étroite des cartes. */
+    .lot-actions { gap: 6px; }
+    .lot-actions .detail-link { padding-inline: 10px; }
     .detail-link:hover { background: var(--green-dark); }
     .lot-action { display: grid; width: 42px; height: 42px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: white; color: var(--ink-soft); }
     .lot-action svg { width: 20px; height: 20px; }
@@ -1464,6 +1468,14 @@
       return `<svg class="icon" aria-hidden="true"><use href="#i-${nom}"/></svg>`;
     }
 
+    // Petit bouton WhatsApp de l'annonce : numéro et icône fournis par le Worker (textes), message avec la référence.
+    function boutonWhatsappLot(lot) {
+      if (!TEXTES.whatsapp_lien) return "";
+      const message = String(TEXTES.contact_message || "").replace("{reference}", lot.reference);
+      const libelle = String(TEXTES.whatsapp_annonce_aria || "").replace("{titre}", titreLot(lot)).replace("{reference}", lot.reference);
+      return `<a class="lot-whatsapp" href="https://wa.me/${encodeURIComponent(TEXTES.whatsapp_lien)}?text=${encodeURIComponent(message)}" target="_blank" rel="noopener" aria-label="${escapeHtml(libelle)}">${TEXTES.whatsapp_icone || ""}</a>`;
+    }
+
     function renderLot(lot) {
       const isWatched = watchlist.has(lot.reference);
       const photos = photosLot(lot);
@@ -1488,7 +1500,7 @@
           <div class="lot-price"><small>${price.label}</small><strong>${escapeHtml(price.value)}</strong></div>
           ${lot.diagnosticVerified?'<p>Diagnostic vérifié par M&Y AUTO EXPORT</p>':''}${prixEnchere(lot)}${boutonAchat(lot)}
           ${!PROPOSALS_ONLY && lot.auction?.status === "live" && compte.disponible ? `<button class="bid-now" type="button" data-bid-open="${escapeHtml(lot.reference)}">Enchérir<small>minimum ${formatTnd(lot.auction.minNextBidTnd)}</small></button>` : ""}
-          <div class="lot-actions"><button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button><button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}" aria-pressed="${isWatched}" aria-label="${isWatched ? "Retirer des favoris" : "Ajouter aux favoris"}">${icone("heart")}</button></div>
+          <div class="lot-actions"><button class="detail-link" type="button" data-detail="${escapeHtml(lot.reference)}">Voir la fiche</button>${boutonWhatsappLot(lot)}<button class="lot-action" type="button" data-watch="${escapeHtml(lot.reference)}" aria-pressed="${isWatched}" aria-label="${isWatched ? "Retirer des favoris" : "Ajouter aux favoris"}">${icone("heart")}</button></div>
         </div>
       </article>`;
     }

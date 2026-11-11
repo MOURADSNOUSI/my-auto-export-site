@@ -15,6 +15,7 @@ export const fr = {
   compte_action: "Se connecter",
   whatsapp: "WhatsApp",
   whatsapp_aria: "Nous écrire sur WhatsApp (nouvel onglet)",
+  whatsapp_annonce_aria: "Écrire sur WhatsApp à propos de {titre}, réf. {reference} (nouvel onglet)",
 
   // Hero
   hero_titre: "Découvrez les annonces auto faites pour vous.",

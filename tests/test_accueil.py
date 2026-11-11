@@ -336,7 +336,9 @@ class AccueilTest(unittest.TestCase):
 
     def test_whatsapp_absent_sans_numero_present_avec(self):
         _, html, _ = self.page("/")
-        self.assertNotIn("wa.me", html)
+        # Sans numéro : aucun lien WhatsApp (le script de l'accueil n'en construit pas non plus : whatsapp_lien vide).
+        self.assertNotRegex(html, r'href="https://wa\.me/\d')
+        self.assertEqual(json.loads(re.search(r'<script type="application/json" id="textes">(.*?)</script>', html, re.S).group(1))["whatsapp_lien"], "")
         for invalide in ("abc", "+216 12", "+2161234567890123", "0033<script>", 21612345678):
             statut, data, _ = self.api("/api/admin/site/whatsapp_numero", {"valeur": invalide}, "PUT", self.cookie)
             self.assertEqual(statut, 400, (invalide, data))
@@ -350,6 +352,15 @@ class AccueilTest(unittest.TestCase):
             _, html, _ = self.page(chemin)
             entete = html[html.index("<header"):html.index("</header>")]
             self.assertNotIn("wa.me", entete, chemin)
+        # Petit bouton WhatsApp sur chaque annonce : cartes de /vehicules (Worker) et de l'accueil (numéro fourni au navigateur).
+        _, html, _ = self.page("/vehicules")
+        carte = self.carte(html, "ACC-JEUNE")
+        self.assertIn('class="carte-whatsapp" href="https://wa.me/21612345678?text=', carte)
+        self.assertIn("r%C3%A9f.%20ACC-JEUNE", carte)
+        self.assertIn('aria-label="Écrire sur WhatsApp à propos de', carte)
+        textes = json.loads(re.search(r'<script type="application/json" id="textes">(.*?)</script>', self.page("/")[1], re.S).group(1))
+        self.assertEqual(textes["whatsapp_lien"], "21612345678")
+        self.assertIn("{reference}", textes["contact_message"])
         # Numéro saisi en 00… : lien wa.me au format international.
         self.regler("whatsapp_numero", "0033611537978")
         self.assertIn('href="https://wa.me/33611537978"', self.page("/")[1])
