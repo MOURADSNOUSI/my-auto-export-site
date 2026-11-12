@@ -909,7 +909,9 @@
     }
 
     function majCompteurs() {
-      [["nav-favorites-count", watchlist.size]].forEach(([id, nombre]) => {
+      // Seuls les favoris encore au catalogue comptent : un véhicule retiré ou vendu reste mémorisé mais n'est plus affiché.
+      const favorisVisibles = lots.filter((lot) => watchlist.has(lot.reference)).length;
+      [["nav-favorites-count", favorisVisibles]].forEach(([id, nombre]) => {
         const badge = document.getElementById(id);
         badge.textContent = nombre;
         badge.classList.toggle("empty", nombre === 0);
