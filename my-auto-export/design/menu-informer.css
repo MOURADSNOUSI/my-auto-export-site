@@ -139,6 +139,22 @@
   .main-nav .menu-informer .info-panel a:focus-visible { background: rgb(255 255 255 / 0.12); color: var(--my-blanc, #fff); }
 }
 
+/* Menu mobile compact : « S'informer » ouvert, les liens passent sur deux colonnes pour que tout le menu tienne sur
+   un téléphone. S'il dépasse encore (petit écran, paysage), il défile dans sa propre zone, sous l'en-tête (64 px). */
+@media (max-width: 1365px) {
+  .site-header.menu-open .main-nav, .my-burger[open] > .menu-mobile-panneau {
+    max-block-size: calc(100dvh - 64px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* L'accueil donne au menu la largeur de son contenu (min-width: max-content) : ouvert en accordéon, il garde celle de l'écran. */
+  .site-header.menu-open .main-nav { min-inline-size: 0; }
+  .main-nav .menu-informer .info-panel, .menu-mobile-panneau .menu-informer .info-panel { gap: 6px; padding: 8px 0 6px; }
+  .main-nav .menu-informer .info-titre, .menu-mobile-panneau .menu-informer .info-titre { margin-block-end: 2px; }
+  .main-nav .menu-informer .info-panel ul, .menu-mobile-panneau .menu-informer .info-panel ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 8px; }
+  .main-nav .menu-informer .info-panel a, .menu-mobile-panneau .menu-informer .info-panel a { padding: 7px 4px; font-size: 14px; line-height: 1.3; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .menu-informer .menu-informer-bouton svg { transition: none; }
 }
