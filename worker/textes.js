@@ -55,13 +55,12 @@ export const fr = {
   tri_prix_desc: "Prix décroissant",
   tri_km_asc: "Kilométrage croissant",
 
-  // Connexion avec Google (accueil, /vendre, formulaire de mandat)
-  google_bouton: "Continuer avec Google",
-  connexion_ou: "Ou",
-  connexion_refusee: "Connexion avec Google refusée. Réessayez ou utilisez votre e-mail.",
-  connexion_annulee: "Connexion avec Google annulée.",
+  // Connexion avec Google, Apple ou Facebook (accueil, /vendre, formulaire de mandat ; boutons : /connexion-sociale.js)
+  connexion_refusee: "Connexion refusée. Réessayez ou utilisez votre e-mail.",
+  connexion_annulee: "Connexion annulée.",
   connexion_limite: "Trop d'inscriptions depuis cette connexion. Réessayez dans une heure.",
-  connexion_indisponible: "La connexion avec Google n'est pas encore disponible. Utilisez votre e-mail.",
+  connexion_indisponible: "Ce mode de connexion n'est pas encore disponible. Utilisez votre e-mail.",
+  connexion_existant: "Un compte existe déjà avec cette adresse e-mail. Connectez-vous avec votre mot de passe.",
 
   // Déposer une annonce (accueil)
   deposer_bouton: "Déposer une annonce",
@@ -159,7 +158,6 @@ export const fr = {
   mandat_mot_de_passe: "Mot de passe",
   mandat_se_connecter: "Se connecter",
   mandat_creer_compte: "Créer un compte",
-  mandat_google: "Continuer avec Google",
   mandat_chargement: "Chargement…",
   mandat_fermer: "Fermer",
   mandat_succes: "Demande envoyée. Nous vérifions votre éligibilité et vous indiquons le montant de l'acompte.",
@@ -208,4 +206,4 @@ export function t(cle, valeurs = {}) {
 }
 
 // Textes lus par le JavaScript de l'accueil, servis dans un <script type="application/json" id="textes">.
-export const TEXTES_NAVIGATEUR = ["compte_titre", "compte_action", "mandat_bouton", "mandat_mes_titre", "connexion_refusee", "connexion_annulee", "connexion_limite", "connexion_indisponible"];
+export const TEXTES_NAVIGATEUR = ["compte_titre", "compte_action", "mandat_bouton", "mandat_mes_titre", "connexion_refusee", "connexion_annulee", "connexion_limite", "connexion_indisponible", "connexion_existant"];

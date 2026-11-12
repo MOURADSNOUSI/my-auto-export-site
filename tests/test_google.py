@@ -1,4 +1,4 @@
-"""Tests de la connexion avec Google (worker/google.js), contre un faux Google local : aucun appel réel.
+"""Tests de la connexion avec Google (worker/connexion-sociale.js), contre un faux Google local : aucun appel réel.
 
 Couvre la création de compte, la liaison à un compte existant (le mot de passe reste valable), l'e-mail non vérifié,
 un état falsifié ou rejoué, l'annulation, un jeton destiné à une autre application, la redirection limitée au site,
@@ -240,8 +240,18 @@ class GoogleTest(unittest.TestCase):
 
     def test_etat_public_et_pages(self):
         self.assertEqual(self.api("/api/auth/google/etat")[1], {"actif": True})
-        with urllib.request.urlopen(self.base + "/vendre") as reponse:
-            self.assertIn("Continuer avec Google", reponse.read().decode())
+        self.assertEqual(self.api("/api/auth/fournisseurs")[1], {"google": True, "apple": False, "facebook": False})
+        # Le bouton est affiché par /connexion-sociale.js, seulement pour les fournisseurs configurés.
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            navigateur = p.chromium.launch()
+            page = navigateur.new_page(viewport={"width": 390, "height": 844})
+            page.goto(self.base + "/vendre")
+            page.get_by_role("button", name="Me connecter").click()
+            bouton = page.locator("#auth-login .bouton-connexion")
+            self.assertEqual((bouton.count(), bouton.inner_text()), (1, "Continuer avec Google"))
+            self.assertEqual(bouton.get_attribute("href"), "/api/auth/google?retour=%2Fvendre")
+            navigateur.close()
 
 
 @unittest.skipUnless(WRANGLER, "définir WRANGLER pour lancer les tests du Worker")
@@ -290,10 +300,10 @@ class GoogleInactifTest(unittest.TestCase):
             page.wait_for_function("typeof catalogueEtat !== 'undefined' && catalogueEtat !== 'loading'")
             page.click("#compte-identifier")
             page.wait_for_selector("#auth-dialog[open]")
-            self.assertFalse(page.is_visible("#google-accueil"))
+            self.assertEqual(page.locator("#auth-dialog .bouton-connexion").count(), 0)
             page.goto(self.base + "/vendre")
             page.get_by_role("button", name="Me connecter").click()
-            self.assertEqual(page.locator(".bouton-google:visible").count(), 0)
+            self.assertEqual(page.locator(".bouton-connexion:visible").count(), 0)
             page.goto(self.base + "/vendre?connexion=indisponible")
             self.assertIn("pas encore disponible", page.text_content("#message"))
             navigateur.close()

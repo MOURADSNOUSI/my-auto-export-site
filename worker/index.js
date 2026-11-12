@@ -13,7 +13,7 @@ import { ErreurCatalogue, voituresEurope } from "./voitures-europe.js";
 import { REGLAGES_INTERRUPTEURS, REGLAGES_SITE, reglageActif, ecrireInterrupteur, ecrireReglageSite, journaliser, listerReglages, listerReglagesSite, validerReglageSite } from "./reglages.js";
 import { mettreAJourTaux, routeAdminPrix } from "./prix.js";
 import { estRouteMandats, routeAdminMandats, routeMandats, vehiculeMandat } from "./mandats.js";
-import { estRouteGoogle, routeGoogle } from "./google.js";
+import { estRetourApple, estRouteConnexionSociale, routeConnexionSociale } from "./connexion-sociale.js";
 import { routeAdminImport, suivreImports } from "./import-openlane.js";
 import { recalculerCompteurs, routeCatalogue } from "./catalogue.js";
 
@@ -181,6 +181,8 @@ async function routeApi(request, env, url, ctx) {
   const method = request.method;
   const path = url.pathname;
   if (path === "/api/stripe/webhook" && method === "POST") return webhookStripe(request, env);
+  const depsConnexion = { json, ApiError, ouvrirSession, reserverInscription, motDePasseInutilisable, adresseIp };
+  if (estRetourApple(path, method)) return routeConnexionSociale(request, env, url, depsConnexion);
   if (method !== "GET" && method !== "HEAD") verifierOrigine(request, url);
 
   if (!legacyAuctionsEnabled(env) && ["/api/deposit/card", "/api/deposit/transfer"].includes(path) && method === "POST") {
@@ -195,7 +197,7 @@ async function routeApi(request, env, url, ctx) {
     if (publication && method === "POST" && response.ok) await controlerApresPublication(env, ctx, `SV-${publication[1]}`);
     return response;
   }
-  if (estRouteGoogle(path)) return routeGoogle(request, env, url, { json, ApiError, ouvrirSession, reserverInscription, motDePasseInutilisable, adresseIp });
+  if (estRouteConnexionSociale(path)) return routeConnexionSociale(request, env, url, depsConnexion);
   if (estRouteMandats(path)) return routeMandats(request, env, url, { json, ApiError, exigerUtilisateur, lireJson, catalogueComplet });
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/account/profiles" && method === "POST") return activerProfil(request, env);
@@ -618,7 +620,7 @@ async function reserverInscription(env, ip) {
   return place.results.length > 0;
 }
 
-// Compte créé avec Google : mot de passe aléatoire jamais communiqué, donc inutilisable (connexion par Google seulement).
+// Compte créé avec Google, Apple ou Facebook : mot de passe aléatoire jamais communiqué, donc inutilisable.
 async function motDePasseInutilisable() {
   const salt = hex(octetsAleatoires(16));
   return { salt, hash: await hacherMotDePasse(hex(octetsAleatoires(32)), salt) };

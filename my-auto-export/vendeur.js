@@ -1,4 +1,5 @@
 import * as S from './seller-schema.js';
+import './connexion-sociale.js';
 const admin=document.body.dataset.admin==='true',prefix=admin?'/api/admin/seller/':'/api/seller/';
 const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const states={draft:'Brouillon',submitted:'Soumis',reviewing:'En cours de vérification',corrections:'Corrections demandées',approved:'Approuvé — publication à autoriser',rejected:'Refusé',published:'Publié',archived:'Archivé'};
@@ -208,9 +209,9 @@ function renderAdmin(detail){
  $('publish-form')?.addEventListener('submit',safely(async()=>{const f=$('publish-form');await api(prefix+'submissions/'+current.id+'/publish',{method:'POST',body:{revision:current.revision}});await refresh();await openSubmission(current.id);message('Annonce publiée après validation.');}));
  $('archive-submission')?.addEventListener('click',safely(async()=>{await api(prefix+'submissions/'+current.id+'/archive',{method:'POST',body:{revision:current.revision}});await refresh();await openSubmission(current.id);}));
 }
-// Connexion avec Google : bouton affiché seulement si elle est configurée ; issue d'un retour refusé ou annulé.
-fetch('/api/auth/google/etat').then(r=>r.json()).then(({actif})=>{if(actif)document.querySelectorAll('[data-google]').forEach(e=>e.hidden=false);}).catch(()=>{});
-{const issue=new URLSearchParams(location.search).get('connexion');const textes={refusee:'Connexion avec Google refusée. Réessayez ou utilisez votre e-mail.',annulee:'Connexion avec Google annulée.',limite:"Trop d'inscriptions depuis cette connexion. Réessayez dans une heure.",indisponible:"La connexion avec Google n'est pas encore disponible. Utilisez votre e-mail."};if(textes[issue]&&$('message'))$('message').textContent=textes[issue];}
+// Connexion avec Google, Apple ou Facebook (boutons : /connexion-sociale.js) : issue d'un retour refusé ou annulé.
+
+{const issue=new URLSearchParams(location.search).get('connexion');const textes={refusee:'Connexion refusée. Réessayez ou utilisez votre e-mail.',annulee:'Connexion annulée.',limite:"Trop d'inscriptions depuis cette connexion. Réessayez dans une heure.",indisponible:"Ce mode de connexion n'est pas encore disponible. Utilisez votre e-mail.",existant:'Un compte existe déjà avec cette adresse e-mail. Connectez-vous avec votre mot de passe.'};if(textes[issue]&&$('message'))$('message').textContent=textes[issue];}
 // Connexion en étapes : accueil « Bonjour ! », puis connexion ou inscription (?etape=login|register pour y aller directement).
 const etapeAuth=etape=>{for(const e of ['accueil','login','register'])$('auth-'+e).hidden=e!==etape;$('auth-'+etape).querySelector('input,select')?.focus();};
 document.querySelectorAll('[data-auth-etape]').forEach(b=>b.addEventListener('click',()=>etapeAuth(b.dataset.authEtape)));

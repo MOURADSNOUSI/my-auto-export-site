@@ -1,0 +1,29 @@
+/* Boutons « Continuer avec Google / Apple / Facebook » (/connexion-sociale.js), sur l'accueil, /vendre et le
+   formulaire de mandat : pleine largeur, logo à gauche, libellé centré, puis séparateur « ou ». */
+.connexion-sociale { display: grid; gap: 10px; }
+.connexion-sociale:empty { display: none; }
+.bouton-connexion {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-block-size: 48px;
+  padding-inline: 48px;
+  border: 1.5px solid #1f1f1f;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f1f1f;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.bouton-connexion svg { position: absolute; inset-inline-start: 16px; inset-block-start: 50%; translate: 0 -50%; }
+.bouton-connexion:hover { background: #f3f5f4; }
+.bouton-connexion:focus-visible { outline: 3px solid #1f6feb; outline-offset: 2px; }
+.connexion-ou { display: flex; align-items: center; gap: 12px; margin: 6px 0; color: #536159; font-size: 14px; }
+.connexion-ou::before, .connexion-ou::after { content: ""; flex: 1; border-block-start: 1px solid #d7ddd8; }
