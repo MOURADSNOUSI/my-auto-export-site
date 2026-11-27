@@ -433,6 +433,7 @@ function referenceOutil(args) {
   if (typeof args.reference === "string") return texte(args.reference, 64);
   if (Number.isInteger(args.mandat_id)) return `mandat-${args.mandat_id}`;
   if (args.annonce && typeof args.annonce === "object") return referenceImport(args.annonce.numero) || "";
+  if (SOURCES_BROUILLON[args.source] && typeof args.numero === "string") return `${SOURCES_BROUILLON[args.source]}-${texte(args.numero, 30)}`;
   return Number.isInteger(args.offre_id) ? `offre-${args.offre_id}` : "";
 }
 
@@ -455,6 +456,24 @@ function rechercherOpenlaneOutil({ env, args }) {
 function importerOpenlaneOutil({ env, user, args }) {
   if (args.confirmer !== true) throw new ApiError(400, "Demande d'abord l'accord explicite de l'utilisateur, puis rappelle l'outil avec confirmer: true.");
   return metier(() => importerAnnonce(env, user, args.annonce, { ApiError, enregistrerBrouillon }));
+}
+
+// Sources acceptées par importer_brouillon : une source sert de préfixe à la référence (EC-…) et reste dans importSource.
+const SOURCES_BROUILLON = { ecarstrade: "EC" };
+
+// Brouillon envoyé par un import automatisé (agent local my-auto-agent) : créé retiré du site, jamais écrasé ; la mise
+// en ligne reste une décision de l'administration dans /admin.
+async function importerBrouillonOutil({ env, user, args }) {
+  const prefixe = SOURCES_BROUILLON[args.source];
+  if (!prefixe) throw new ApiError(400, `Source inconnue : ${Object.keys(SOURCES_BROUILLON).join(", ")} attendue.`);
+  const numero = texte(args.numero, 30);
+  if (!/^[A-Za-z0-9_-]{1,30}$/.test(numero)) throw new ApiError(400, "Numéro d'annonce invalide (lettres, chiffres, _ et -, 30 au plus).");
+  const champs = args.champs && typeof args.champs === "object" && !Array.isArray(args.champs) ? args.champs : {};
+  if (!/^https:\/\/[^\s"'<>]+$/.test(texte(champs.sourceUrl, 500))) throw new ApiError(400, "Lien https vers l'annonce d'origine (sourceUrl) obligatoire.");
+  const reference = `${prefixe}-${numero}`;
+  const source = { site: args.source, numero, importeLe: new Date().toISOString() };
+  if (!(await enregistrerBrouillon(env, user, reference, champs, source))) return { reference, brouillon: true, created: false, message: "Déjà importé : brouillon ou annonce existante laissés tels quels." };
+  return { reference, brouillon: true, created: true, message: "Brouillon créé : à relire dans /admin (Retirés), puis « Remettre en ligne »." };
 }
 
 function mettreAJourMandatOutil({ env, user, args }) {
@@ -720,5 +739,23 @@ const OUTILS = [
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     executer: importerOpenlaneOutil
+  },
+  {
+    name: "importer_brouillon",
+    title: "Importer un véhicule en brouillon (import automatisé)",
+    description: "Crée un brouillon non publié pour un véhicule repéré par l'import automatisé (source ecarstrade, référence EC-numéro). "
+      + "Un brouillon ou une annonce de même référence n'est jamais modifié. L'administration relit puis remet en ligne depuis /admin. "
+      + "Mêmes champs qu'enregistrer_vehicule ; make, model, status et sourceUrl obligatoires.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: { type: "string", enum: Object.keys(SOURCES_BROUILLON) },
+        numero: { type: "string", description: "Numéro de l'annonce chez la source (lettres, chiffres, _ et -)." },
+        champs: { type: "object", description: "Champs du véhicule, comme pour enregistrer_vehicule." }
+      },
+      required: ["source", "numero", "champs"]
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    executer: importerBrouillonOutil
   }
 ];

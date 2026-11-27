@@ -251,6 +251,26 @@ class ImportOpenlaneTest(unittest.TestCase):
         journal = self.sql("SELECT acteur, resultat FROM audit_logs WHERE action = 'mcp.importer_annonce_openlane' AND resource_id = 'OL-4004' ORDER BY id")
         self.assertEqual([(l["acteur"], l["resultat"]) for l in journal], [("agent", "refuse"), ("agent", "erreur"), ("agent", "ok")])
 
+    def test_brouillon_import_automatise(self):
+        champs = {"make": "BMW", "model": "X3", "status": "stock", "year": 2022, "indicativePriceTnd": 89850,
+                  "sourceUrl": "https://fr.ecarstrade.com/cars/8801", "photos": ["https://example.com/8801.jpg"]}
+        args = {"source": "ecarstrade", "numero": "8801", "champs": champs}
+        self.assertTrue(self.outil("importer_brouillon", args)["isError"], "agent en lecture seule")
+        self.api("/api/admin/reglages/agent_ecriture_autorisee", {"valeur": True}, "PUT", self.cookie)
+        for mauvais in ({**args, "source": "autre"}, {**args, "numero": "../1"}, {**args, "champs": {**champs, "sourceUrl": None}}):
+            self.assertTrue(self.outil("importer_brouillon", mauvais)["isError"], mauvais)
+        resultat = json.loads(self.outil("importer_brouillon", args)["content"][0]["text"])
+        self.assertEqual((resultat["reference"], resultat["created"]), ("EC-8801", True))
+        self.assertNotIn("EC-8801", self.catalogue_public(), "brouillon invisible du public")
+        # Second envoi (prix changé) : rien n'est écrasé.
+        resultat = json.loads(self.outil("importer_brouillon", {**args, "champs": {**champs, "indicativePriceTnd": 1}})["content"][0]["text"])
+        self.assertFalse(resultat["created"])
+        lot = json.loads(self.sql("SELECT data FROM vehicles WHERE reference = 'EC-8801'")[0]["data"])
+        self.assertEqual((lot["indicativePriceTnd"], lot["importSource"]["site"], lot["importSource"]["numero"]), (89850, "ecarstrade", "8801"))
+        self.assertEqual(self.sql("SELECT removed FROM vehicles WHERE reference = 'EC-8801'"), [{"removed": 1}])
+        journal = self.sql("SELECT resultat FROM audit_logs WHERE action = 'mcp.importer_brouillon' AND resource_id = 'EC-8801' ORDER BY id")
+        self.assertEqual([l["resultat"] for l in journal], ["refuse", "erreur", "ok", "ok"])
+
     def test_retrait_automatique_a_la_fin_de_l_enchere(self):
         FauxTheCarApi.resultats = [annonce("5005", fin="2020-01-01T00:00:00Z"), annonce("5006")]
         for numero in ("5005", "5006"):
