@@ -16,6 +16,7 @@ import { estRouteMandats, routeAdminMandats, routeMandats, vehiculeMandat } from
 import { estRetourApple, estRouteConnexionSociale, routeConnexionSociale } from "./connexion-sociale.js";
 import { routeAdminImport, suivreImports } from "./import-openlane.js";
 import { recalculerCompteurs, routeCatalogue } from "./catalogue.js";
+import { estRouteAvis, routeAdminAvis, routeAvis } from "./avis.js";
 
 const SESSION_COOKIE = "my_session";
 const SESSION_DAYS = 30;
@@ -199,6 +200,7 @@ async function routeApi(request, env, url, ctx) {
   }
   if (estRouteConnexionSociale(path)) return routeConnexionSociale(request, env, url, depsConnexion);
   if (estRouteMandats(path)) return routeMandats(request, env, url, { json, ApiError, exigerUtilisateur, lireJson, catalogueComplet });
+  if (estRouteAvis(path)) return routeAvis(request, env, url, { json, ApiError, exigerUtilisateur, lireJson });
   if (path === "/api/me" && method === "GET") return me(request, env);
   if (path === "/api/account/profiles" && method === "POST") return activerProfil(request, env);
   if ((path === "/api/catalogue/recherche" || path === "/api/catalogue/compte") && method === "GET") {
@@ -907,6 +909,7 @@ async function routeAdmin(request, env, path, method, ctx) {
       throw error;
     }
   }
+  if (path === "/api/admin/avis" || path.startsWith("/api/admin/avis/")) return routeAdminAvis(request, env, new URL(request.url), user, { json, ApiError, lireJson });
   if (path === "/api/admin/mandats" || path.startsWith("/api/admin/mandats/")) return routeAdminMandats(request, env, new URL(request.url), user, { json, ApiError, lireJson, catalogueComplet });
   if (path === "/api/admin/reglages" && method === "GET") return json({ reglages: await listerReglages(env) });
   const reglage = path.match(/^\/api\/admin\/reglages\/([a-z_]{1,64})$/);
