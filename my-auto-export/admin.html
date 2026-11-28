@@ -4,167 +4,234 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#14213d">
   <title>Administration — M&Y AUTO EXPORT</title>
+  <link rel="stylesheet" href="/design/tokens.css">
   <style>
+    /* Palette et typographie du design system (design/tokens.css) ; noms courts gardés pour les styles de la page. */
     :root {
       color-scheme: light;
-      --ink: #17201d;
-      --ink-soft: #44514c;
-      --paper: #f3f5f3;
-      --surface: #ffffff;
-      --line: #d7ddd8;
-      --gold: #c99d4d;
-      --gold-pale: #f4ead5;
-      --green: #23755b;
-      --green-dark: #185740;
-      --green-pale: #e4f0e9;
-      --red: #a33a2c;
-      --red-pale: #fbeaea;
-      --muted: #5f6b65;
-      --radius: 8px;
-      font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+      --ink: var(--my-encre);
+      --ink-soft: var(--my-encre-doux);
+      --paper: var(--my-fond);
+      --surface: var(--my-surface);
+      --line: var(--my-trait);
+      --nuit: var(--my-nuit);
+      --nuit-pale: var(--my-nuit-100);
+      --gold: var(--my-or);
+      --gold-pale: var(--my-or-100);
+      --green: var(--my-vert);
+      --green-pale: var(--my-vert-100);
+      --red: var(--my-rouge);
+      --red-pale: var(--my-rouge-100);
+      --muted: var(--my-encre-doux);
+      --radius: var(--my-rayon-m);
+      font-family: var(--my-police);
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.5; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-size: 1rem; line-height: var(--my-interligne); -webkit-text-size-adjust: 100%; }
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
     a { color: inherit; }
-    :focus-visible { outline: 3px solid #2a8b69; outline-offset: 2px; }
+    :focus-visible { outline: none; box-shadow: var(--my-focus); }
     .hidden { display: none !important; }
-    .shell { width: min(1100px, calc(100% - 28px)); margin-inline: auto; }
+    .shell { width: min(1100px, calc(100% - 2 * var(--my-gouttiere))); margin-inline: auto; }
 
-    header { position: sticky; top: 0; z-index: 5; border-bottom: 1px solid var(--line); background: var(--surface); }
-    .header-inner { display: flex; min-height: 62px; align-items: center; gap: 12px; }
-    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-    .brand img { width: 40px; height: 40px; border: 1px solid #ad8b4e; border-radius: 50%; object-fit: cover; }
-    .brand strong { display: block; font-size: 14px; }
-    .brand small { display: block; color: var(--green); font-size: 12px; font-weight: 750; text-transform: uppercase; }
+    /* En-tête bleu nuit, puis barre des rubriques de l'administration. */
+    header { position: sticky; top: 0; z-index: 5; background: var(--nuit); color: white; box-shadow: var(--my-ombre-1); }
+    .header-inner { display: flex; min-height: 60px; align-items: center; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: white; text-decoration: none; }
+    .brand img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .brand strong { display: block; font-size: 15px; line-height: 1.2; }
+    .brand small { display: block; color: var(--gold); font-size: 12px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
     .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-    .who { color: var(--muted); font-size: 13px; }
+    .who { color: rgb(255 255 255 / .8); font-size: 14px; }
+    header .button { border-color: rgb(255 255 255 / .55); background: transparent; color: white; }
+    header .button:hover { border-color: white; background: rgb(255 255 255 / .12); color: white; }
+    .admin-nav { border-top: 1px solid rgb(255 255 255 / .14); }
+    .admin-nav ul { display: flex; gap: 4px; margin: 0; padding: 0; overflow-x: auto; list-style: none; scrollbar-width: none; }
+    .admin-nav a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 12px; border-bottom: 3px solid transparent; color: rgb(255 255 255 / .86); font-size: 14px; font-weight: 650; text-decoration: none; white-space: nowrap; }
+    .admin-nav a:hover { color: white; }
+    .admin-nav a[aria-current="page"] { border-bottom-color: var(--gold); color: white; }
 
-    .button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; background: white; color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; }
-    .button:hover { border-color: var(--green); color: var(--green); }
-    .button.primary { border-color: var(--green); background: var(--green); color: white; }
-    .button.primary:hover { background: var(--green-dark); color: white; }
-    .button.danger { border-color: #e2b9b2; color: var(--red); }
-    .button.small { min-height: 38px; padding: 0 12px; font-size: 13px; }
+    .button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--my-rayon-pilule); background: white; color: var(--nuit); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+    .button:hover { border-color: var(--nuit); background: var(--nuit-pale); }
+    .button.primary { border-color: var(--nuit); background: var(--nuit); color: white; }
+    .button.primary:hover { background: var(--my-nuit-700); }
+    /* Action à faire maintenant (publier un brouillon, décider) : or, texte bleu nuit. */
+    .button.action { border-color: var(--gold); background: var(--gold); color: var(--nuit); }
+    .button.action:hover { border-color: var(--my-or-700); background: var(--my-or-700); }
+    .button.danger { border-color: #e9b8b3; color: var(--red); }
+    .button.danger:hover { border-color: var(--red); background: var(--red-pale); }
+    .button.small { min-height: 38px; padding: 0 14px; font-size: 14px; }
     .button:disabled { opacity: .55; cursor: wait; }
 
-    main { padding: 22px 0 110px; }
+    main { padding: 24px 0 110px; }
     .card { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     .narrow { max-width: 420px; margin: 40px auto; }
-    h1 { margin: 0 0 6px; font-size: 24px; }
-    .lead { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
-    .message { margin: 12px 0 0; padding: 10px 12px; border-radius: 6px; font-size: 14px; }
-    .message.error { background: var(--red-pale); color: #8f2a2a; }
-    .message.info { background: var(--gold-pale); color: #5c4720; }
-    .message.ok { background: var(--green-pale); color: #1d5e49; }
+    h1 { margin: 0 0 4px; color: var(--nuit); font-size: var(--my-taille-2xl); line-height: var(--my-interligne-titre); }
+    .lead { margin: 0 0 18px; color: var(--muted); font-size: 15px; }
+    .message { margin: 12px 0 0; padding: 10px 14px; border-radius: 6px; font-size: 15px; }
+    .message.error { background: var(--red-pale); color: var(--red); }
+    .message.info { background: var(--gold-pale); color: var(--nuit); }
+    .message.ok { background: var(--green-pale); color: var(--my-vert-900); }
 
     .field { display: grid; gap: 5px; }
-    .field label { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
-    .field small { color: var(--muted); font-size: 12px; }
-    .field input, .field select, .field textarea { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfb; color: var(--ink); font-size: 16px; }
+    .field label { color: var(--ink-soft); font-size: 14px; font-weight: 700; }
+    .field small { color: var(--muted); font-size: 13px; }
+    .field input, .field select, .field textarea { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); font-size: 16px; }
     .field textarea { min-height: 110px; resize: vertical; }
     .stack { display: grid; gap: 14px; }
 
-    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+    /* Tableau de bord : chiffres clés cliquables. */
+    .page-head { margin-bottom: 18px; }
+    .tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 22px; }
+    .tuile { display: grid; gap: 2px; min-height: 88px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); text-align: start; }
+    .tuile:hover { border-color: var(--nuit); }
+    .tuile strong { color: var(--nuit); font-size: 28px; line-height: 1.1; }
+    .tuile span { color: var(--muted); font-size: 14px; font-weight: 650; }
+    .tuile.alerte { border-color: var(--gold); border-width: 2px; background: #fffaf0; }
+
+    .bloc { margin-bottom: 22px; scroll-margin-top: 120px; }
+    /* Confirmation toujours visible, même après une action en bas de page. */
+    #flash { position: fixed; inset-inline: 16px; bottom: 16px; z-index: 7; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; box-shadow: var(--my-ombre-2); }
+    .bloc-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .bloc-head h2, .bloc > h2 { margin: 0; color: var(--nuit); font-size: var(--my-taille-xl); line-height: 1.25; }
+    .bloc > h2 { margin-bottom: 12px; }
+
+    .toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 14px; }
     .toolbar .field { flex: 1 1 220px; }
-    .counts { color: var(--muted); font-size: 13px; }
-    .add-floating { position: fixed; right: 16px; bottom: 16px; z-index: 6; box-shadow: 0 8px 24px #10151333; }
+    .counts { color: var(--muted); font-size: 14px; }
+    .add-floating { box-shadow: var(--my-ombre-1); }
 
     .vehicle-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-    .vehicle { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-    .vehicle.removed { opacity: .6; }
-    .thumb { width: 96px; height: 72px; overflow: hidden; border-radius: 6px; background: #e6eae7; }
+    .vehicle { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .vehicle.removed { background: #f1f2f4; }
+    .vehicle.removed .thumb img { filter: grayscale(.6); }
+    .vehicle.draft { border-color: var(--gold); border-inline-start-width: 4px; background: #fffaf0; }
+    .thumb { width: 112px; height: 84px; overflow: hidden; border-radius: 6px; background: var(--nuit-pale); }
     .thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .vehicle h2 { margin: 0; font-size: 16px; line-height: 1.3; }
-    .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; color: var(--muted); font-size: 13px; }
-    .badge { padding: 1px 8px; border-radius: 10px; background: #e6eae7; color: var(--ink-soft); font-size: 12px; font-weight: 700; }
-    .badge.stock { background: var(--green-pale); color: var(--green); }
-    .badge.upcoming { background: var(--gold-pale); color: #725b2d; }
+    .vehicle h2 { margin: 0; color: var(--nuit); font-size: 17px; line-height: 1.3; }
+    .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 6px; color: var(--muted); font-size: 14px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .badge { padding: 2px 10px; border-radius: var(--my-rayon-pilule); background: #eceef1; color: var(--ink-soft); font-size: 13px; font-weight: 650; white-space: nowrap; }
+    .badge.stock { background: var(--green-pale); color: var(--my-vert-900); }
+    .badge.upcoming { background: var(--gold-pale); color: var(--nuit); }
     .badge.open { background: var(--red-pale); color: var(--red); }
-    .badge.removed { background: #333; color: white; }
-    .auction-meta { color: var(--green); font-weight: 650; }
+    .badge.removed { background: #4b5563; color: white; }
+    .badge.draft { background: var(--gold); color: var(--nuit); }
+    .badge.import { background: var(--nuit-pale); color: var(--nuit); }
+    .auction-meta { color: var(--nuit); font-weight: 650; }
     .bids { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
-    .bids li { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .bids li { padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
     .bids li.best strong { color: var(--green); }
     .bid-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 2px; }
     .decision { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .badge.offer-accepted, .badge.sold { background: var(--green); color: white; }
-    .badge.offer-withdrawn, .badge.offer-refused { background: #e6eae7; color: var(--muted); text-decoration: line-through; }
-    .badge.offer-pending { background: var(--gold-pale); color: #725b2d; }
-    .remove-check { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-size: 14px; font-weight: 650; }
-    .remove-check input { width: 20px; height: 20px; accent-color: var(--green); }
-    .todo { margin-bottom: 16px; padding: 14px 16px; border: 2px solid var(--gold); border-radius: var(--radius); background: #fffaf0; }
-    .todo h2 { margin: 0 0 8px; font-size: 17px; }
+    .badge.offer-withdrawn, .badge.offer-refused { background: #eceef1; color: var(--muted); text-decoration: line-through; }
+    .badge.offer-pending { background: var(--gold-pale); color: var(--nuit); }
+    .remove-check { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-size: 15px; font-weight: 650; }
+    .remove-check input { width: 20px; height: 20px; accent-color: var(--nuit); }
+    .todo { padding: 16px; border: 2px solid var(--gold); border-radius: var(--radius); background: #fffaf0; }
+    .todo h2 { margin: 0 0 10px; color: var(--nuit); font-size: var(--my-taille-l); }
     .todo-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-    .reglages { margin-bottom: 16px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); }
-    .reglages h2 { margin: 0 0 8px; font-size: 17px; }
-    .reglages label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
-    .reglages small { display: block; margin-inline-start: 26px; color: var(--muted); }
-    .todo-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 10px 12px; border-radius: 6px; background: white; }
+    .todo-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 12px 14px; border-radius: 6px; background: white; }
     .todo-list li div { display: grid; }
-    .todo-list li span { color: var(--muted); font-size: 13px; }
-    .bids span { color: var(--muted); font-size: 13px; }
+    .todo-list li span { color: var(--muted); font-size: 14px; }
+    .bids span { color: var(--muted); font-size: 14px; }
     .vehicle-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
 
+    /* Réglages : deux cartes côte à côte, interrupteurs avec leur état écrit en toutes lettres. */
+    .reglages-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; align-items: start; }
+    .reglages { padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .reglages h2 { margin: 0 0 4px; color: var(--nuit); font-size: var(--my-taille-l); }
+    .reglages > p.aide { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+    .reglages .todo-list li { display: grid; gap: 4px; padding: 12px 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+    .reglages .todo-list li:first-child { border-top: 0; }
+    .interrupteur { display: flex; align-items: center; gap: 12px; font-weight: 650; cursor: pointer; }
+    .interrupteur input { appearance: none; position: relative; flex: none; width: 46px; height: 26px; margin: 0; border-radius: 13px; background: #c4c8d0; cursor: pointer; transition: background-color .15s; }
+    .interrupteur input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: var(--my-ombre-1); transition: transform .15s; }
+    .interrupteur input:checked { background: var(--green); }
+    .interrupteur input:checked::after { transform: translateX(20px); }
+    .interrupteur input:disabled { opacity: .5; cursor: wait; }
+    .interrupteur .etat { margin-inline-start: auto; padding: 1px 10px; border-radius: var(--my-rayon-pilule); background: #eceef1; color: var(--muted); font-size: 13px; }
+    .interrupteur input:checked ~ .etat { background: var(--green-pale); color: var(--my-vert-900); }
+    .reglages small { display: block; padding-inline-start: 58px; color: var(--muted); font-size: 14px; }
+    #site-form { margin-bottom: 14px; }
+    #site-temoignages { padding-inline-start: 0; }
+
     dialog.editor { width: min(860px, 100%); max-height: calc(100% - 24px); padding: 0; border: 0; border-radius: 10px; color: var(--ink); box-shadow: 0 24px 80px #10151340; }
-    dialog.editor::backdrop { background: #101513a8; }
+    dialog.editor::backdrop { background: rgb(20 33 61 / .66); }
     .editor form { display: flex; max-height: calc(100vh - 24px); flex-direction: column; }
     .editor-head, .editor-foot { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--surface); }
     .editor-head { border-bottom: 1px solid var(--line); }
-    .editor-head h2 { margin: 0; font-size: 18px; }
+    .editor-head h2 { margin: 0; color: var(--nuit); font-size: 19px; }
     .editor-foot { justify-content: end; border-top: 1px solid var(--line); }
     .editor-body { overflow-y: auto; padding: 18px; }
-    fieldset { margin: 0 0 18px; padding: 0; border: 0; }
-    legend { margin-bottom: 10px; padding: 0; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; }
+    fieldset { margin: 0 0 22px; padding: 0; border: 0; }
+    legend { margin-bottom: 10px; padding: 0; color: var(--nuit); font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; }
     .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
     .grid .wide { grid-column: span 2; }
     .grid .full { grid-column: 1 / -1; }
 
     .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin: 0 0 12px; padding: 0; list-style: none; }
-    .photo { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #e6eae7; }
+    .photo { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--nuit-pale); }
     .photo img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
-    .photo .first { position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: 3px; background: var(--green); color: white; font-size: 11px; font-weight: 750; }
+    .photo .first { position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: 3px; background: var(--nuit); color: white; font-size: 12px; font-weight: 750; }
     .photo-tools { display: flex; justify-content: space-between; padding: 4px; background: white; }
     .photo-tools button { width: 38px; height: 34px; border: 1px solid var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 16px; }
     .photo-tools button:disabled { opacity: .35; cursor: default; }
     .photo.pending img { opacity: .4; }
     .photo.pending::after { content: "Envoi…"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; font-weight: 750; }
-    .upload { display: grid; place-items: center; min-height: 110px; padding: 14px; border: 2px dashed #b7d4c5; border-radius: 8px; background: #f6faf8; color: var(--green); font-size: 15px; font-weight: 750; text-align: center; cursor: pointer; }
+    .upload { display: grid; place-items: center; min-height: 110px; padding: 14px; border: 2px dashed #aeb9cf; border-radius: 8px; background: #f5f7fb; color: var(--nuit); font-size: 15px; font-weight: 750; text-align: center; cursor: pointer; }
     .upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-    .upload small { display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+    .upload small { display: block; color: var(--muted); font-size: 13px; font-weight: 600; }
 
     @media (max-width: 680px) {
       .who { display: none; }
-      .brand small { font-size: 11px; }
-      .vehicle { grid-template-columns: 80px minmax(0, 1fr); }
-      .thumb { width: 80px; height: 64px; }
+      .brand strong { display: none; }
+      .brand img { width: 34px; height: 34px; }
+      .header-actions { gap: 6px; }
+      header .button.small { min-height: 36px; padding: 0 10px; font-size: 13px; }
+      .vehicle { grid-template-columns: 84px minmax(0, 1fr); gap: 12px; }
+      .thumb { width: 84px; height: 66px; }
       .vehicle-actions { grid-column: 1 / -1; justify-content: stretch; }
       .vehicle-actions .button { flex: 1; }
+      /* Sur téléphone, « Ajouter » reste à portée de pouce. */
+      .add-floating { position: fixed; right: 16px; bottom: 16px; z-index: 6; box-shadow: var(--my-ombre-2); }
+      .tuiles { grid-template-columns: 1fr 1fr; }
+      #flash { bottom: 76px; }
       dialog.editor { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; }
       .editor form { height: 100%; max-height: none; }
       .grid { grid-template-columns: 1fr 1fr; }
       .grid .wide { grid-column: 1 / -1; }
       .editor-foot .button { flex: 1; }
     }
+    @media (prefers-reduced-motion: reduce) {
+      .interrupteur input, .interrupteur input::after { transition: none; }
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="shell header-inner">
-      <a class="brand" href="/"><img src="logo.png" alt=""><span><strong>M&Y AUTO EXPORT</strong><small>Administration</small></span></a>
+      <a class="brand" href="/admin"><img src="logo.png" alt=""><span><strong>M&Y AUTO EXPORT</strong><small>Administration</small></span></a>
       <div class="header-actions">
         <span class="who" id="who"></span>
-        <a class="button small" href="/admin-vendeurs">Annonces vendeurs à valider</a>
-        <a class="button small" href="/admin-prix">Prix estimés</a>
-        <a class="button small" href="/admin-mandats">Mandats</a>
-        <a class="button small" href="/admin-import">Import OpenLane</a>
         <a class="button small" href="/">Voir le site</a>
         <button class="button small hidden" type="button" id="logout">Déconnexion</button>
       </div>
     </div>
+    <nav class="admin-nav" aria-label="Rubriques de l'administration">
+      <ul class="shell">
+        <li><a href="/admin" aria-current="page">Catalogue</a></li>
+        <li><a href="/admin-vendeurs">Annonces vendeurs</a></li>
+        <li><a href="/admin-mandats">Mandats</a></li>
+        <li><a href="/admin-prix">Prix estimés</a></li>
+        <li><a href="/admin-import">Import OpenLane</a></li>
+        <li><a href="#reglages-bloc">Réglages</a></li>
+      </ul>
+    </nav>
   </header>
 
   <main class="shell">
@@ -187,42 +254,68 @@
       <button class="button" type="button" id="switch-account">Changer de compte</button>
     </section>
 
-    <section class="hidden" id="list-view" aria-labelledby="list-title">
-      <h1 id="list-title">Catalogue</h1>
-      <p class="lead" id="counts"></p>
+    <div class="hidden" id="list-view">
+      <div class="page-head">
+        <h1 id="list-title">Tableau de bord</h1>
+        <p class="lead" id="counts"></p>
+      </div>
+      <p class="message ok hidden" id="flash" role="status"></p>
+
+      <!-- Chiffres clés : un clic filtre le catalogue ou mène aux tâches. -->
+      <div class="tuiles" aria-label="Résumé">
+        <button class="tuile" type="button" data-tuile="online"><strong id="t-online">0</strong><span>En ligne</span></button>
+        <button class="tuile" type="button" data-tuile="drafts" id="tuile-drafts"><strong id="t-drafts">0</strong><span>Brouillons à publier</span></button>
+        <button class="tuile" type="button" data-tuile="removed"><strong id="t-removed">0</strong><span>Retirés</span></button>
+        <button class="tuile" type="button" data-tuile="todo" id="tuile-todo"><strong id="t-todo">0</strong><span>Décisions à prendre</span></button>
+      </div>
+
       <p class="message info hidden" id="photos-off">Le stockage des photos n'est pas encore configuré : tu peux enregistrer des véhicules, mais pas envoyer de photos (voir le README).</p>
-      <section class="todo hidden" id="transfers" aria-labelledby="transfers-title">
+
+      <section class="todo bloc hidden" id="transfers" aria-labelledby="transfers-title">
         <h2 id="transfers-title">Virements de caution à valider</h2>
         <ul class="todo-list" id="transfers-list"></ul>
       </section>
-      <section class="todo hidden" id="todo" aria-labelledby="todo-title">
+      <section class="todo bloc hidden" id="todo" aria-labelledby="todo-title">
         <h2 id="todo-title">À traiter</h2>
         <ul class="todo-list" id="todo-list"></ul>
       </section>
-      <section class="reglages" id="reglages" aria-labelledby="reglages-title">
-        <h2 id="reglages-title">Automatisations</h2>
-        <ul class="todo-list" id="reglages-list"></ul>
+
+      <section class="bloc" id="catalogue" aria-labelledby="catalogue-title">
+        <div class="bloc-head">
+          <h2 id="catalogue-title">Catalogue</h2>
+          <button class="button primary add-floating" type="button" id="add-vehicle">+ Ajouter un véhicule</button>
+        </div>
+        <div class="toolbar">
+          <div class="field"><label for="search">Rechercher</label><input id="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off"></div>
+          <div class="field" style="flex: 0 1 260px"><label for="show">Afficher</label>
+            <select id="show"><option value="online">En ligne</option><option value="drafts">Brouillons à publier</option><option value="removed">Retirés (brouillons compris)</option><option value="all">Tous</option></select></div>
+        </div>
+        <ul class="vehicle-list" id="vehicle-list"></ul>
       </section>
-      <section class="reglages" id="site" aria-labelledby="site-title">
-        <h2 id="site-title">Site</h2>
-        <form class="stack" id="site-form" novalidate>
-          <div class="field"><label for="s-whatsapp_numero">Numéro WhatsApp</label><input id="s-whatsapp_numero" name="whatsapp_numero" inputmode="tel" maxlength="20" placeholder="+21612345678"><small>Format international, chiffres seulement. Vide : aucun bouton WhatsApp sur le site.</small></div>
-          <div class="field"><label for="s-public_par_defaut">Public par défaut</label><select id="s-public_par_defaut" name="public_par_defaut"><option value="tre">À l'étranger · €</option><option value="resident">J'habite en Tunisie · TND</option></select><small>Appliqué tant que le visiteur n'a pas fait son choix.</small></div>
-          <button class="button" type="submit">Enregistrer</button>
-        </form>
-        <p class="message info"><strong>À activer seulement après validation des paramètres de prix par le transitaire.</strong></p>
-        <ul class="todo-list" id="site-cases"></ul>
-        <small id="site-temoignages"></small>
+
+      <section class="bloc" id="reglages-bloc" aria-labelledby="reglages-titre">
+        <h2 id="reglages-titre">Réglages</h2>
+        <div class="reglages-grille">
+          <section class="reglages" id="reglages" aria-labelledby="reglages-title">
+            <h2 id="reglages-title">Automatisations</h2>
+            <p class="aide">Ce que Claude et l'agent local ont le droit de modifier sur le site.</p>
+            <ul class="todo-list" id="reglages-list"></ul>
+          </section>
+          <section class="reglages" id="site" aria-labelledby="site-title">
+            <h2 id="site-title">Site</h2>
+            <p class="aide">Contact WhatsApp et affichage des prix pour les visiteurs.</p>
+            <form class="stack" id="site-form" novalidate>
+              <div class="field"><label for="s-whatsapp_numero">Numéro WhatsApp</label><input id="s-whatsapp_numero" name="whatsapp_numero" inputmode="tel" maxlength="20" placeholder="+21612345678"><small>Format international, chiffres seulement. Vide : aucun bouton WhatsApp sur le site.</small></div>
+              <div class="field"><label for="s-public_par_defaut">Public par défaut</label><select id="s-public_par_defaut" name="public_par_defaut"><option value="tre">À l'étranger · €</option><option value="resident">J'habite en Tunisie · TND</option></select><small>Appliqué tant que le visiteur n'a pas fait son choix.</small></div>
+              <button class="button" type="submit">Enregistrer</button>
+            </form>
+            <p class="message info"><strong>Prix : à activer seulement après validation des paramètres par le transitaire.</strong></p>
+            <ul class="todo-list" id="site-cases"></ul>
+            <small id="site-temoignages"></small>
+          </section>
+        </div>
       </section>
-      <div class="toolbar">
-        <div class="field"><label for="search">Rechercher</label><input id="search" type="search" placeholder="Référence, marque, modèle…" autocomplete="off"></div>
-        <div class="field" style="flex: 0 1 200px"><label for="show">Afficher</label>
-          <select id="show"><option value="online">En ligne</option><option value="removed">Retirés</option><option value="all">Tous</option></select></div>
-      </div>
-      <p class="message ok hidden" id="flash" role="status"></p>
-      <ul class="vehicle-list" id="vehicle-list"></ul>
-      <button class="button primary add-floating" type="button" id="add-vehicle">+ Ajouter un véhicule</button>
-    </section>
+    </div>
   </main>
 
   <dialog class="editor" id="editor" aria-labelledby="editor-title">
@@ -429,9 +522,11 @@
       const items = aTraiter();
       $("todo").classList.toggle("hidden", items.length === 0);
       $("todo-title").textContent = `À traiter (${items.length})`;
+      etat.nbATraiter = items.length;
+      majTuiles();
       $("todo-list").innerHTML = items.map((item) => `<li>
         <div><strong>${escapeHtml(item.titre)}</strong><span>Réf. ${escapeHtml(item.reference)} · ${item.raisons.map(escapeHtml).join(" · ")}</span></div>
-        <button class="button small primary" type="button" data-bids="${escapeHtml(item.reference)}">Décider</button></li>`).join("");
+        <button class="button small action" type="button" data-bids="${escapeHtml(item.reference)}">Décider</button></li>`).join("");
     }
 
     function lienConfirmation(offre, titreLot) {
@@ -491,7 +586,7 @@
     async function chargerReglages() {
       const { reglages } = await api("/api/admin/reglages");
       $("reglages-list").innerHTML = reglages.filter((r) => LIBELLES_REGLAGES[r.cle]).map((r) => `<li>
-        <label><input type="checkbox" data-reglage="${escapeHtml(r.cle)}"${r.valeur ? " checked" : ""}> ${escapeHtml(LIBELLES_REGLAGES[r.cle][0])}</label>
+        <label class="interrupteur"><input type="checkbox" role="switch" data-reglage="${escapeHtml(r.cle)}"${r.valeur ? " checked" : ""}> ${escapeHtml(LIBELLES_REGLAGES[r.cle][0])}<span class="etat">${r.valeur ? "Activé" : "Désactivé"}</span></label>
         <small>${escapeHtml(LIBELLES_REGLAGES[r.cle][1])}${r.misAJour ? ` Modifié le ${dateHeure(r.misAJour)}.` : ""}</small></li>`).join("");
     }
 
@@ -522,7 +617,7 @@
       $("s-whatsapp_numero").value = valeurs.whatsapp_numero.valeur;
       $("s-public_par_defaut").value = valeurs.public_par_defaut.valeur;
       $("site-cases").innerHTML = Object.entries(CASES_SITE).map(([cle, [libelle, aide]]) => `<li>
-        <label><input type="checkbox" data-site="${cle}"${valeurs[cle].valeur ? " checked" : ""}> ${escapeHtml(libelle)}</label>
+        <label class="interrupteur"><input type="checkbox" role="switch" data-site="${cle}"${valeurs[cle].valeur ? " checked" : ""}> ${escapeHtml(libelle)}<span class="etat">${valeurs[cle].valeur ? "Activé" : "Désactivé"}</span></label>
         <small>${escapeHtml(aide)}${valeurs[cle].misAJour ? ` Modifié le ${dateHeure(valeurs[cle].misAJour)}.` : ""}</small></li>`).join("");
       $("site-temoignages").textContent = `Témoignages publiés : ${valeurs.temoignages.valeur.length} (section masquée tant qu'il n'y en a aucun ; saisie prévue dans un prochain chantier).`;
     }
@@ -565,8 +660,10 @@
     async function chargerVirements() {
       const { transfers } = await api("/api/admin/deposits");
       $("transfers").classList.toggle("hidden", !transfers.length);
+      etat.nbVirements = transfers.length;
+      majTuiles();
       $("transfers-list").innerHTML = transfers.map((t) => `<li><span><strong>${escapeHtml(t.name)}</strong> · ${escapeHtml(t.email)}${t.phone ? ` · ${escapeHtml(t.phone)}` : ""} · ${tnd(t.amountTnd)} · libellé ${escapeHtml(t.reference)}</span>
-        <button class="button small primary" type="button" data-transfer="${t.id}" data-ok="1" data-amount="${t.amountTnd}" data-ref="${escapeHtml(t.reference)}">Virement reçu</button>
+        <button class="button small action" type="button" data-transfer="${t.id}" data-ok="1" data-amount="${t.amountTnd}" data-ref="${escapeHtml(t.reference)}">Virement reçu</button>
         <button class="button small danger" type="button" data-transfer="${t.id}">Annuler</button></li>`).join("");
     }
 
@@ -626,32 +723,59 @@
       }
     }
 
+    // Brouillon : annonce importée (OpenLane, eCarsTrade…) encore retirée du site, à relire puis remettre en ligne.
+    const SOURCES_IMPORT = { openlane: "OpenLane", ecarstrade: "eCarsTrade" };
+    const estBrouillon = (item) => item.removed && Boolean(item.lot.importSource);
+    const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+
+    function majTuiles() {
+      const vehicules = etat.vehicles || [];
+      const enLigne = vehicules.filter((item) => !item.removed).length;
+      const brouillons = vehicules.filter(estBrouillon).length;
+      const decisions = (etat.nbATraiter || 0) + (etat.nbVirements || 0);
+      $("t-online").textContent = enLigne;
+      $("t-drafts").textContent = brouillons;
+      $("t-removed").textContent = vehicules.length - enLigne;
+      $("t-todo").textContent = decisions;
+      $("tuile-drafts").classList.toggle("alerte", brouillons > 0);
+      $("tuile-todo").classList.toggle("alerte", decisions > 0);
+      const [optEnLigne, optBrouillons, optRetires] = $("show").options;
+      optEnLigne.textContent = `En ligne (${enLigne})`;
+      optBrouillons.textContent = `Brouillons à publier (${brouillons})`;
+      optRetires.textContent = `Retirés, brouillons compris (${vehicules.length - enLigne})`;
+      $("counts").textContent = decisions
+        ? `${pluriel(decisions, "décision")} à prendre ci-dessous.`
+        : brouillons ? `${pluriel(brouillons, "brouillon")} importé${brouillons > 1 ? "s" : ""} à relire avant publication.` : "Rien d'urgent à traiter.";
+    }
+
     function renderListe() {
       const query = $("search").value.trim().toLocaleLowerCase("fr");
       const show = $("show").value;
-      const enLigne = etat.vehicles.filter((item) => !item.removed).length;
-      $("counts").textContent = `${enLigne} véhicule${enLigne > 1 ? "s" : ""} en ligne · ${etat.vehicles.length - enLigne} retiré${etat.vehicles.length - enLigne > 1 ? "s" : ""}`;
+      majTuiles();
       const items = etat.vehicles
-        .filter((item) => show === "all" || (show === "removed") === item.removed)
+        .filter((item) => show === "all" || (show === "drafts" ? estBrouillon(item) : (show === "removed") === item.removed))
         .filter((item) => !query || `${item.lot.reference} ${titre(item.lot)}`.toLocaleLowerCase("fr").includes(query))
         .sort((a, b) => (b.updatedAt || b.lot.createdAt || "").localeCompare(a.updatedAt || a.lot.createdAt || ""));
       $("vehicle-list").innerHTML = items.length ? items.map((item) => {
         const lot = item.lot;
+        const brouillon = estBrouillon(item);
         const photo = (lot.photos || []).find((p) => p && p.url)?.url;
-        return `<li class="vehicle${item.removed ? " removed" : ""}">
+        const source = lot.importSource ? SOURCES_IMPORT[lot.importSource.site] || lot.importSource.site : "";
+        const offres = offresDe(lot.reference);
+        return `<li class="vehicle${item.removed ? " removed" : ""}${brouillon ? " draft" : ""}">
           <div class="thumb">${photo ? `<img src="${escapeHtml(photo)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}</div>
           <div><h2>${escapeHtml(titre(lot))}</h2>
-            <div class="meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span class="badge ${escapeHtml(lot.status)}">${item.auction?.status === "ended" ? "Enchère terminée" : STATUTS[lot.status] || escapeHtml(lot.status)}</span>
-              ${item.removed ? `<span class="badge removed">Retiré</span>` : ""}${offresDe(lot.reference).some((o) => o.status === "accepted") ? `<span class="badge sold">Vendu</span>` : ""}<span>${escapeHtml(prix(lot))}</span><span>${(lot.photos || []).length} photo(s)</span></div>
+            <div class="badges">${brouillon ? `<span class="badge draft">Brouillon à publier</span>` : item.removed ? `<span class="badge removed">Retiré</span>` : ""}<span class="badge ${escapeHtml(lot.status)}">${item.auction?.status === "ended" ? "Enchère terminée" : STATUTS[lot.status] || escapeHtml(lot.status)}</span>${offres.some((o) => o.status === "accepted") ? `<span class="badge sold">Vendu</span>` : ""}${source ? `<span class="badge import">Import ${escapeHtml(source)}</span>` : ""}</div>
+            <div class="meta"><span>Réf. ${escapeHtml(lot.reference)}</span><span>${escapeHtml(prix(lot))}</span><span>${pluriel((lot.photos || []).length, "photo")}</span></div>
             ${resumeEnchere(item.auction)}</div>
           <div class="vehicle-actions">
-            ${offresDe(lot.reference).length ? `<button class="button small" type="button" data-bids="${escapeHtml(lot.reference)}">Offres (${offresDe(lot.reference).length})</button>` : ""}
-            <button class="button small" type="button" data-edit="${escapeHtml(lot.reference)}">Modifier</button>
+            ${offres.length ? `<button class="button small" type="button" data-bids="${escapeHtml(lot.reference)}">Offres (${offres.length})</button>` : ""}
+            <button class="button small" type="button" data-edit="${escapeHtml(lot.reference)}">${brouillon ? "Relire" : "Modifier"}</button>
             ${item.removed
-              ? `<button class="button small" type="button" data-restore="${escapeHtml(lot.reference)}">Remettre en ligne</button>`
+              ? `<button class="button small action" type="button" data-restore="${escapeHtml(lot.reference)}">Remettre en ligne</button>`
               : `<button class="button small danger" type="button" data-remove="${escapeHtml(lot.reference)}">Retirer</button>`}
           </div></li>`;
-      }).join("") : `<li class="card">Aucun véhicule ${show === "removed" ? "retiré" : "à afficher"}.</li>`;
+      }).join("") : `<li class="card">${show === "drafts" ? "Aucun brouillon à publier." : `Aucun véhicule ${show === "removed" ? "retiré" : "à afficher"}.`}</li>`;
     }
 
     function flash(texte) {
@@ -866,6 +990,20 @@
       } catch (error) {
         alert(error.message);
       }
+    });
+    document.querySelector(".tuiles").addEventListener("click", (event) => {
+      const tuile = event.target.closest("[data-tuile]");
+      if (!tuile) return;
+      if (tuile.dataset.tuile === "todo") {
+        const cible = [$("transfers"), $("todo")].find((bloc) => !bloc.classList.contains("hidden"));
+        if (cible) cible.scrollIntoView({ behavior: "smooth", block: "start" });
+        else flash("Aucune décision en attente.");
+        return;
+      }
+      $("show").value = tuile.dataset.tuile;
+      $("search").value = "";
+      renderListe();
+      $("catalogue").scrollIntoView({ behavior: "smooth", block: "start" });
     });
     $("search").addEventListener("input", renderListe);
     $("show").addEventListener("change", renderListe);
