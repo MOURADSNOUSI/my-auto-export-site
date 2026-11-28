@@ -145,7 +145,9 @@
     .reglages-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; align-items: start; }
     .reglages { padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     .reglages h2 { margin: 0 0 4px; color: var(--nuit); font-size: var(--my-taille-l); }
-    .reglages > p.aide { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+    .reglages > p.aide, #avis-bloc > p.aide { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+    #avis-list li div { gap: 4px; flex: 1 1 320px; }
+    #avis-list .actions { display: flex; gap: 8px; }
     .reglages .todo-list li { display: grid; gap: 4px; padding: 12px 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
     .reglages .todo-list li:first-child { border-top: 0; }
     .interrupteur { display: flex; align-items: center; gap: 12px; font-weight: 650; cursor: pointer; }
@@ -229,6 +231,7 @@
         <li><a href="/admin-mandats">Mandats</a></li>
         <li><a href="/admin-prix">Prix estimés</a></li>
         <li><a href="/admin-import">Import OpenLane</a></li>
+        <li><a href="#avis-bloc">Avis clients</a></li>
         <li><a href="#reglages-bloc">Réglages</a></li>
       </ul>
     </nav>
@@ -278,6 +281,14 @@
       <section class="todo bloc hidden" id="todo" aria-labelledby="todo-title">
         <h2 id="todo-title">À traiter</h2>
         <ul class="todo-list" id="todo-list"></ul>
+      </section>
+
+      <section class="bloc" id="avis-bloc" aria-labelledby="avis-title">
+        <div class="bloc-head"><h2 id="avis-title">Avis clients</h2></div>
+        <p class="aide">Avis déposés par les clients après la remise de leur véhicule. Rien n'est publié sur l'accueil sans votre validation.</p>
+        <div class="toolbar"><div class="field" style="flex: 0 1 260px"><label for="avis-statut">Afficher</label>
+          <select id="avis-statut"><option value="en_attente">À valider</option><option value="publie">Publiés</option><option value="refuse">Refusés</option></select></div></div>
+        <ul class="todo-list" id="avis-list"></ul>
       </section>
 
       <section class="bloc" id="catalogue" aria-labelledby="catalogue-title">
@@ -463,7 +474,7 @@
       etat.offres = offres.offers;
       etat.lotsOffres = offres.lots;
       renderAFaire();
-      await Promise.all([chargerVirements(), chargerReglages(), chargerSite()]);
+      await Promise.all([chargerVirements(), chargerReglages(), chargerSite(), chargerAvis()]);
       etat.photosEnabled = data.photosEnabled;
       $("photos-off").classList.toggle("hidden", etat.photosEnabled);
       $("makes").innerHTML = [...new Set(etat.vehicles.map((item) => item.lot.make))].sort().map((m) => `<option value="${escapeHtml(m)}">`).join("");
@@ -619,8 +630,48 @@
       $("site-cases").innerHTML = Object.entries(CASES_SITE).map(([cle, [libelle, aide]]) => `<li>
         <label class="interrupteur"><input type="checkbox" role="switch" data-site="${cle}"${valeurs[cle].valeur ? " checked" : ""}> ${escapeHtml(libelle)}<span class="etat">${valeurs[cle].valeur ? "Activé" : "Désactivé"}</span></label>
         <small>${escapeHtml(aide)}${valeurs[cle].misAJour ? ` Modifié le ${dateHeure(valeurs[cle].misAJour)}.` : ""}</small></li>`).join("");
-      $("site-temoignages").textContent = `Témoignages publiés : ${valeurs.temoignages.valeur.length} (section masquée tant qu'il n'y en a aucun ; saisie prévue dans un prochain chantier).`;
+      $("site-temoignages").textContent = `Témoignages saisis dans les réglages : ${valeurs.temoignages.valeur.length}. Les avis clients se valident dans la rubrique « Avis clients » ; la section de l'accueil reste masquée tant qu'il n'y a ni avis publié ni témoignage.`;
     }
+
+    // Avis clients (worker/avis.js) : publication ou refus motivé. Refuser un avis publié le retire de l'accueil.
+    async function chargerAvis() {
+      const statut = $("avis-statut").value;
+      const { avis, compteurs } = await api(`/api/admin/avis?statut=${encodeURIComponent(statut)}`);
+      $("avis-statut").options[0].textContent = `À valider (${compteurs.en_attente})`;
+      $("avis-statut").options[1].textContent = `Publiés (${compteurs.publie})`;
+      $("avis-statut").options[2].textContent = `Refusés (${compteurs.refuse})`;
+      $("avis-list").innerHTML = avis.length ? avis.map((a) => `<li>
+        <div><strong>${"★".repeat(a.note)}${"☆".repeat(5 - a.note)} · ${escapeHtml(a.nomAffiche)}</strong>
+          <span>${escapeHtml(a.vehicule || "")} · réf. ${escapeHtml(a.reference)} · ${a.source === "mandat" ? "mandat livré" : "véhicule remis"} · ${dateHeure(a.misAJour)}</span>
+          <span>« ${escapeHtml(a.texte)} »</span>
+          <span>Compte : ${escapeHtml(a.client.nom)} · <a href="mailto:${escapeHtml(a.client.email)}">${escapeHtml(a.client.email)}</a></span>
+          ${a.statut === "refuse" && a.motifRefus ? `<span>Motif du refus : ${escapeHtml(a.motifRefus)}</span>` : ""}</div>
+        <span class="actions">${a.statut !== "publie" ? `<button class="button small action" type="button" data-avis="${a.id}" data-decision="publier">Publier</button>` : ""}
+          ${a.statut !== "refuse" ? `<button class="button small danger" type="button" data-avis="${a.id}" data-decision="refuser">${a.statut === "publie" ? "Retirer du site" : "Refuser"}</button>` : ""}</span></li>`).join("")
+        : `<li><span>Aucun avis dans cette liste.</span></li>`;
+    }
+
+    $("avis-statut").addEventListener("change", () => chargerAvis().catch((error) => alert(error.message)));
+
+    $("avis-list").addEventListener("click", async (event) => {
+      const bouton = event.target.closest("[data-avis]");
+      if (!bouton) return;
+      const decision = bouton.dataset.decision;
+      let motif = "";
+      if (decision === "refuser") {
+        motif = (prompt("Motif (visible par le client), par exemple : propos injurieux, données personnelles, hors sujet.") || "").trim();
+        if (!motif) return;
+      } else if (!confirm("Publier cet avis sur la page d'accueil ?")) return;
+      bouton.disabled = true;
+      try {
+        await api(`/api/admin/avis/${bouton.dataset.avis}/${decision}`, { method: "POST", body: { motif } });
+        flash(decision === "publier" ? "Avis publié sur l'accueil." : "Avis non publié.");
+        await chargerAvis();
+      } catch (error) {
+        bouton.disabled = false;
+        alert(error.message);
+      }
+    });
 
     async function ecrireSite(cle, valeur) {
       await api(`/api/admin/site/${cle}`, { method: "PUT", body: { valeur } });

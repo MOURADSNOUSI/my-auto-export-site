@@ -1,3 +1,4 @@
+import { avisPublies } from "./avis.js";
 import {freeOffersEnabled,legacyAuctionsEnabled,lot1Public,reserveTerms} from './proposal-domain.js';
 const money=(v,c)=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:c,minimumFractionDigits:c==='TND'?3:2}).format(v/(c==='TND'?1000:100));
 import { sellerMedia, verifiedSellerLots } from "./seller.js";
@@ -373,16 +374,23 @@ ${CSS_WHATSAPP}.carte-whatsapp,.lot-whatsapp{display:grid;place-items:center;inl
 .etapes h3{margin:0 0 6px;font-size:16px}.etapes p{margin:0}
 .lignes-prix{margin:0;padding-inline-start:34px}
 .temoignages{display:grid;gap:12px;margin:0;padding:0;list-style:none}.temoignages blockquote{margin:0}
+.temoignages{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}.temoignages li>p{margin:6px 0 0}
+.avis-note{margin:0 0 6px;color:#8a6210;font-size:18px;letter-spacing:2px}.avis-moyenne{margin:0 0 12px}
 .faq{margin-block-end:8px}.faq summary{cursor:pointer;font-weight:700}.faq p{margin-block:8px 0}
 `;
 
 function sectionsAccueil(ctx) {
   const titre = (id, cle) => `<div class="section-title"><h2 id="${id}">${escapeHtml(t(cle))}</h2></div>`;
-  const temoignages = Array.isArray(ctx.site.temoignages) ? ctx.site.temoignages : [];
+  // Avis clients publiés (worker/avis.js), puis témoignages saisis dans les réglages.
+  const publies = ctx.avis?.avis || [];
+  const temoignages = [...publies, ...(Array.isArray(ctx.site.temoignages) ? ctx.site.temoignages : [])];
+  const etoiles = (note) => `<p class="avis-note" role="img" aria-label="Note : ${note} sur 5"><span aria-hidden="true">${"★".repeat(note)}${"☆".repeat(5 - note)}</span></p>`;
+  const moyenne = ctx.avis?.total >= 3 && ctx.avis.moyenne
+    ? `<p class="avis-moyenne">Note moyenne : <strong>${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(ctx.avis.moyenne)} / 5</strong> sur ${ctx.avis.total} avis de clients vérifiés.</p>` : "";
   return {
     comment: `${titre("comment-titre", "comment_titre")}<ol class="etapes">${[1, 2, 3].map((i) => `<li><h3>${escapeHtml(t(`etape${i}_titre`))}</h3><p>${escapeHtml(t(`etape${i}_texte`))}</p></li>`).join("")}</ol>`,
     prix: `${titre("prix-titre", "prix_titre")}<p>${escapeHtml(t("prix_intro"))}</p><ul class="lignes-prix">${["achat", "transport", "douane", "frais", "immatriculation", "commission"].map((c) => `<li>${escapeHtml(t(`prix_ligne_${c}`))}</li>`).join("")}</ul><p class="note">${escapeHtml(t("prix_note"))}</p>`,
-    temoignages: temoignages.length ? `${titre("temoignages-titre", "temoignages_titre")}<ul class="temoignages">${temoignages.map((x) => `<li><blockquote><p>${escapeHtml(x.texte)}</p></blockquote><p>— ${escapeHtml(x.nom)}${x.vehicule ? `, ${escapeHtml(x.vehicule)}` : ""}</p></li>`).join("")}</ul>` : "",
+    temoignages: temoignages.length ? `${titre("temoignages-titre", "temoignages_titre")}${moyenne}<ul class="temoignages">${temoignages.map((x) => `<li>${Number.isInteger(x.note) ? etoiles(x.note) : ""}<blockquote><p>${escapeHtml(x.texte)}</p></blockquote><p>— ${escapeHtml(x.nom)}${x.vehicule ? `, ${escapeHtml(x.vehicule)}` : ""}</p></li>`).join("")}</ul>` : "",
     questions: `${titre("questions-titre", "questions_titre")}${Array.from({ length: NOMBRE_QUESTIONS }, (_, i) => `<details class="faq"><summary>${escapeHtml(t(`faq${i + 1}_question`))}</summary><p>${escapeHtml(t(`faq${i + 1}_reponse`))}</p></details>`).join("")}`
   };
 }
@@ -409,7 +417,8 @@ async function sousTitreAccueil(env) {
 // Accueil : textes (data-texte), choix du public, WhatsApp et sections insérés dans index.html. Les cartes des véhicules
 // lisibles sans JavaScript sont sur /vehicules, lié depuis le menu.
 export async function vitrineAccueil(request, env, reponse) {
-  const [ctx, sousTitre] = await Promise.all([contexteVitrine(request, env), sousTitreAccueil(env)]);
+  const [ctx, sousTitre, avis] = await Promise.all([contexteVitrine(request, env), sousTitreAccueil(env), avisPublies(env)]);
+  ctx.avis = avis;
   const sections = sectionsAccueil(ctx);
   // whatsapp_lien et whatsapp_icone : petit bouton WhatsApp des cartes construites dans le navigateur (vide sans numéro).
   const textesNavigateur = JSON.stringify({ ...Object.fromEntries(TEXTES_NAVIGATEUR.map((cle) => [cle, t(cle)])),

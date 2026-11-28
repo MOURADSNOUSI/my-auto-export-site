@@ -545,6 +545,26 @@
     #account-dialog .account-panel h3 { margin: 0 0 4px; color: var(--my-nuit); font-size: 18px; }
     #account-dialog .account-panel > p, #account-dialog .account-panel .account-empty { color: var(--my-encre-doux, var(--muted)); font-size: 14px; }
     #account-dialog .account-list li, #account-dialog .account-list .muted { font-size: 14px; }
+    #account-dialog .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    #account-dialog .avis-achat { align-items: flex-start; }
+    #account-dialog .avis-achat > span { flex: 1 1 220px; }
+    #account-dialog .avis-form, #account-dialog .avis-details { flex: 1 1 100%; }
+    #account-dialog .avis-form { display: grid; gap: 6px; margin-top: 8px; }
+    #account-dialog .avis-form label { font-weight: 650; }
+    #account-dialog .avis-form textarea, #account-dialog .avis-form input:not([type]) { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 16px; }
+    #account-dialog .avis-form .avis-accord { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; font-size: 13px; }
+    #account-dialog .avis-form .avis-accord input { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 1px; }
+    #account-dialog .avis-form button[type=submit] { justify-self: start; }
+    #account-dialog .avis-etoiles { margin: 0; padding: 0; border: 0; }
+    #account-dialog .avis-etoiles legend { padding: 0; font-weight: 650; }
+    #account-dialog .avis-etoiles div { display: inline-flex; flex-direction: row-reverse; }
+    #account-dialog .avis-etoiles input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    #account-dialog .avis-etoiles label { display: grid; place-items: center; width: 44px; height: 44px; color: #c4c9c6; font-size: 30px; cursor: pointer; }
+    #account-dialog .avis-etoiles input:checked ~ label, #account-dialog .avis-etoiles label:hover, #account-dialog .avis-etoiles label:hover ~ label { color: #b07d12; }
+    #account-dialog .avis-etoiles input:focus-visible + label { outline: 2px solid var(--my-nuit); outline-offset: 2px; }
+    #account-dialog .avis-details summary { cursor: pointer; color: var(--my-nuit); font-weight: 650; min-height: 44px; display: flex; align-items: center; }
+    #account-dialog .avis-message { margin: 0; color: #a3261b; font-size: 14px; }
+    #account-dialog .message-avis { margin: 0 0 8px; padding: 10px 12px; border-radius: 6px; background: #e9f5ee; color: #185740; font-size: 14px; }
     #account-dialog .account-pied { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }
     #account-dialog .bouton-compte { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--line); border-radius: var(--my-rayon-pilule, 999px); background: #fff; color: var(--my-nuit); font: inherit; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; }
     #account-dialog .bouton-compte:hover { border-color: var(--my-nuit); }
@@ -1243,7 +1263,7 @@
 
     // --- Espace acheteur ---
 
-    const compte = { disponible: false, user: null, vehicles: [], offers: [], invoices: [] };
+    const compte = { disponible: false, user: null, vehicles: [], offers: [], invoices: [], avis: null };
     let actionApresConnexion = null;
 
     async function api(chemin, { method = "GET", body } = {}) {
@@ -1404,7 +1424,8 @@
         ["vehicles", "Mes véhicules", compte.vehicles.length],
         ["offers", "Mes offres", compte.offers.length],
         ["favorites", "Mes favoris", favoris.length],
-        ["documents", "Documents · Factures", compte.invoices.length]
+        ["documents", "Documents · Factures", compte.invoices.length],
+        ["avis", "Mes avis", compte.avis ? compte.avis.achats.length : "…"]
       ];
       document.getElementById("account-body").innerHTML = `
         <div class="dialog-head account-tete"><span class="account-avatar" aria-hidden="true">${escapeHtml((user.name || "?").trim().charAt(0).toUpperCase() || "?")}</span>
@@ -1439,6 +1460,10 @@
           ${compte.invoices.length ? `<ul class="account-list">${compte.invoices.map((invoice) => `<li class="invoice-item"><span class="invoice-details"><strong>${escapeHtml(invoice.invoiceNumber)}</strong><small>${escapeHtml(date(invoice.issuedAt))} · ${formatTnd(invoice.totalTnd)} · ${statutsFacture[invoice.status] || "Statut à confirmer"}</small></span>${invoice.documentAvailable ? `<a class="invoice-download" href="/api/invoices/${encodeURIComponent(invoice.id)}/document">Télécharger PDF</a>` : `<span class="muted">PDF non disponible</span>`}</li>`).join("")}</ul>` : `<p class="account-empty">Aucune facture associée à ce compte.</p>`}
           <p class="form-footnote">Les factures sont privées et accessibles uniquement après connexion au compte concerné.</p>
         </section>
+        <section class="account-panel hidden" data-account-panel="avis">
+          <h3>Mes avis</h3><p>Donnez votre avis sur un véhicule qui vous a été remis. Il paraît sur la page d'accueil après validation par l'équipe.</p>
+          <div id="avis-contenu">${compte.avis ? contenuAvis(compte.avis) : `<p class="account-empty">Chargement…</p>`}</div>
+        </section>
         ${pied(user.role === "admin")}`;
       document.getElementById("account-body").querySelectorAll("[data-account-view]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -1447,6 +1472,72 @@
         });
       });
       if (!accountDialog.open) accountDialog.showModal();
+      chargerAvis();
+    }
+
+    // --- Avis clients (worker/avis.js) : un avis par véhicule remis ou mandat livré, publié après validation. ---
+    const STATUTS_AVIS = { en_attente: "En attente de validation", publie: "Publié sur le site", refuse: "Non publié" };
+
+    async function chargerAvis() {
+      try {
+        compte.avis = await api("/api/avis");
+      } catch {
+        compte.avis = null;
+        const zone = document.getElementById("avis-contenu");
+        if (zone) zone.innerHTML = `<p class="account-empty">Vos avis ne peuvent pas être chargés pour le moment.</p>`;
+        return;
+      }
+      afficherAvis();
+    }
+
+    function afficherAvis() {
+      const zone = document.getElementById("avis-contenu");
+      if (zone && compte.avis) zone.innerHTML = contenuAvis(compte.avis);
+      const compteur = document.querySelector('#account-body [data-account-view="avis"] span');
+      if (compteur && compte.avis) compteur.textContent = compte.avis.achats.length;
+    }
+
+    function contenuAvis({ achats, nomParDefaut }) {
+      if (!achats.length) return `<p class="account-empty">Vous pourrez donner votre avis dès qu'un véhicule vous aura été remis.</p>`;
+      return `<ul class="account-list avis-liste">${achats.map((achat) => {
+        const avis = achat.avis;
+        const id = `${achat.source}-${achat.sourceId}`;
+        const titre = achat.vehicule || `Véhicule réf. ${achat.reference}`;
+        const etoiles = [5, 4, 3, 2, 1].map((n) => `<input type="radio" id="avis-note-${id}-${n}" name="note" value="${n}"${avis?.note === n ? " checked" : ""} required><label for="avis-note-${id}-${n}" title="${n} sur 5"><span class="sr-only">${n} étoile${n > 1 ? "s" : ""} sur 5</span><span aria-hidden="true">★</span></label>`).join("");
+        const formulaire = `<form class="avis-form" data-avis-source="${achat.source}" data-avis-id="${achat.sourceId}" novalidate>
+            <fieldset class="avis-etoiles"><legend>Votre note</legend><div>${etoiles}</div></fieldset>
+            <label for="avis-texte-${id}">Votre avis</label>
+            <textarea id="avis-texte-${id}" name="texte" rows="4" minlength="10" maxlength="600" required placeholder="Livraison, suivi, état du véhicule…">${escapeHtml(avis?.texte || "")}</textarea>
+            <label for="avis-nom-${id}">Nom affiché</label>
+            <input id="avis-nom-${id}" name="nomAffiche" maxlength="40" required value="${escapeHtml(avis?.nomAffiche || nomParDefaut || "")}" autocomplete="off">
+            <label class="avis-accord"><input type="checkbox" name="consentement" required> J'accepte que cet avis, ce nom et le modèle du véhicule soient publiés sur le site de M&amp;Y AUTO EXPORT. Je peux demander son retrait à tout moment.</label>
+            <button class="bouton-compte" type="submit">${avis ? "Modifier mon avis" : "Envoyer mon avis"}</button>
+            <p class="avis-message" role="status"></p>
+          </form>`;
+        return `<li class="avis-achat"><span><strong>${escapeHtml(titre)}</strong><br><span class="muted">Réf. ${escapeHtml(achat.reference)}${avis ? ` · ${STATUTS_AVIS[avis.statut] || ""}` : ""}</span>
+          ${avis?.statut === "refuse" && avis.motifRefus ? `<br><span class="muted">Motif : ${escapeHtml(avis.motifRefus)}</span>` : ""}</span>
+          ${avis ? `<details class="avis-details"><summary>Modifier mon avis</summary><p class="muted">Une modification repasse par la validation de l'équipe.</p>${formulaire}</details>` : formulaire}</li>`;
+      }).join("")}</ul>`;
+    }
+
+    async function envoyerAvis(form) {
+      const message = form.querySelector(".avis-message");
+      const donnees = new FormData(form);
+      const corps = { note: Number(donnees.get("note")), texte: String(donnees.get("texte") || ""), nomAffiche: String(donnees.get("nomAffiche") || ""), consentement: donnees.get("consentement") === "on" };
+      if (!corps.note) { message.textContent = "Choisissez une note de 1 à 5 étoiles."; return; }
+      if (corps.texte.trim().length < 10) { message.textContent = "Votre avis doit faire au moins 10 caractères."; return; }
+      if (!corps.consentement) { message.textContent = "Cochez l'accord de publication pour envoyer votre avis."; return; }
+      const bouton = form.querySelector("button[type=submit]");
+      bouton.disabled = true;
+      try {
+        compte.avis = await api(`/api/avis/${form.dataset.avisSource}/${form.dataset.avisId}`, { method: "PUT", body: corps });
+        afficherAvis();
+        const zone = document.getElementById("avis-contenu");
+        zone?.insertAdjacentHTML("afterbegin", `<p class="message-avis" role="status">Merci ! Votre avis sera publié après validation par l'équipe.</p>`);
+      } catch (error) {
+        message.textContent = error.message;
+        bouton.disabled = false;
+      }
     }
 
     function photosLot(lot) {
@@ -1888,6 +1979,13 @@
         }
       });
     });
+    accountDialog.addEventListener("submit", (event) => {
+      const form = event.target.closest(".avis-form");
+      if (!form) return;
+      event.preventDefault();
+      envoyerAvis(form);
+    });
+
     accountDialog.addEventListener("click", async (event) => {
       const activation = event.target.closest("[data-enable-profile]");
       if (activation) {
@@ -1923,6 +2021,7 @@
         compte.vehicles = [];
         compte.offers = [];
         compte.invoices = [];
+        compte.avis = null;
         accountDialog.close();
         updateView();
         afficherCompte();
